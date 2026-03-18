@@ -25,7 +25,7 @@ const adminUserSchema = new mongoose.Schema(
 
     isSuperAdmin: {
       type:    Boolean,
-      default: false, // future: super admin can add/remove other admins
+      default: false,
     },
 
     isActive: {
@@ -36,6 +36,20 @@ const adminUserSchema = new mongoose.Schema(
     lastLoginAt: {
       type:    Date,
       default: null,
+    },
+
+    // ── Commission & Earnings ─────────────────────────────────
+    commissionRate: {
+      type:    Number,
+      default: 20,   // 20% platform cut — changeable from admin panel later
+      min:     0,
+      max:     100,
+    },
+
+    walletBalance: {
+      type:    Number,
+      default: 0,    // cumulative platform earnings from commission
+      min:     0,
     },
   },
   { timestamps: true }

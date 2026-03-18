@@ -2,7 +2,6 @@
 const mongoose = require("mongoose");
 
 // Single slot schema — reused in array
-// Single slot schema — reused in array
 const selectedSlotSchema = new mongoose.Schema(
   {
     day:       { type: String, required: true },
@@ -10,14 +9,15 @@ const selectedSlotSchema = new mongoose.Schema(
     startTime: { type: String, required: true },
     endTime:   { type: String, required: true },
 
-    // ✅ NEW — per-slot session tracking
-    meetingLink:  { type: String, default: "" },
+    // per-slot session tracking
+    meetingLink:  { type: String,  default: "" },
     menteeMarked: { type: Boolean, default: false },
     mentorMarked: { type: Boolean, default: false },
     completedAt:  { type: Date,    default: null  },
   },
   { _id: false }
 );
+
 const connectRequestSchema = new mongoose.Schema(
   {
     mentee: {
@@ -54,25 +54,25 @@ const connectRequestSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected", "referred", "ongoing", "completed"],
       default: "pending",
     },
-    // ✅ The mentor this request was referred TO (teammate's field)
+    // The mentor this request was referred TO
     referredTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
-    // ✅ The new ConnectRequest created for the referred mentor (teammate's field)
+    // The new ConnectRequest created for the referred mentor
     referredRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ConnectRequest",
       default: null,
     },
-    // ✅ NEW: The mentor who referred this request (your field)
-    // When Mentor A refers to Mentor B, the new request for Mentor B stores Mentor A's ID here
+    // The mentor who referred this request
     referredBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
+
     // ── Payment / Escrow fields ───────────────────────────────
     sessionRate: {
       type: Number,
@@ -102,8 +102,26 @@ const connectRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    requestedAt: { type: Date, default: Date.now },
-    respondedAt: { type: Date, default: null },
+    requestedAt:  { type: Date, default: Date.now },
+    respondedAt:  { type: Date, default: null },
+
+    // ── Commission fields (populated on escrow release) ───────
+    commissionRate: {
+      type:    Number,
+      default: null, // snapshot of admin's commissionRate at time of release
+      min:     0,
+      max:     100,
+    },
+    commissionAmount: {
+      type:    Number,
+      default: null, // tokens taken by platform
+      min:     0,
+    },
+    mentorPayout: {
+      type:    Number,
+      default: null, // tokens actually sent to mentor = totalAmount - commissionAmount
+      min:     0,
+    },
   },
   { timestamps: true }
 );
