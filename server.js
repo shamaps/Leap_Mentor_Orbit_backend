@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 const socketAuth           = require("./socket/socketAuth");
 const socketHandler        = require("./socket/socketHandler");
 const { verifyConnection } = require("./config/cloudinary"); // ✅ new
+
 const app = express();
 
 /* ===========================
@@ -62,7 +63,7 @@ app.use("/api/notes",            require("./routes/note.routes"));
 app.use("/api/feedback", require("./routes/feedback.routes"));
 app.use("/api/reports", require("./routes/report.routes"));
 app.use("/api/sessions", require("./routes/session.routes"));
-app.use("/api/mentor/earnings",     require("./routes/earnings.routes"));
+
 //admin
 app.use("/api/admin", require("./routes/admin.routes"));
 
