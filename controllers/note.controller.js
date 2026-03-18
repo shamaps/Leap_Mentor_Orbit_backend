@@ -6,33 +6,26 @@ const ConnectRequest      = require("../models/ConnectRequest");
 const { getFileType }     = require("../middleware/upload.middleware");
 
 // ── Helper: validate user belongs to this session ─────────────
-// ✅ Allows both ongoing and completed — notes always readable
 const validateSessionAccess = async (connectRequestId, userId) => {
   const request = await ConnectRequest.findById(connectRequestId)
     .select("mentor mentee status")
     .lean();
-
   if (!request) {
     return { valid: false, reason: "Session not found", status: 404 };
   }
-
-  // ✅ Both ongoing and completed sessions can access notes
   if (!["ongoing", "completed"].includes(request.status)) {
     return { valid: false, reason: "Session is not active", status: 400 };
   }
-
   const uid      = userId.toString();
   const isMentor = request.mentor.toString() === uid;
   const isMentee = request.mentee.toString() === uid;
-
   if (!isMentor && !isMentee) {
     return { valid: false, reason: "Not authorized", status: 403 };
   }
-
   return {
-    valid:        true,
-    uploaderRole: isMentor ? "mentor" : "mentee",
-    sessionStatus: request.status, // ✅ pass through for upload check
+    valid:         true,
+    uploaderRole:  isMentor ? "mentor" : "mentee",
+    sessionStatus: request.status,
   };
 };
 
@@ -50,18 +43,16 @@ const uploadToCloudinary = (buffer, options) => {
   });
 };
 
-// ─────────────────────────────────────────────────────────────
 // POST /api/notes/upload
-// ─────────────────────────────────────────────────────────────
 const uploadNote = async (req, res) => {
   try {
     const { connectRequestId, title } = req.body;
-    const userId = req.user._id;
+    const userId    = req.user._id;
+    const isPrivate = req.body.isPrivate === "true" || req.body.isPrivate === true;
 
     if (!connectRequestId) {
       return res.status(400).json({ message: "connectRequestId is required" });
     }
-
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
@@ -71,11 +62,8 @@ const uploadNote = async (req, res) => {
       return res.status(access.status).json({ message: access.reason });
     }
 
-    // ✅ Block uploads on completed sessions — read only after completion
     if (access.sessionStatus === "completed") {
-      return res.status(400).json({
-        message: "Cannot upload notes to a completed session.",
-      });
+      return res.status(400).json({ message: "Cannot upload notes to a completed session." });
     }
 
     const result = await uploadToCloudinary(req.file.buffer, {
@@ -95,17 +83,14 @@ const uploadNote = async (req, res) => {
       fileType:       getFileType(req.file.mimetype),
       fileName:       req.file.originalname,
       fileSize:       req.file.size,
+      isPrivate,
     });
 
     const populated = await Note.findById(note._id)
       .populate("uploadedBy", "name email")
       .lean();
 
-    return res.status(201).json({
-      success: true,
-      message: "Note uploaded successfully",
-      note:    populated,
-    });
+    return res.status(201).json({ success: true, message: "Note uploaded successfully", note: populated });
   } catch (err) {
     console.error("❌ uploadNote error:", err.message);
     if (err.message?.includes("File type not allowed")) {
@@ -118,10 +103,7 @@ const uploadNote = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/notes/:connectRequestId
-// ✅ Works for both ongoing and completed sessions
-// ─────────────────────────────────────────────────────────────
+// GET /api/notes/:connectRequestId — shared notes only
 const getNotes = async (req, res) => {
   try {
     const { connectRequestId } = req.params;
@@ -132,7 +114,10 @@ const getNotes = async (req, res) => {
       return res.status(access.status).json({ message: access.reason });
     }
 
-    const notes = await Note.find({ connectRequest: connectRequestId })
+    const notes = await Note.find({
+      connectRequest: connectRequestId,
+      isPrivate: { $ne: true },
+    })
       .populate("uploadedBy", "name email")
       .sort({ createdAt: -1 })
       .lean();
@@ -143,35 +128,57 @@ const getNotes = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+// GET /api/notes/:connectRequestId/private — own private notes only
+const getPrivateNotes = async (req, res) => {
+  try {
+    const { connectRequestId } = req.params;
+    const userId = req.user._id;
+
+    const access = await validateSessionAccess(connectRequestId, userId);
+    if (!access.valid) {
+      return res.status(access.status).json({ message: access.reason });
+    }
+
+    const notes = await Note.find({
+      connectRequest: connectRequestId,
+      uploadedBy:     userId,
+      isPrivate:      true,
+    })
+      .populate("uploadedBy", "name email")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json({ success: true, notes });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 // DELETE /api/notes/:id
-// ─────────────────────────────────────────────────────────────
 const deleteNote = async (req, res) => {
   try {
     const userId = req.user._id.toString();
+    const note   = await Note.findById(req.params.id);
 
-    const note = await Note.findById(req.params.id);
     if (!note) {
       return res.status(404).json({ message: "Note not found" });
     }
-
     if (note.uploadedBy.toString() !== userId) {
       return res.status(403).json({ message: "You can only delete your own notes" });
     }
 
     try {
       await cloudinary.uploader.destroy(note.publicId, { resource_type: "raw" });
-      console.log(`🗑️  Cloudinary file deleted: ${note.publicId}`);
+      console.log(`Cloudinary file deleted: ${note.publicId}`);
     } catch (cloudErr) {
-      console.warn("⚠️  Cloudinary delete warning:", cloudErr.message);
+      console.warn("Cloudinary delete warning:", cloudErr.message);
     }
 
     await Note.findByIdAndDelete(req.params.id);
-
     return res.json({ success: true, message: "Note deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { uploadNote, getNotes, deleteNote };
+module.exports = { uploadNote, getNotes, getPrivateNotes, deleteNote };

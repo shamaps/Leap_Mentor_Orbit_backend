@@ -1,14 +1,17 @@
 // backend/routes/note.routes.js
-const express    = require("express");
-const router     = express.Router();
-const { authenticate }             = require("../middleware/authenticate");
-const { upload }                   = require("../middleware/upload.middleware");
-const { uploadNote, getNotes, deleteNote } = require("../controllers/note.controller");
+const express = require("express");
+const router  = express.Router();
 
-// ✅ upload.single("file") — expects field name "file" in multipart form
-// Multer runs BEFORE the controller — validates type + size before hitting DB
+const { authenticate } = require("../middleware/authenticate");
+const { upload }       = require("../middleware/upload.middleware");
+const {
+  uploadNote,
+  getNotes,
+  getPrivateNotes,
+  deleteNote,
+} = require("../controllers/note.controller");
 
-// POST   /api/notes/upload          — upload a file
+// POST /api/notes/upload — upload a note (shared or private)
 router.post(
   "/upload",
   authenticate,
@@ -16,14 +19,22 @@ router.post(
   uploadNote
 );
 
-// GET    /api/notes/:connectRequestId  — get all notes for a session
+// ✅ /private MUST come before /:connectRequestId
+// GET /api/notes/:connectRequestId/private — own private notes
+router.get(
+  "/:connectRequestId/private",
+  authenticate,
+  getPrivateNotes
+);
+
+// GET /api/notes/:connectRequestId — shared notes
 router.get(
   "/:connectRequestId",
   authenticate,
   getNotes
 );
 
-// DELETE /api/notes/:id              — delete a note (uploader only)
+// DELETE /api/notes/:id
 router.delete(
   "/:id",
   authenticate,

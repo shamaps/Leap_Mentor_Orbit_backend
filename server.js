@@ -64,6 +64,8 @@ app.use("/api/feedback", require("./routes/feedback.routes"));
 app.use("/api/reports", require("./routes/report.routes"));
 app.use("/api/sessions", require("./routes/session.routes"));
 
+app.use("/api/private-notes",  require("./routes/privateNote.routes")); // ✅ ADD THIS
+
 //admin
 app.use("/api/admin", require("./routes/admin.routes"));
 
