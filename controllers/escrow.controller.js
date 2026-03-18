@@ -1,18 +1,37 @@
 // backend/controllers/escrow.controller.js
-const mongoose   = require("mongoose");
+const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
 const Wallet         = require("../models/Wallet");
 const Transaction    = require("../models/Transaction");
 const AdminUser      = require("../models/AdminUser");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
+// ─────────────────────────────────────────────────────────────
+// Helper — fetch active admin OUTSIDE transaction (read-only)
+// ─────────────────────────────────────────────────────────────
+const getAdmin = async () => {
+  const admin = await AdminUser.findOne({ isActive: true })
+    .select("commissionRate walletBalance");
+  if (!admin) throw new Error("Platform admin not found. Contact support.");
+  return admin;
+};
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/escrow/pay
-// Mentee pays — tokens move from balance → escrow
-// ── NO CHANGES FROM ORIGINAL ─────────────────────────────────
+// mentorAmount = sessionRate × sessionCount
+// platformFee  = ceil(mentorAmount × commissionRate / 100)
+// totalAmount  = mentorAmount + platformFee  ← mentee pays this
 // ─────────────────────────────────────────────────────────────
 const pay = async (req, res) => {
+  // ── Fetch admin BEFORE opening transaction ────────────────
+  let admin, commissionRate;
+  try {
+    admin          = await getAdmin();
+    commissionRate = admin.commissionRate ?? 20;
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -34,9 +53,12 @@ const pay = async (req, res) => {
       return res.status(400).json({ message: "sessionCount must be at least 1" });
     }
 
-    const totalAmount = sessionRate * sessionCount;
+    // ── Calculate amounts ─────────────────────────────────────
+    const mentorAmount = sessionRate * sessionCount;
+    const platformFee  = Math.ceil((mentorAmount * commissionRate) / 100);
+    const totalAmount  = mentorAmount + platformFee;
 
-    // ── Find and verify the connect request ───────────────────
+    // ── Find and verify connect request ───────────────────────
     const connectRequest = await ConnectRequest.findById(connectRequestId)
       .populate("mentee", "name email")
       .populate("mentor", "name email")
@@ -71,24 +93,27 @@ const pay = async (req, res) => {
     if (menteeWallet.balance < totalAmount) {
       await session.abortTransaction();
       return res.status(400).json({
-        message: `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`,
+        message:  `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`,
         balance:  menteeWallet.balance,
         required: totalAmount,
       });
     }
 
-    // ── Deduct from balance, add to escrow ────────────────────
+    // ── Deduct from mentee balance → escrow ───────────────────
     menteeWallet.balance -= totalAmount;
     menteeWallet.escrow  += totalAmount;
     await menteeWallet.save({ session });
 
-    // ── Update connect request ────────────────────────────────
-    connectRequest.sessionRate   = sessionRate;
-    connectRequest.sessionCount  = sessionCount;
-    connectRequest.totalAmount   = totalAmount;
-    connectRequest.paymentStatus = "paid";
-    connectRequest.status        = "ongoing";
-    connectRequest.paidAt        = new Date();
+    // ── Update connect request — snapshot commission at pay time
+    connectRequest.sessionRate      = sessionRate;
+    connectRequest.sessionCount     = sessionCount;
+    connectRequest.totalAmount      = totalAmount;
+    connectRequest.commissionRate   = commissionRate;
+    connectRequest.commissionAmount = platformFee;
+    connectRequest.mentorPayout     = mentorAmount;
+    connectRequest.paymentStatus    = "paid";
+    connectRequest.status           = "ongoing";
+    connectRequest.paidAt           = new Date();
     await connectRequest.save({ session });
 
     // ── Log escrow_hold transaction ───────────────────────────
@@ -99,7 +124,7 @@ const pay = async (req, res) => {
           type:           "escrow_hold",
           amount:         totalAmount,
           connectRequest: connectRequest._id,
-          description:    `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens`,
+          description:    `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens + ${commissionRate}% platform fee`,
           balanceAfter:   menteeWallet.balance,
         },
       ],
@@ -108,8 +133,7 @@ const pay = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Send invoice email after commit (non-blocking)
-    console.log("💳 Payment committed. Sending invoice email...");
+    // ── Send invoice email (non-blocking) ─────────────────────
     sendInvoiceEmail({
       connectRequestId: connectRequest._id.toString(),
       menteeName:       connectRequest.mentee.name,
@@ -127,13 +151,18 @@ const pay = async (req, res) => {
       console.error("❌ Invoice email failed:", err.message);
     });
 
+    console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+
     return res.status(200).json({
-      message:       "Payment successful. Tokens locked in escrow.",
+      message:        "Payment successful. Tokens locked in escrow.",
+      mentorAmount,
+      platformFee,
       totalAmount,
-      balance:       menteeWallet.balance,
-      escrow:        menteeWallet.escrow,
-      paymentStatus: "paid",
-      status:        "ongoing",
+      commissionRate,
+      balance:        menteeWallet.balance,
+      escrow:         menteeWallet.escrow,
+      paymentStatus:  "paid",
+      status:         "ongoing",
     });
 
   } catch (err) {
@@ -148,10 +177,17 @@ const pay = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/escrow/release/:requestId
-// Session complete — deduct commission, pay mentor remainder
-// ── UPDATED: commission logic added ──────────────────────────
+// Reads commission snapshot stored at pay time — no recalculation
 // ─────────────────────────────────────────────────────────────
 const release = async (req, res) => {
+  // ── Fetch admin BEFORE opening transaction ────────────────
+  let admin;
+  try {
+    admin = await getAdmin();
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -180,23 +216,13 @@ const release = async (req, res) => {
       return res.status(400).json({ message: "No escrowed payment found for this session" });
     }
 
-    const { totalAmount, mentor: mentorId } = connectRequest;
-
-    // ── Fetch admin for commission rate ───────────────────────
-    // Use the first active admin — commission rate is platform-wide
-    const admin = await AdminUser.findOne({ isActive: true })
-      .select("commissionRate walletBalance")
-      .session(session);
-
-    if (!admin) {
-      await session.abortTransaction();
-      return res.status(500).json({ message: "Platform admin not found. Contact support." });
-    }
-
-    // ── Calculate commission split ────────────────────────────
-    const commissionRate   = admin.commissionRate ?? 20;
-    const commissionAmount = Math.floor((totalAmount * commissionRate) / 100);
-    const mentorPayout     = totalAmount - commissionAmount;
+    const {
+      totalAmount,
+      mentorPayout,
+      commissionAmount,
+      commissionRate,
+      mentor: mentorId,
+    } = connectRequest;
 
     // ── Fetch wallets ─────────────────────────────────────────
     const [menteeWallet, mentorWallet] = await Promise.all([
@@ -217,73 +243,68 @@ const release = async (req, res) => {
       return res.status(400).json({ message: "Escrow balance mismatch. Contact support." });
     }
 
-    // ── Update wallets ────────────────────────────────────────
-    menteeWallet.escrow    -= totalAmount;         // release full escrow
-    mentorWallet.balance   += mentorPayout;         // mentor gets amount minus commission
-    admin.walletBalance    += commissionAmount;     // platform keeps commission
+    // ── Settle wallets ────────────────────────────────────────
+    menteeWallet.escrow  -= totalAmount;
+    mentorWallet.balance += mentorPayout;
+    admin.walletBalance  += commissionAmount;
 
     await menteeWallet.save({ session });
     await mentorWallet.save({ session });
-    await admin.save({ session });
-
-    // ── Update connect request ────────────────────────────────
-    connectRequest.status           = "completed";
-    connectRequest.completedAt      = new Date();
-    connectRequest.commissionRate   = commissionRate;
-    connectRequest.commissionAmount = commissionAmount;
-    connectRequest.mentorPayout     = mentorPayout;
-    await connectRequest.save({ session });
-
-    // ── Log 3 transactions ────────────────────────────────────
-    await Transaction.create(
-      [
-        // 1. Mentee escrow release
-        {
-          user:           menteeId,
-          type:           "escrow_release",
-          amount:         totalAmount,
-          connectRequest: connectRequest._id,
-          description:    `Escrow released on session completion`,
-          balanceAfter:   menteeWallet.escrow,
-        },
-        // 2. Platform commission deduction
-        {
-          user:           mentorId, // logged against mentor for audit trail
-          type:           "commission_deduct",
-          amount:         commissionAmount,
-          connectRequest: connectRequest._id,
-          description:    `Platform commission (${commissionRate}%) deducted`,
-          balanceAfter:   mentorWallet.balance,
-        },
-        // 3. Mentor net payout
-        {
-          user:           mentorId,
-          type:           "mentor_payout",
-          amount:         mentorPayout,
-          connectRequest: connectRequest._id,
-          description:    `Session payout after ${commissionRate}% platform commission`,
-          balanceAfter:   mentorWallet.balance,
-        },
-      ],
-      { session }
-    );
-
+    // ── Save admin OUTSIDE session (AdminUser not in replica set)
     await session.commitTransaction();
 
-    console.log(`✅ Escrow released — total: ${totalAmount} | commission: ${commissionAmount} (${commissionRate}%) | mentor payout: ${mentorPayout}`);
+    // ── Credit admin wallet after commit ──────────────────────
+    await AdminUser.findByIdAndUpdate(admin._id, {
+      $inc: { walletBalance: commissionAmount },
+    });
+
+    // ── Mark session complete ─────────────────────────────────
+    connectRequest.status      = "completed";
+    connectRequest.completedAt = new Date();
+    await connectRequest.save();
+
+    // ── Log 3 transactions ────────────────────────────────────
+    await Transaction.create([
+      {
+        user:           menteeId,
+        type:           "escrow_release",
+        amount:         totalAmount,
+        connectRequest: connectRequest._id,
+        description:    `Escrow released on session completion`,
+        balanceAfter:   menteeWallet.escrow,
+      },
+      {
+        user:           mentorId,
+        type:           "commission_deduct",
+        amount:         commissionAmount,
+        connectRequest: connectRequest._id,
+        description:    `Platform fee (${commissionRate}%) collected`,
+        balanceAfter:   mentorWallet.balance,
+      },
+      {
+        user:           mentorId,
+        type:           "mentor_payout",
+        amount:         mentorPayout,
+        connectRequest: connectRequest._id,
+        description:    `Session payout — full rate received`,
+        balanceAfter:   mentorWallet.balance,
+      },
+    ]);
+
+    console.log(`✅ Released — mentee paid: ${totalAmount} | platform: ${commissionAmount} (${commissionRate}%) | mentor: ${mentorPayout}`);
 
     return res.status(200).json({
-      message:          "Session marked complete. Tokens released to mentor.",
+      message:         "Session marked complete. Tokens released to mentor.",
       totalAmount,
       commissionRate,
       commissionAmount,
       mentorPayout,
-      menteeEscrow:     menteeWallet.escrow,
-      status:           "completed",
+      menteeEscrow:    menteeWallet.escrow,
+      status:          "completed",
     });
 
   } catch (err) {
-    await session.abortTransaction();
+    try { await session.abortTransaction(); } catch (_) {}
     console.error("❌ Escrow release error:", err);
     return res.status(500).json({ message: err.message });
   } finally {
@@ -293,8 +314,7 @@ const release = async (req, res) => {
 
 
 // ─────────────────────────────────────────────────────────────
-// POST /api/escrow/refund/:requestId
-// ── NO CHANGES FROM ORIGINAL ─────────────────────────────────
+// POST /api/escrow/refund/:requestId — NO CHANGES
 // ─────────────────────────────────────────────────────────────
 const refund = async (req, res) => {
   const session = await mongoose.startSession();
@@ -355,7 +375,7 @@ const refund = async (req, res) => {
           type:           "escrow_refund",
           amount:         totalAmount,
           connectRequest: connectRequest._id,
-          description:    `Escrow refunded — session cancelled`,
+          description:    `Full refund — session cancelled (incl. platform fee)`,
           balanceAfter:   menteeWallet.balance,
         },
       ],
@@ -384,8 +404,7 @@ const refund = async (req, res) => {
 
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/escrow/status/:requestId
-// ── NO CHANGES FROM ORIGINAL ─────────────────────────────────
+// GET /api/escrow/status/:requestId — NO CHANGES
 // ─────────────────────────────────────────────────────────────
 const getStatus = async (req, res) => {
   try {
@@ -436,8 +455,7 @@ const getStatus = async (req, res) => {
 
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/escrow/wallet
-// ── NO CHANGES FROM ORIGINAL ─────────────────────────────────
+// GET /api/escrow/wallet — NO CHANGES
 // ─────────────────────────────────────────────────────────────
 const getMyWallet = async (req, res) => {
   try {
