@@ -140,7 +140,8 @@ const pay = async (req, res) => {
       menteeEmail:      connectRequest.mentee.email,
       mentorName:       connectRequest.mentor.name,
       mentorEmail:      connectRequest.mentor.email,
-      confirmedSlot:    connectRequest.confirmedSlot,
+      selectedSlots:    connectRequest.selectedSlots,  // ✅ fixed: was confirmedSlot (single slot)
+      confirmedSlot:    connectRequest.confirmedSlot,  // kept for backward compat fallback
       sessionRate,
       sessionCount,
       totalAmount,

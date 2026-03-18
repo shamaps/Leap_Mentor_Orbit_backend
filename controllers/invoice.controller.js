@@ -35,15 +35,16 @@ const downloadInvoice = async (req, res) => {
 
     const pdfBuffer = await generateInvoice({
       invoiceNumber,
-      menteeName:   connectRequest.mentee.name,
-      menteeEmail:  connectRequest.mentee.email,
-      mentorName:   connectRequest.mentor.name,
-      mentorEmail:  connectRequest.mentor.email,
-      confirmedSlot: connectRequest.confirmedSlot,
-      sessionRate:  connectRequest.sessionRate,
-      sessionCount: connectRequest.sessionCount,
-      totalAmount:  connectRequest.totalAmount,
-      paidAt:       connectRequest.paidAt,
+      menteeName:    connectRequest.mentee.name,
+      menteeEmail:   connectRequest.mentee.email,
+      mentorName:    connectRequest.mentor.name,
+      mentorEmail:   connectRequest.mentor.email,
+      selectedSlots: connectRequest.selectedSlots,  // ✅ fixed: was confirmedSlot (single), now all slots
+      confirmedSlot: connectRequest.confirmedSlot,  // kept for backward compat fallback in generateInvoice
+      sessionRate:   connectRequest.sessionRate,
+      sessionCount:  connectRequest.sessionCount,
+      totalAmount:   connectRequest.totalAmount,
+      paidAt:        connectRequest.paidAt,
     });
 
     res.set({

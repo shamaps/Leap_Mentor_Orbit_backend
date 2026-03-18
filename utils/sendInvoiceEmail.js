@@ -15,16 +15,17 @@ const transporter = nodemailer.createTransport({
 /**
  * Generates invoice PDF and emails it to the mentee
  * @param {Object} params
- * @param {string} params.connectRequestId
- * @param {string} params.menteeName
- * @param {string} params.menteeEmail
- * @param {string} params.mentorName
- * @param {string} params.mentorEmail
- * @param {Object} params.confirmedSlot
- * @param {number} params.sessionRate
- * @param {number} params.sessionCount
- * @param {number} params.totalAmount
- * @param {Date}   params.paidAt
+ * @param {string}   params.connectRequestId
+ * @param {string}   params.menteeName
+ * @param {string}   params.menteeEmail
+ * @param {string}   params.mentorName
+ * @param {string}   params.mentorEmail
+ * @param {Array}    params.selectedSlots  - ✅ all confirmed slots
+ * @param {Object}   [params.confirmedSlot] - kept for backward compat
+ * @param {number}   params.sessionRate
+ * @param {number}   params.sessionCount
+ * @param {number}   params.totalAmount
+ * @param {Date}     params.paidAt
  */
 const sendInvoiceEmail = async (params) => {
   const {
@@ -43,7 +44,7 @@ const sendInvoiceEmail = async (params) => {
 
   // ── Generate PDF buffer ──────────────────────────────────────
   const pdfBuffer = await generateInvoice({
-    ...params,
+    ...params,          // ✅ spreads selectedSlots + confirmedSlot through to generateInvoice
     invoiceNumber,
   });
 
@@ -86,7 +87,7 @@ const sendInvoiceEmail = async (params) => {
     ],
   });
 
- console.log(`✅ Invoice email sent to ${menteeEmail} — ${invoiceNumber}`);
+  console.log(`✅ Invoice email sent to ${menteeEmail} — ${invoiceNumber}`);
 };
 
 module.exports = sendInvoiceEmail;
