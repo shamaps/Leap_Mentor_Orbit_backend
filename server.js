@@ -7,7 +7,7 @@ const http       = require("http");
 const { Server } = require("socket.io");
 const socketAuth           = require("./socket/socketAuth");
 const socketHandler        = require("./socket/socketHandler");
-const { verifyConnection } = require("./config/cloudinary"); // ✅ new
+const { verifyConnection } = require("./config/cloudinary");
 
 const app = express();
 
@@ -59,14 +59,14 @@ app.use("/api/escrow",           require("./routes/escrow.routes"));
 app.use("/api/invoices",         require("./routes/invoice.routes"));
 app.use("/api/goals",            require("./routes/goal.routes"));
 app.use("/api/messages",         require("./routes/message.routes"));
-app.use("/api/notes",            require("./routes/note.routes")); 
-app.use("/api/feedback", require("./routes/feedback.routes"));
-app.use("/api/reports", require("./routes/report.routes"));
-app.use("/api/sessions", require("./routes/session.routes"));
+app.use("/api/notes",            require("./routes/note.routes"));
+app.use("/api/notifications",    require("./routes/notifications")); // ✅ from your version
+app.use("/api/feedback",         require("./routes/feedback.routes"));
+app.use("/api/reports",          require("./routes/report.routes"));
+app.use("/api/sessions",         require("./routes/session.routes"));
+app.use("/api/private-notes",    require("./routes/privateNote.routes")); // ✅ from team's version
 
-app.use("/api/private-notes",  require("./routes/privateNote.routes")); // ✅ ADD THIS
-
-//admin
+// admin
 app.use("/api/admin", require("./routes/admin.routes"));
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
@@ -76,6 +76,9 @@ app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 =========================== */
 const { startCleanupCron } = require("./cron/cleanupAvailability");
 startCleanupCron();
+
+const { startSessionReminderCron } = require("./cron/sessionReminders"); // ✅ from your version
+startSessionReminderCron(); // ✅ from your version
 
 /* ===========================
    🔹 HTTP SERVER + SOCKET.IO

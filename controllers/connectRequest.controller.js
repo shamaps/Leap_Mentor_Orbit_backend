@@ -1,7 +1,10 @@
 // backend/controllers/connectRequest.controller.js
+const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
-const Availability = require("../models/Availability");
+const Availability   = require("../models/Availability");
+const MentorProfile  = require("../models/MentorProfile");
+const createNotification = require("../utils/createNotification");
 
 /**
  * POST /api/connect-requests
@@ -12,36 +15,30 @@ const sendConnectRequest = async (req, res) => {
     const { mentorId, message, selectedSlots, sessionRate, sessionCount } = req.body;
     const menteeId = req.user._id;
 
-    if (!mentorId) {
+    if (!mentorId)
       return res.status(400).json({ message: "mentorId is required" });
-    }
-    if (!Array.isArray(selectedSlots) || selectedSlots.length === 0) {
+
+    if (!Array.isArray(selectedSlots) || selectedSlots.length === 0)
       return res.status(400).json({ message: "At least one slot must be selected" });
-    }
-    if (selectedSlots.length > 5) {
+
+    if (selectedSlots.length > 5)
       return res.status(400).json({ message: "Maximum 5 slots can be proposed" });
-    }
 
     for (const slot of selectedSlots) {
-      if (!slot.day || !slot.date || !slot.startTime || !slot.endTime) {
+      if (!slot.day || !slot.date || !slot.startTime || !slot.endTime)
         return res.status(400).json({ message: "Each slot must have day, date, startTime and endTime" });
-      }
     }
 
-    if (menteeId.toString() === mentorId) {
+    if (menteeId.toString() === mentorId)
       return res.status(400).json({ message: "You cannot send a request to yourself" });
-    }
 
     const existingPending = await ConnectRequest.findOne({
       mentee: menteeId,
       mentor: mentorId,
       status: "pending",
     });
-    if (existingPending) {
-      return res.status(409).json({
-        message: "You already have a pending request with this mentor",
-      });
-    }
+    if (existingPending)
+      return res.status(409).json({ message: "You already have a pending request with this mentor" });
 
     for (const slot of selectedSlots) {
       const slotTaken = await ConnectRequest.findOne({
@@ -51,19 +48,16 @@ const sendConnectRequest = async (req, res) => {
         "selectedSlots.startTime": slot.startTime,
         "selectedSlots.endTime":   slot.endTime,
       });
-      if (slotTaken) {
+      if (slotTaken)
         return res.status(409).json({
           message: `Slot ${slot.date} ${slot.startTime}–${slot.endTime} is already taken. Please choose another.`,
         });
-      }
     }
 
-    if (sessionRate && Number(sessionRate) < 1) {
+    if (sessionRate && Number(sessionRate) < 1)
       return res.status(400).json({ message: "sessionRate must be at least 1" });
-    }
-    if (sessionCount && Number(sessionCount) < 1) {
+    if (sessionCount && Number(sessionCount) < 1)
       return res.status(400).json({ message: "sessionCount must be at least 1" });
-    }
 
     const request = await ConnectRequest.create({
       mentee:       menteeId,
@@ -78,16 +72,24 @@ const sendConnectRequest = async (req, res) => {
                       : null,
     });
 
+    const mentorUserId = new mongoose.Types.ObjectId(mentorId);
+    console.log("🔔 Notifying mentor:", mentorUserId.toString());
+
+    await createNotification({
+      recipient: mentorUserId,
+      type:      "connect_request_received",
+      title:     "New Connect Request",
+      message:   `You have a new connect request from a mentee.`,
+      metadata:  { requestId: request._id, menteeId: menteeId },
+    });
+
     return res.status(201).json({
       message: "Connect request sent successfully",
       request,
     });
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({
-        message: "You already have a pending request with this mentor",
-      });
-    }
+    if (err.code === 11000)
+      return res.status(409).json({ message: "You already have a pending request with this mentor" });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -98,8 +100,6 @@ const sendConnectRequest = async (req, res) => {
  */
 const getMyRequests = async (req, res) => {
   try {
-    const MentorProfile = require("../models/MentorProfile");
-
     const requests = await ConnectRequest.find({ mentee: req.user._id })
       .populate("mentor",     "name email")
       .populate("referredTo", "name email")
@@ -138,8 +138,6 @@ const getMyRequests = async (req, res) => {
  */
 const getIncomingRequests = async (req, res) => {
   try {
-    const MentorProfile = require("../models/MentorProfile"); // ✅ NEW
-
     const { status } = req.query;
 
     const filter = { mentor: req.user._id };
@@ -149,11 +147,11 @@ const getIncomingRequests = async (req, res) => {
 
     const requests = await ConnectRequest.find(filter)
       .populate("mentee",     "name email")
-      .populate("referredBy", "name email")  // ✅ who referred this request
+      .populate("referredBy", "name email")
       .sort({ requestedAt: -1 })
       .lean();
 
-    // ✅ NEW — enrich each request with the referring mentor's full profile
+    // ✅ Enrich each request with the referring mentor's full profile
     const enriched = await Promise.all(
       requests.map(async (r) => {
         const referredByProfile = r.referredBy
@@ -183,31 +181,26 @@ const respondToRequest = async (req, res) => {
   try {
     const { status, confirmedSlot } = req.body;
 
-    if (!["accepted", "rejected"].includes(status)) {
+    if (!["accepted", "rejected"].includes(status))
       return res.status(400).json({ message: "Status must be 'accepted' or 'rejected'" });
-    }
 
     if (status === "accepted") {
-      if (!confirmedSlot?.date || !confirmedSlot?.startTime || !confirmedSlot?.endTime) {
+      if (!confirmedSlot?.date || !confirmedSlot?.startTime || !confirmedSlot?.endTime)
         return res.status(400).json({ message: "confirmedSlot is required when accepting" });
-      }
     }
 
     const request = await ConnectRequest.findById(req.params.id)
       .populate("mentee", "name email")
       .populate("mentor", "name email");
 
-    if (!request) {
+    if (!request)
       return res.status(404).json({ message: "Request not found" });
-    }
 
-    if (request.mentor._id.toString() !== req.user._id.toString()) {
+    if (request.mentor._id.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized to respond to this request" });
-    }
 
-    if (request.status !== "pending") {
+    if (request.status !== "pending")
       return res.status(400).json({ message: `Request already ${request.status}` });
-    }
 
     request.status = status;
     request.respondedAt = new Date();
@@ -215,9 +208,17 @@ const respondToRequest = async (req, res) => {
     await request.save();
 
     if (status === "accepted") {
+      await createNotification({
+        recipient: request.mentee._id,
+        type:      "connect_request_accepted",
+        title:     "Connect Request Accepted! 🎉",
+        message:   `${request.mentor.name} has accepted your connect request. Your session is confirmed on ${confirmedSlot.date} at ${confirmedSlot.startTime}.`,
+        metadata:  { requestId: request._id, mentorId: request.mentor._id },
+      });
+
       await ConnectRequest.updateMany(
         {
-          _id: { $ne: request._id },
+          _id:    { $ne: request._id },
           mentor: request.mentor._id,
           status: "pending",
           "selectedSlots.date":      confirmedSlot.date,
@@ -249,10 +250,17 @@ const respondToRequest = async (req, res) => {
       }
     }
 
-    return res.json({
-      message: `Request ${status} successfully`,
-      request,
-    });
+    if (status === "rejected") {
+      await createNotification({
+        recipient: request.mentee._id,
+        type:      "connect_request_declined",
+        title:     "Connect Request Declined",
+        message:   `${request.mentor.name} was unable to accept your connect request at this time.`,
+        metadata:  { requestId: request._id, mentorId: request.mentor._id },
+      });
+    }
+
+    return res.json({ message: `Request ${status} successfully`, request });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -266,17 +274,14 @@ const cancelRequest = async (req, res) => {
   try {
     const request = await ConnectRequest.findById(req.params.id);
 
-    if (!request) {
+    if (!request)
       return res.status(404).json({ message: "Request not found" });
-    }
 
-    if (request.mentee.toString() !== req.user._id.toString()) {
+    if (request.mentee.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized to cancel this request" });
-    }
 
-    if (request.status === "ongoing") {
+    if (request.status === "ongoing")
       return res.status(400).json({ message: "Cannot delete an ongoing session" });
-    }
 
     await ConnectRequest.findByIdAndDelete(req.params.id);
     return res.json({ message: "Request cancelled successfully" });
@@ -293,42 +298,32 @@ const referRequest = async (req, res) => {
   try {
     const { referToMentorId } = req.body;
 
-    if (!referToMentorId) {
+    if (!referToMentorId)
       return res.status(400).json({ message: "referToMentorId is required" });
-    }
 
     const request = await ConnectRequest.findById(req.params.id)
       .populate("mentee", "name email")
       .populate("mentor", "name email");
 
-    if (!request) {
+    if (!request)
       return res.status(404).json({ message: "Request not found" });
-    }
 
-    if (request.mentor._id.toString() !== req.user._id.toString()) {
+    if (request.mentor._id.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized to refer this request" });
-    }
 
-    if (request.status !== "pending") {
-      return res.status(400).json({
-        message: `Cannot refer a request that is already ${request.status}`,
-      });
-    }
+    if (request.status !== "pending")
+      return res.status(400).json({ message: `Cannot refer a request that is already ${request.status}` });
 
-    if (referToMentorId === req.user._id.toString()) {
+    if (referToMentorId === req.user._id.toString())
       return res.status(400).json({ message: "Cannot refer request to yourself" });
-    }
 
     const existingRequest = await ConnectRequest.findOne({
       mentee: request.mentee._id,
       mentor: referToMentorId,
       status: "pending",
     });
-    if (existingRequest) {
-      return res.status(409).json({
-        message: "Mentee already has a pending request with this mentor",
-      });
-    }
+    if (existingRequest)
+      return res.status(409).json({ message: "Mentee already has a pending request with this mentor" });
 
     // ✅ Create new request for referred mentor — save referredBy
     const newRequest = await ConnectRequest.create({
@@ -337,10 +332,25 @@ const referRequest = async (req, res) => {
       message:       request.message,
       selectedSlots: request.selectedSlots,
       requestedAt:   new Date(),
-      referredBy:    req.user._id,  // ✅ store who referred this request
+      referredBy:    req.user._id, // ✅ store who referred this request
     });
 
-    // ✅ Mark original request as referred
+    await createNotification({
+      recipient: new mongoose.Types.ObjectId(referToMentorId),
+      type:      "connect_request_received",
+      title:     "New Connect Request (Referred)",
+      message:   `You have received a referred connect request from ${request.mentee.name}.`,
+      metadata:  { requestId: newRequest._id, menteeId: request.mentee._id },
+    });
+
+    await createNotification({
+      recipient: request.mentee._id,
+      type:      "connect_request_declined",
+      title:     "Request Referred to Another Mentor",
+      message:   `${request.mentor.name} has referred your request to another mentor who may be a better fit.`,
+      metadata:  { requestId: request._id, mentorId: request.mentor._id },
+    });
+
     request.status            = "referred";
     request.referredTo        = referToMentorId;
     request.referredRequestId = newRequest._id;
@@ -352,7 +362,6 @@ const referRequest = async (req, res) => {
       originalRequest: request,
       newRequest,
     });
-
   } catch (err) {
     console.error("❌ Refer request error:", err.message);
     return res.status(500).json({ message: err.message });
@@ -366,15 +375,13 @@ const referRequest = async (req, res) => {
  */
 const getOngoingConnects = async (req, res) => {
   try {
-    const MentorProfile = require("../models/MentorProfile");
     const MenteeProfile = require("../models/MenteeProfile");
     const userId = req.user._id;
 
-   
     const requests = await ConnectRequest.find({
-  status: { $in: ["ongoing", "completed"] }, 
-  $or: [{ mentee: userId }, { mentor: userId }],
-})
+      status: { $in: ["ongoing", "completed"] },
+      $or: [{ mentee: userId }, { mentor: userId }],
+    })
       .populate("mentee", "name email")
       .populate("mentor", "name email")
       .sort({ paidAt: -1 })
@@ -414,7 +421,6 @@ const getOngoingConnects = async (req, res) => {
  */
 const getConnectDetail = async (req, res) => {
   try {
-    const MentorProfile = require("../models/MentorProfile");
     const MenteeProfile = require("../models/MenteeProfile");
 
     const request = await ConnectRequest.findById(req.params.id)
@@ -422,18 +428,16 @@ const getConnectDetail = async (req, res) => {
       .populate("mentor", "name email")
       .lean();
 
-    if (!request) {
+    if (!request)
       return res.status(404).json({ message: "Session not found" });
-    }
 
     // ✅ Only the mentee or mentor on this request can access it
-    const userId = req.user._id.toString();
+    const userId   = req.user._id.toString();
     const isMentee = request.mentee._id.toString() === userId;
     const isMentor = request.mentor._id.toString() === userId;
 
-    if (!isMentee && !isMentor) {
+    if (!isMentee && !isMentor)
       return res.status(403).json({ message: "Not authorized to view this session" });
-    }
 
     const [mentorProfile, menteeProfile] = await Promise.all([
       MentorProfile.findOne({ user: request.mentor._id })
@@ -448,9 +452,9 @@ const getConnectDetail = async (req, res) => {
       success: true,
       connect: {
         ...request,
-        mentorProfile:  mentorProfile  || null,
-        menteeProfile:  menteeProfile  || null,
-        viewerRole:     isMentee ? "mentee" : "mentor", // ✅ tells frontend who is viewing
+        mentorProfile: mentorProfile || null,
+        menteeProfile: menteeProfile || null,
+        viewerRole:    isMentee ? "mentee" : "mentor", // ✅ tells frontend who is viewing
       },
     });
   } catch (err) {
@@ -466,5 +470,5 @@ module.exports = {
   cancelRequest,
   referRequest,
   getOngoingConnects,
-  getConnectDetail, 
+  getConnectDetail,
 };
