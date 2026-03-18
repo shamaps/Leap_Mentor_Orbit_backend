@@ -10,6 +10,8 @@ const {
   getUsers,
   getUserDetail,
   deleteUser,
+  getEngagementStats,
+  getEngagements,
 } = require("../controllers/admin.controller");
 
 // ── Auth (public) ─────────────────────────────────────────────
@@ -23,5 +25,9 @@ router.get("/stats", adminAuthenticate, getStats);
 router.get   ("/users",        adminAuthenticate, getUsers);
 router.get   ("/users/:userId", adminAuthenticate, getUserDetail);
 router.delete("/users/:userId", adminAuthenticate, deleteUser);
+
+//engagements
+router.get("/engagements/stats", adminAuthenticate, getEngagementStats);
+router.get("/engagements",       adminAuthenticate, getEngagements);
 
 module.exports = router;
