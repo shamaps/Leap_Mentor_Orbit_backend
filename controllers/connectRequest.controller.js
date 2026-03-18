@@ -6,6 +6,9 @@ const Availability   = require("../models/Availability");
 const MentorProfile  = require("../models/MentorProfile");
 const createNotification = require("../utils/createNotification");
 
+// ✅ Import emitToUser — available after socketHandler initializes
+const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
+
 /**
  * POST /api/connect-requests
  * Mentee sends a connect request with multiple proposed slots
@@ -73,7 +76,6 @@ const sendConnectRequest = async (req, res) => {
     });
 
     const mentorUserId = new mongoose.Types.ObjectId(mentorId);
-    console.log("🔔 Notifying mentor:", mentorUserId.toString());
 
     await createNotification({
       recipient: mentorUserId,
@@ -82,6 +84,16 @@ const sendConnectRequest = async (req, res) => {
       message:   `You have a new connect request from a mentee.`,
       metadata:  { requestId: request._id, menteeId: menteeId },
     });
+
+    // ✅ Emit real-time toast to mentor if they are online
+    const emitToUser = getEmitToUser();
+    if (emitToUser) {
+      emitToUser(mentorId, "new_connect_request", {
+        title:   "New Connect Request 🔔",
+        message: `${req.user.name} sent you a connect request.`,
+        type:    "info",
+      });
+    }
 
     return res.status(201).json({
       message: "Connect request sent successfully",
@@ -151,7 +163,6 @@ const getIncomingRequests = async (req, res) => {
       .sort({ requestedAt: -1 })
       .lean();
 
-    // ✅ Enrich each request with the referring mentor's full profile
     const enriched = await Promise.all(
       requests.map(async (r) => {
         const referredByProfile = r.referredBy
@@ -207,6 +218,8 @@ const respondToRequest = async (req, res) => {
     if (status === "accepted") request.confirmedSlot = confirmedSlot;
     await request.save();
 
+    const emitToUser = getEmitToUser();
+
     if (status === "accepted") {
       await createNotification({
         recipient: request.mentee._id,
@@ -215,6 +228,15 @@ const respondToRequest = async (req, res) => {
         message:   `${request.mentor.name} has accepted your connect request. Your session is confirmed on ${confirmedSlot.date} at ${confirmedSlot.startTime}.`,
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
+
+      // ✅ Emit real-time toast to mentee
+      if (emitToUser) {
+        emitToUser(request.mentee._id.toString(), "request_accepted", {
+          title:   "Request Accepted! 🎉",
+          message: `${request.mentor.name} accepted your connect request.`,
+          type:    "success",
+        });
+      }
 
       await ConnectRequest.updateMany(
         {
@@ -258,6 +280,15 @@ const respondToRequest = async (req, res) => {
         message:   `${request.mentor.name} was unable to accept your connect request at this time.`,
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
+
+      // ✅ Emit real-time toast to mentee
+      if (emitToUser) {
+        emitToUser(request.mentee._id.toString(), "request_declined", {
+          title:   "Request Declined",
+          message: `${request.mentor.name} was unable to accept your request at this time.`,
+          type:    "warning",
+        });
+      }
     }
 
     return res.json({ message: `Request ${status} successfully`, request });
@@ -325,14 +356,13 @@ const referRequest = async (req, res) => {
     if (existingRequest)
       return res.status(409).json({ message: "Mentee already has a pending request with this mentor" });
 
-    // ✅ Create new request for referred mentor — save referredBy
     const newRequest = await ConnectRequest.create({
       mentee:        request.mentee._id,
       mentor:        referToMentorId,
       message:       request.message,
       selectedSlots: request.selectedSlots,
       requestedAt:   new Date(),
-      referredBy:    req.user._id, // ✅ store who referred this request
+      referredBy:    req.user._id,
     });
 
     await createNotification({
@@ -350,6 +380,22 @@ const referRequest = async (req, res) => {
       message:   `${request.mentor.name} has referred your request to another mentor who may be a better fit.`,
       metadata:  { requestId: request._id, mentorId: request.mentor._id },
     });
+
+    const emitToUser = getEmitToUser();
+    if (emitToUser) {
+      // ✅ Notify mentee their request was referred
+      emitToUser(request.mentee._id.toString(), "request_referred", {
+        title:   "Request Referred",
+        message: `${request.mentor.name} referred your request to another mentor.`,
+        type:    "info",
+      });
+      // ✅ Notify referred mentor about the new request
+      emitToUser(referToMentorId, "new_connect_request", {
+        title:   "New Connect Request (Referred) 🔔",
+        message: `${request.mentee.name} was referred to you by ${request.mentor.name}.`,
+        type:    "info",
+      });
+    }
 
     request.status            = "referred";
     request.referredTo        = referToMentorId;
@@ -370,8 +416,6 @@ const referRequest = async (req, res) => {
 
 /**
  * GET /api/connect-requests/ongoing
- * Returns all ongoing sessions for the logged-in user
- * Works for both mentee and mentor
  */
 const getOngoingConnects = async (req, res) => {
   try {
@@ -390,15 +434,12 @@ const getOngoingConnects = async (req, res) => {
     const enriched = await Promise.all(
       requests.map(async (r) => {
         const isMentee = r.mentee._id.toString() === userId.toString();
-
         if (isMentee) {
-          // Mentee sees mentor profile
           const mentorProfile = await MentorProfile.findOne({ user: r.mentor._id })
             .select("currentRole company profilePicture skills hourlyRate avgRating bio")
             .lean();
           return { ...r, mentorProfile: mentorProfile || null };
         } else {
-          // Mentor sees mentee profile
           const menteeProfile = await MenteeProfile.findOne({ user: r.mentee._id })
             .select("currentRole company profilePicture skills bio interestedFields")
             .lean();
@@ -415,9 +456,6 @@ const getOngoingConnects = async (req, res) => {
 
 /**
  * GET /api/connect-requests/:id/detail
- * Returns a single ongoing connect request enriched with
- * full mentorProfile + menteeProfile
- * Only accessible by the mentee or mentor on this request
  */
 const getConnectDetail = async (req, res) => {
   try {
@@ -431,7 +469,6 @@ const getConnectDetail = async (req, res) => {
     if (!request)
       return res.status(404).json({ message: "Session not found" });
 
-    // ✅ Only the mentee or mentor on this request can access it
     const userId   = req.user._id.toString();
     const isMentee = request.mentee._id.toString() === userId;
     const isMentor = request.mentor._id.toString() === userId;
@@ -454,7 +491,7 @@ const getConnectDetail = async (req, res) => {
         ...request,
         mentorProfile: mentorProfile || null,
         menteeProfile: menteeProfile || null,
-        viewerRole:    isMentee ? "mentee" : "mentor", // ✅ tells frontend who is viewing
+        viewerRole:    isMentee ? "mentee" : "mentor",
       },
     });
   } catch (err) {

@@ -1,9 +1,13 @@
 // backend/socket/socketHandler.js
-const Message       = require("../models/Message");
+const Message        = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
 
 // ✅ Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
+
+// ✅ Track connected sockets per user: { userId: socketId }
+// Used for direct user-to-user notifications
+const userSockets = new Map();
 
 // ── Helper: check user is part of this connectRequest ────────
 const validateRoomAccess = async (connectRequestId, userId) => {
@@ -32,14 +36,35 @@ const getOtherUserId = async (connectRequestId, userId) => {
     : request.mentor.toString();
 };
 
+// ── Helper: emit to a specific user by userId ─────────────────
+// ✅ Used for cross-dashboard notifications (not room-based)
+const emitToUser = (io, userId, event, data) => {
+  const socketId = userSockets.get(userId.toString());
+  if (socketId) {
+    io.to(socketId).emit(event, data);
+    return true;
+  }
+  return false; // user is offline
+};
+
+// ── Export emitToUser so controllers can use it ───────────────
+module.exports.emitToUser = null; // will be set after io is initialized
+
 // ── Main handler ──────────────────────────────────────────────
 const socketHandler = (io) => {
+
+  // ✅ Expose emitToUser globally so backend controllers can call it
+  module.exports.emitToUser = (userId, event, data) =>
+    emitToUser(io, userId, event, data);
+
   io.on("connection", (socket) => {
     const userId = socket.user._id.toString();
     console.log(`🔌 Socket connected: ${socket.user.email} (${socket.id})`);
 
+    // ✅ Register this user's socket for direct notifications
+    userSockets.set(userId, socket.id);
+
     // ── join_room ───────────────────────────────────────────
-    // Client joins a room scoped to their connectRequestId
     socket.on("join_room", async ({ connectRequestId }) => {
       try {
         const allowed = await validateRoomAccess(connectRequestId, userId);
@@ -51,16 +76,13 @@ const socketHandler = (io) => {
         socket.join(connectRequestId);
         socket.currentRoom = connectRequestId;
 
-        // ✅ Track online users in this room
         if (!onlineUsers.has(connectRequestId)) {
           onlineUsers.set(connectRequestId, new Set());
         }
         onlineUsers.get(connectRequestId).add(userId);
 
-        // ✅ Notify the room that this user is online
         socket.to(connectRequestId).emit("user_online", { userId });
 
-        // ✅ Mark unread messages as read (messages NOT sent by this user)
         await Message.updateMany(
           {
             connectRequest: connectRequestId,
@@ -70,7 +92,6 @@ const socketHandler = (io) => {
           { $set: { readAt: new Date() } }
         );
 
-        // ✅ Tell the sender their messages were read
         socket.to(connectRequestId).emit("messages_read", {
           connectRequestId,
           readBy: userId,
@@ -95,7 +116,6 @@ const socketHandler = (io) => {
           return;
         }
 
-        // ✅ Persist to DB first — socket is just delivery
         const message = await Message.create({
           connectRequest: connectRequestId,
           sender:         userId,
@@ -106,7 +126,6 @@ const socketHandler = (io) => {
           .populate("sender", "name email")
           .lean();
 
-        // ✅ Check if recipient is online in the room — auto mark read
         const roomOnline  = onlineUsers.get(connectRequestId) || new Set();
         const otherId     = await getOtherUserId(connectRequestId, userId);
         const otherOnline = otherId && roomOnline.has(otherId);
@@ -116,7 +135,6 @@ const socketHandler = (io) => {
           populated.readAt = new Date();
         }
 
-        // ✅ Emit to entire room (including sender for confirmation)
         io.to(connectRequestId).emit("new_message", populated);
 
         console.log(`💬 Message in ${connectRequestId} from ${socket.user.email}`);
@@ -160,13 +178,15 @@ const socketHandler = (io) => {
 
     // ── disconnect ──────────────────────────────────────────
     socket.on("disconnect", () => {
+      // ✅ Remove from userSockets map
+      userSockets.delete(userId);
+
       const room = socket.currentRoom;
       if (room && onlineUsers.has(room)) {
         onlineUsers.get(room).delete(userId);
         if (onlineUsers.get(room).size === 0) {
           onlineUsers.delete(room);
         }
-        // ✅ Notify room that user went offline
         socket.to(room).emit("user_offline", { userId });
       }
       console.log(`🔌 Socket disconnected: ${socket.user?.email} (${socket.id})`);
