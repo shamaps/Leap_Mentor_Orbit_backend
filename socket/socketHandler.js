@@ -2,7 +2,7 @@
 const Message       = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
 
-//  Track online users per room: { connectRequestId: Set<userId> }
+// ✅ Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
 
 // ── Helper: check user is part of this connectRequest ────────
@@ -51,16 +51,16 @@ const socketHandler = (io) => {
         socket.join(connectRequestId);
         socket.currentRoom = connectRequestId;
 
-        // Track online users in this room
+        // ✅ Track online users in this room
         if (!onlineUsers.has(connectRequestId)) {
           onlineUsers.set(connectRequestId, new Set());
         }
         onlineUsers.get(connectRequestId).add(userId);
 
-        //  Notify the room that this user is online
+        // ✅ Notify the room that this user is online
         socket.to(connectRequestId).emit("user_online", { userId });
 
-        // Mark unread messages as read (messages NOT sent by this user)
+        // ✅ Mark unread messages as read (messages NOT sent by this user)
         await Message.updateMany(
           {
             connectRequest: connectRequestId,

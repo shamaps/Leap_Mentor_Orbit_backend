@@ -5,6 +5,7 @@ const User           = require("../models/User");
 const MentorProfile  = require("../models/MentorProfile");
 const MenteeProfile  = require("../models/MenteeProfile");
 const ConnectRequest = require("../models/ConnectRequest");
+
 // ── Token helper ──────────────────────────────────────────────
 const signToken = (id) =>
   jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -243,90 +244,7 @@ const deleteUser = async (req, res) => {
     return res.status(500).json({ message: "Server error." });
   }
 };
-// ═════════════════════════════════════════════════════════════
-// ENGAGEMENTS — add these to backend/controllers/admin.controller.js
-// ═════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/engagements/stats
-// Returns count of each status + total
-// ─────────────────────────────────────────────────────────────
-const getEngagementStats = async (req, res) => {
-  try {
-    const statuses = ["pending", "accepted", "rejected", "referred", "ongoing", "completed"];
-
-    const counts = await Promise.all(
-      statuses.map((s) => ConnectRequest.countDocuments({ status: s }))
-    );
-
-    const stats = Object.fromEntries(statuses.map((s, i) => [s, counts[i]]));
-    stats.total = counts.reduce((a, b) => a + b, 0);
-
-    return res.status(200).json(stats);
-  } catch (err) {
-    console.error("❌ getEngagementStats error:", err);
-    return res.status(500).json({ message: "Server error." });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/engagements
-// Query: status, search, dateFrom, dateTo, page, limit
-// ─────────────────────────────────────────────────────────────
-const getEngagements = async (req, res) => {
-  try {
-    const { status, search, dateFrom, dateTo, page = 1, limit = 15 } = req.query;
-
-    // ── 1. Build filter ───────────────────────────────────
-    const filter = {};
-
-    if (status) filter.status = status;
-
-    if (dateFrom || dateTo) {
-      filter.requestedAt = {};
-      if (dateFrom) filter.requestedAt.$gte = new Date(dateFrom);
-      if (dateTo)   filter.requestedAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-    }
-
-    // ── 2. If search, resolve matching user IDs first ─────
-    if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), "i");
-      const matchingUsers = await User.find({
-        $or: [{ name: regex }, { email: regex }],
-      })
-        .select("_id")
-        .lean();
-
-      const ids = matchingUsers.map((u) => u._id);
-      filter.$or = [{ mentor: { $in: ids } }, { mentee: { $in: ids } }];
-    }
-
-    // ── 3. Paginate ───────────────────────────────────────
-    const skip  = (Number(page) - 1) * Number(limit);
-    const total = await ConnectRequest.countDocuments(filter);
-
-    const engagements = await ConnectRequest.find(filter)
-      .populate("mentor", "name email")
-      .populate("mentee", "name email")
-      .sort({ requestedAt: -1 })
-      .skip(skip)
-      .limit(Number(limit))
-      .lean();
-
-    return res.status(200).json({
-      engagements,
-      pagination: {
-        total,
-        page:       Number(page),
-        limit:      Number(limit),
-        totalPages: Math.ceil(total / Number(limit)),
-      },
-    });
-  } catch (err) {
-    console.error("❌ getEngagements error:", err);
-    return res.status(500).json({ message: "Server error." });
-  }
-};
 module.exports = {
   // auth
   adminLogin,
@@ -337,6 +255,4 @@ module.exports = {
   getUsers,
   getUserDetail,
   deleteUser,
-  getEngagementStats,
-  getEngagements,
 };

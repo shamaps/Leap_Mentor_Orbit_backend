@@ -64,7 +64,7 @@ const generateICS = ({
     ? `Mentorship session on LeapMentor.\\n\\nMessage from ${menteeName}: ${message}`
     : `Mentorship session on LeapMentor between ${menteeName} and ${mentorName}.`;
 
-  //  ICS format — RFC 5545 compliant
+  // ✅ ICS format — RFC 5545 compliant
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
