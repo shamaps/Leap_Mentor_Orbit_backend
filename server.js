@@ -27,7 +27,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  // Allow popup → opener postMessage communication for Google OAuth callback
+  if (req.path.startsWith("/api/google-calendar/callback")) {
+    res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+  } else {
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  }
   next();
 });
 
@@ -60,17 +65,15 @@ app.use("/api/invoices",         require("./routes/invoice.routes"));
 app.use("/api/goals",            require("./routes/goal.routes"));
 app.use("/api/messages",         require("./routes/message.routes"));
 app.use("/api/notes",            require("./routes/note.routes"));
-app.use("/api/notifications",    require("./routes/notifications")); // ✅ from your version
+app.use("/api/notifications",    require("./routes/notifications"));
 app.use("/api/feedback",         require("./routes/feedback.routes"));
 app.use("/api/reports",          require("./routes/report.routes"));
 app.use("/api/sessions",         require("./routes/session.routes"));
-app.use("/api/private-notes",    require("./routes/privateNote.routes")); // ✅ from team's version
-app.use("/api/mentor/earnings",   require("./routes/earnings.routes"));
+app.use("/api/private-notes",    require("./routes/privateNote.routes"));
+app.use("/api/mentor/earnings",  require("./routes/earnings.routes"));
+app.use("/api/google-calendar",  require("./routes/googleCalendar.routes")); // ✅ Google Calendar integration
 // admin
 app.use("/api/admin", require("./routes/admin.routes"));
-app.use("/api/admin/settings",  require("./routes/adminSettings.routes"));
-app.use("/api/admin/payments",  require("./routes/adminPayments.routes"));
-
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
@@ -80,8 +83,8 @@ app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 const { startCleanupCron } = require("./cron/cleanupAvailability");
 startCleanupCron();
 
-const { startSessionReminderCron } = require("./cron/sessionReminders"); // ✅ from your version
-startSessionReminderCron(); // ✅ from your version
+const { startSessionReminderCron } = require("./cron/sessionReminders");
+startSessionReminderCron();
 
 /* ===========================
    🔹 HTTP SERVER + SOCKET.IO
