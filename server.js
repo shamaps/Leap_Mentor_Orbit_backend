@@ -68,6 +68,9 @@ app.use("/api/private-notes",    require("./routes/privateNote.routes")); // ✅
 app.use("/api/mentor/earnings",   require("./routes/earnings.routes"));
 // admin
 app.use("/api/admin", require("./routes/admin.routes"));
+app.use("/api/admin/settings",  require("./routes/adminSettings.routes"));
+app.use("/api/admin/payments",  require("./routes/adminPayments.routes"));
+
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 

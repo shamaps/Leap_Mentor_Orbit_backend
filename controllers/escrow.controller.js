@@ -450,13 +450,16 @@ const refund = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/escrow/status/:requestId — NO CHANGES
 // ─────────────────────────────────────────────────────────────
+// backend/controllers/escrow.controller.js — getStatus function only
+// Replace your existing getStatus with this:
+
 const getStatus = async (req, res) => {
   try {
     const { requestId } = req.params;
     const userId = req.user._id;
 
     const connectRequest = await ConnectRequest.findById(requestId)
-      .select("mentee mentor status paymentStatus sessionRate sessionCount totalAmount paidAt completedAt confirmedSlot commissionRate commissionAmount mentorPayout")
+      .select("mentee mentor status paymentStatus sessionRate sessionCount totalAmount paidAt completedAt confirmedSlot")
       .lean();
 
     if (!connectRequest) {
@@ -470,22 +473,27 @@ const getStatus = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to view this session" });
     }
 
+    // ✅ Fetch commission rate from AdminUser
+    const AdminUser = require("../models/AdminUser");
+    const adminUser = await AdminUser.findOne({ isActive: true })
+      .select("commissionRate")
+      .lean();
+    const commissionRate = adminUser?.commissionRate ?? 20;
+
     const menteeWallet = await Wallet.findOne({ user: connectRequest.mentee })
       .select("balance escrow")
       .lean();
 
     return res.status(200).json({
-      status:           connectRequest.status,
-      paymentStatus:    connectRequest.paymentStatus,
-      sessionRate:      connectRequest.sessionRate,
-      sessionCount:     connectRequest.sessionCount,
-      totalAmount:      connectRequest.totalAmount,
-      commissionRate:   connectRequest.commissionRate,
-      commissionAmount: connectRequest.commissionAmount,
-      mentorPayout:     connectRequest.mentorPayout,
-      paidAt:           connectRequest.paidAt,
-      completedAt:      connectRequest.completedAt,
-      confirmedSlot:    connectRequest.confirmedSlot,
+      status:         connectRequest.status,
+      paymentStatus:  connectRequest.paymentStatus,
+      sessionRate:    connectRequest.sessionRate,
+      sessionCount:   connectRequest.sessionCount,
+      totalAmount:    connectRequest.totalAmount,
+      paidAt:         connectRequest.paidAt,
+      completedAt:    connectRequest.completedAt,
+      confirmedSlot:  connectRequest.confirmedSlot,
+      commissionRate, // ✅ now returned — frontend uses this in EscrowPaymentModal
       wallet: menteeWallet
         ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow }
         : null,
