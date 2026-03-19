@@ -5,7 +5,8 @@ const Wallet         = require("../models/Wallet");
 const Transaction    = require("../models/Transaction");
 const AdminUser      = require("../models/AdminUser");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
-
+const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
+const Availability            = require("../models/Availability");
 // ─────────────────────────────────────────────────────────────
 // Helper — fetch active admin OUTSIDE transaction (read-only)
 // ─────────────────────────────────────────────────────────────
@@ -134,37 +135,66 @@ const pay = async (req, res) => {
     await session.commitTransaction();
 
     // ── Send invoice email (non-blocking) ─────────────────────
-    sendInvoiceEmail({
-      connectRequestId: connectRequest._id.toString(),
-      menteeName:       connectRequest.mentee.name,
-      menteeEmail:      connectRequest.mentee.email,
-      mentorName:       connectRequest.mentor.name,
-      mentorEmail:      connectRequest.mentor.email,
-      selectedSlots:    connectRequest.selectedSlots,  // ✅ fixed: was confirmedSlot (single slot)
-      confirmedSlot:    connectRequest.confirmedSlot,  // kept for backward compat fallback
-      sessionRate,
-      sessionCount,
-      totalAmount,
-      paidAt:           connectRequest.paidAt,
-    }).then(() => {
-      console.log(`✅ Invoice email sent to ${connectRequest.mentee.email}`);
-    }).catch((err) => {
-      console.error("❌ Invoice email failed:", err.message);
-    });
+    // ── Send invoice email (non-blocking) ─────────────────────
+sendInvoiceEmail({
+  connectRequestId: connectRequest._id.toString(),
+  menteeName:       connectRequest.mentee.name,
+  menteeEmail:      connectRequest.mentee.email,
+  mentorName:       connectRequest.mentor.name,
+  mentorEmail:      connectRequest.mentor.email,
+  selectedSlots:    connectRequest.selectedSlots,
+  confirmedSlot:    connectRequest.confirmedSlot,
+  sessionRate,
+  sessionCount,
+  totalAmount,
+  paidAt:           connectRequest.paidAt,
+}).then(() => {
+  console.log(`✅ Invoice email sent to ${connectRequest.mentee.email}`);
+}).catch((err) => {
+  console.error("❌ Invoice email failed:", err.message);
+});
 
-    console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+// ── Send calendar invite (non-blocking) ───────────────────
+// ── Replace the sendCalendarInvite call in escrow.controller.js pay() ──
+// Find the existing sendCalendarInvite block and replace it with this:
 
-    return res.status(200).json({
-      message:        "Payment successful. Tokens locked in escrow.",
-      mentorAmount,
-      platformFee,
-      totalAmount,
-      commissionRate,
-      balance:        menteeWallet.balance,
-      escrow:         menteeWallet.escrow,
-      paymentStatus:  "paid",
-      status:         "ongoing",
+Availability.findOne({ mentor: connectRequest.mentor._id })
+  .select("timezone")
+  .lean()
+  .then((availability) => {
+    return sendCalendarInvite({
+      requestId:   connectRequest._id.toString(),
+      mentorName:  connectRequest.mentor.name,
+      mentorEmail: connectRequest.mentor.email,
+      menteeName:  connectRequest.mentee.name,
+      menteeEmail: connectRequest.mentee.email,
+      slots:       connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({
+                     date, startTime, endTime,
+                   })),
+      timezone:    availability?.timezone || "Asia/Kolkata",
+      message:     connectRequest.message || "",
     });
+  })
+  .then(() => {
+    console.log(`✅ Calendar invite sent to ${connectRequest.mentee.email}`);
+  })
+  .catch((err) => {
+    console.error("❌ Calendar invite failed:", err.message);
+  });
+  
+console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+
+return res.status(200).json({
+  message:        "Payment successful. Tokens locked in escrow.",
+  mentorAmount,
+  platformFee,
+  totalAmount,
+  commissionRate,
+  balance:        menteeWallet.balance,
+  escrow:         menteeWallet.escrow,
+  paymentStatus:  "paid",
+  status:         "ongoing",
+});
 
   } catch (err) {
     await session.abortTransaction();

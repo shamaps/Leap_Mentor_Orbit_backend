@@ -1,12 +1,10 @@
 // backend/controllers/connectRequest.controller.js
 const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
-const Availability   = require("../models/Availability");
 const MentorProfile  = require("../models/MentorProfile");
 const createNotification = require("../utils/createNotification");
 
-// ✅ Import emitToUser — available after socketHandler initializes
+// Import emitToUser — available after socketHandler initializes
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
 
 /**
@@ -85,7 +83,7 @@ const sendConnectRequest = async (req, res) => {
       metadata:  { requestId: request._id, menteeId: menteeId },
     });
 
-    // ✅ Emit real-time toast to mentor if they are online
+    // Emit real-time toast to mentor if they are online
     const emitToUser = getEmitToUser();
     if (emitToUser) {
       emitToUser(mentorId, "new_connect_request", {
@@ -229,7 +227,7 @@ const respondToRequest = async (req, res) => {
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
 
-      // ✅ Emit real-time toast to mentee
+      // Emit real-time toast to mentee
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_accepted", {
           title:   "Request Accepted! 🎉",
@@ -250,26 +248,6 @@ const respondToRequest = async (req, res) => {
         { $set: { status: "rejected", respondedAt: new Date() } }
       );
 
-      try {
-        const availability = await Availability.findOne({ mentor: request.mentor._id })
-          .select("timezone")
-          .lean();
-
-        await sendCalendarInvite({
-          requestId:   request._id.toString(),
-          mentorName:  request.mentor.name,
-          mentorEmail: request.mentor.email,
-          menteeName:  request.mentee.name,
-          menteeEmail: request.mentee.email,
-          date:        confirmedSlot.date,
-          startTime:   confirmedSlot.startTime,
-          endTime:     confirmedSlot.endTime,
-          timezone:    availability?.timezone || "Asia/Kolkata",
-          message:     request.message || "",
-        });
-      } catch (emailErr) {
-        console.error("❌ Calendar invite email failed:", emailErr.message);
-      }
     }
 
     if (status === "rejected") {
@@ -281,7 +259,7 @@ const respondToRequest = async (req, res) => {
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
 
-      // ✅ Emit real-time toast to mentee
+      // Emit real-time toast to mentee
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_declined", {
           title:   "Request Declined",
@@ -383,13 +361,13 @@ const referRequest = async (req, res) => {
 
     const emitToUser = getEmitToUser();
     if (emitToUser) {
-      // ✅ Notify mentee their request was referred
+      // Notify mentee their request was referred
       emitToUser(request.mentee._id.toString(), "request_referred", {
         title:   "Request Referred",
         message: `${request.mentor.name} referred your request to another mentor.`,
         type:    "info",
       });
-      // ✅ Notify referred mentor about the new request
+      // Notify referred mentor about the new request
       emitToUser(referToMentorId, "new_connect_request", {
         title:   "New Connect Request (Referred) 🔔",
         message: `${request.mentee.name} was referred to you by ${request.mentor.name}.`,
