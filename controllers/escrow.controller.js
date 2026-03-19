@@ -7,6 +7,7 @@ const AdminUser      = require("../models/AdminUser");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
 const Availability            = require("../models/Availability");
+const { sendPaymentReceivedEmail } = require("../utils/sendNotificationEmail");
 // ─────────────────────────────────────────────────────────────
 // Helper — fetch active admin OUTSIDE transaction (read-only)
 // ─────────────────────────────────────────────────────────────
@@ -154,6 +155,18 @@ sendInvoiceEmail({
   console.error("❌ Invoice email failed:", err.message);
 });
 
+// ── Notify mentor payment received (non-blocking) ─────────
+sendPaymentReceivedEmail({
+  mentorName:     connectRequest.mentor.name,
+  mentorEmail:    connectRequest.mentor.email,
+  menteeName:     connectRequest.mentee.name,
+  slots:          connectRequest.selectedSlots,
+  sessionRate,
+  sessionCount,
+  mentorPayout:   mentorAmount,
+  commissionRate,
+}).catch((err) => console.error("❌ Payment received email failed:", err.message));
+
 // ── Send calendar invite (non-blocking) ───────────────────
 // ── Replace the sendCalendarInvite call in escrow.controller.js pay() ──
 // Find the existing sendCalendarInvite block and replace it with this:
@@ -181,7 +194,7 @@ Availability.findOne({ mentor: connectRequest.mentor._id })
   .catch((err) => {
     console.error("❌ Calendar invite failed:", err.message);
   });
-  
+
 console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
 
 return res.status(200).json({
