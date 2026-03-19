@@ -3,6 +3,10 @@ const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
 const MentorProfile  = require("../models/MentorProfile");
 const createNotification = require("../utils/createNotification");
+const {
+  sendConnectRequestEmail,
+  sendRequestAcceptedEmail,
+} = require("../utils/sendNotificationEmail");
 
 // Import emitToUser — available after socketHandler initializes
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
@@ -73,6 +77,9 @@ const sendConnectRequest = async (req, res) => {
                       : null,
     });
 
+    // ── Populate mentor for email ─────────────────────────────
+    await request.populate("mentor", "name email");
+
     const mentorUserId = new mongoose.Types.ObjectId(mentorId);
 
     await createNotification({
@@ -83,7 +90,7 @@ const sendConnectRequest = async (req, res) => {
       metadata:  { requestId: request._id, menteeId: menteeId },
     });
 
-    // Emit real-time toast to mentor if they are online
+    // ── Emit real-time toast to mentor if online ──────────────
     const emitToUser = getEmitToUser();
     if (emitToUser) {
       emitToUser(mentorId, "new_connect_request", {
@@ -92,6 +99,15 @@ const sendConnectRequest = async (req, res) => {
         type:    "info",
       });
     }
+
+    // ── Notify mentor via email (non-blocking) ────────────────
+    sendConnectRequestEmail({
+      mentorName:  request.mentor?.name  || "Mentor",
+      mentorEmail: request.mentor?.email,
+      menteeName:  req.user.name,
+      slots:       selectedSlots,
+      message:     message?.trim() || "",
+    }).catch((err) => console.error("❌ Connect request email failed:", err.message));
 
     return res.status(201).json({
       message: "Connect request sent successfully",
@@ -211,7 +227,7 @@ const respondToRequest = async (req, res) => {
     if (request.status !== "pending")
       return res.status(400).json({ message: `Request already ${request.status}` });
 
-    request.status = status;
+    request.status      = status;
     request.respondedAt = new Date();
     if (status === "accepted") request.confirmedSlot = confirmedSlot;
     await request.save();
@@ -227,7 +243,7 @@ const respondToRequest = async (req, res) => {
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
 
-      // Emit real-time toast to mentee
+      // ── Emit real-time toast to mentee ────────────────────
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_accepted", {
           title:   "Request Accepted! 🎉",
@@ -248,6 +264,14 @@ const respondToRequest = async (req, res) => {
         { $set: { status: "rejected", respondedAt: new Date() } }
       );
 
+      // ── Notify mentee via email (non-blocking) ────────────
+      sendRequestAcceptedEmail({
+        menteeName:    request.mentee.name,
+        menteeEmail:   request.mentee.email,
+        mentorName:    request.mentor.name,
+        confirmedSlot,
+        slots:         request.selectedSlots,
+      }).catch((err) => console.error("❌ Request accepted email failed:", err.message));
     }
 
     if (status === "rejected") {
@@ -259,7 +283,7 @@ const respondToRequest = async (req, res) => {
         metadata:  { requestId: request._id, mentorId: request.mentor._id },
       });
 
-      // Emit real-time toast to mentee
+      // ── Emit real-time toast to mentee ────────────────────
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_declined", {
           title:   "Request Declined",
@@ -361,13 +385,11 @@ const referRequest = async (req, res) => {
 
     const emitToUser = getEmitToUser();
     if (emitToUser) {
-      // Notify mentee their request was referred
       emitToUser(request.mentee._id.toString(), "request_referred", {
         title:   "Request Referred",
         message: `${request.mentor.name} referred your request to another mentor.`,
         type:    "info",
       });
-      // Notify referred mentor about the new request
       emitToUser(referToMentorId, "new_connect_request", {
         title:   "New Connect Request (Referred) 🔔",
         message: `${request.mentee.name} was referred to you by ${request.mentor.name}.`,
