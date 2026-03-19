@@ -2,12 +2,8 @@
 const mongoose = require("mongoose");
 
 const COMPLAINT_TYPES = [
-  "session_not_completed",
-  "session_not_taken",
-  "payment_issue",
   "vulgar_chat",
   "harassment",
-  "no_show",
   "other",
 ];
 

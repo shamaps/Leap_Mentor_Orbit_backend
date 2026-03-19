@@ -74,6 +74,12 @@ app.use("/api/mentor/earnings",  require("./routes/earnings.routes"));
 app.use("/api/google-calendar",  require("./routes/googleCalendar.routes")); // ✅ Google Calendar integration
 // admin
 app.use("/api/admin", require("./routes/admin.routes"));
+<<<<<<< Updated upstream
+=======
+app.use("/api/admin/settings",  require("./routes/adminSettings.routes"));
+app.use("/api/admin/payments",  require("./routes/adminPayments.routes"));
+app.use("/api/admin/reports",  require("./routes/adminReports.routes"));
+>>>>>>> Stashed changes
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
