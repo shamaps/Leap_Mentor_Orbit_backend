@@ -1,7 +1,7 @@
 // backend/controllers/session.controller.js
-const mongoose       = require("mongoose");
+const mongoose = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const releaseEscrow  = require("../utils/releaseEscrow");
+const releaseEscrow = require("../utils/releaseEscrow");
 
 // ── Auth helper ───────────────────────────────────────────────
 const assertParticipant = (connectRequest, userId) => {
@@ -45,11 +45,11 @@ const getSlots = async (req, res) => {
     ).length;
 
     return res.json({
-      success:        true,
-      slots:          connectRequest.selectedSlots,
-      totalSlots:     connectRequest.selectedSlots.length,
+      success: true,
+      slots: connectRequest.selectedSlots,
+      totalSlots: connectRequest.selectedSlots.length,
       completedSlots: completedCount,
-      progress:       connectRequest.selectedSlots.length > 0
+      progress: connectRequest.selectedSlots.length > 0
         ? Math.round((completedCount / connectRequest.selectedSlots.length) * 100)
         : 0,
     });
@@ -93,10 +93,10 @@ const setMeetingLink = async (req, res) => {
     await connectRequest.save();
 
     return res.json({
-      success:     true,
-      message:     "Meeting link updated",
-      slot:        connectRequest.selectedSlots[validated.idx],
-      slotIndex:   validated.idx,
+      success: true,
+      message: "Meeting link updated",
+      slot: connectRequest.selectedSlots[validated.idx],
+      slotIndex: validated.idx,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -115,7 +115,7 @@ const markSlotComplete = async (req, res) => {
 
   try {
     const { connectRequestId, slotIndex } = req.params;
-    const userId   = req.user._id;
+    const userId = req.user._id;
 
     const connectRequest = await ConnectRequest.findById(connectRequestId)
       .session(mongoSession);
@@ -140,7 +140,7 @@ const markSlotComplete = async (req, res) => {
     }
 
     const { idx } = validated;
-    const slot     = connectRequest.selectedSlots[idx];
+    const slot = connectRequest.selectedSlots[idx];
     const isMentor = connectRequest.mentor.toString() === userId.toString();
     const isMentee = connectRequest.mentee.toString() === userId.toString();
 
@@ -198,20 +198,20 @@ const markSlotComplete = async (req, res) => {
     ).length;
 
     return res.json({
-      success:        true,
-      message:        allComplete
+      success: true,
+      message: allComplete
         ? "All sessions complete! Tokens released to mentor."
         : bothMarked
-        ? "Session marked complete by both parties."
-        : `Session marked complete. Waiting for ${isMentee ? "mentor" : "mentee"} to confirm.`,
-      slot:           connectRequest.selectedSlots[idx],
-      slotIndex:      idx,
+          ? "Session marked complete by both parties."
+          : `Session marked complete. Waiting for ${isMentee ? "mentor" : "mentee"} to confirm.`,
+      slot: connectRequest.selectedSlots[idx],
+      slotIndex: idx,
       bothMarked,
       allComplete,
       completedSlots: completedCount,
-      totalSlots:     connectRequest.selectedSlots.length,
-      progress:       Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
-      escrowRelease:  releaseResult,
+      totalSlots: connectRequest.selectedSlots.length,
+      progress: Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
+      escrowRelease: releaseResult,
     });
 
   } catch (err) {

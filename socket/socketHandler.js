@@ -1,5 +1,5 @@
 // backend/socket/socketHandler.js
-const Message        = require("../models/Message");
+const Message = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
 
 // ✅ Track online users per room: { connectRequestId: Set<userId> }
@@ -20,7 +20,7 @@ const validateRoomAccess = async (connectRequestId, userId) => {
 
   const mentorId = request.mentor.toString();
   const menteeId = request.mentee.toString();
-  const uid      = userId.toString();
+  const uid = userId.toString();
 
   return uid === mentorId || uid === menteeId;
 };
@@ -50,12 +50,18 @@ const emitToUser = (io, userId, event, data) => {
 // ── Export emitToUser so controllers can use it ───────────────
 module.exports.emitToUser = null; // will be set after io is initialized
 
+// ✅ NEW — expose io so goal controller can emit to rooms directly
+module.exports.io = null;
+
 // ── Main handler ──────────────────────────────────────────────
 const socketHandler = (io) => {
 
   // ✅ Expose emitToUser globally so backend controllers can call it
   module.exports.emitToUser = (userId, event, data) =>
     emitToUser(io, userId, event, data);
+
+  // ✅ NEW — expose io instance for goal controller room emits
+  module.exports.io = io;
 
   io.on("connection", (socket) => {
     const userId = socket.user._id.toString();
@@ -118,16 +124,16 @@ const socketHandler = (io) => {
 
         const message = await Message.create({
           connectRequest: connectRequestId,
-          sender:         userId,
-          content:        content.trim(),
+          sender: userId,
+          content: content.trim(),
         });
 
         const populated = await Message.findById(message._id)
           .populate("sender", "name email")
           .lean();
 
-        const roomOnline  = onlineUsers.get(connectRequestId) || new Set();
-        const otherId     = await getOtherUserId(connectRequestId, userId);
+        const roomOnline = onlineUsers.get(connectRequestId) || new Set();
+        const otherId = await getOtherUserId(connectRequestId, userId);
         const otherOnline = otherId && roomOnline.has(otherId);
 
         if (otherOnline) {

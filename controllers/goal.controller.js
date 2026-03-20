@@ -1,13 +1,27 @@
 // backend/controllers/goal.controller.js
-const Goal      = require("../models/Goal");
+const Goal = require("../models/Goal");
 const Milestone = require("../models/Milestone");
 const ConnectRequest = require("../models/ConnectRequest");
+
+// ✅ Import socketHandler to emit real-time events to the room
+const socketHandler = require("../socket/socketHandler");
+
+// ── Helper: emit to the room (both mentor + mentee) ──────────
+const emitToRoom = (connectRequestId, event, data) => {
+  try {
+    if (socketHandler.io) {
+      socketHandler.io.to(connectRequestId.toString()).emit(event, data);
+    }
+  } catch (err) {
+    console.error("❌ Socket emit error:", err.message);
+  }
+};
 
 // ── Auth guard helper ─────────────────────────────────────────
 const assertParticipant = (connectRequest, userId) => {
   const mentorId = connectRequest.mentor.toString();
   const menteeId = connectRequest.mentee.toString();
-  const uid      = userId.toString();
+  const uid = userId.toString();
   return uid === mentorId || uid === menteeId;
 };
 
@@ -43,14 +57,17 @@ const createGoal = async (req, res) => {
 
     const goal = await Goal.create({
       connectRequest: connectRequestId,
-      mentor:         session.mentor,
-      mentee:         session.mentee,
-      title:          title.trim(),
-      description:    description?.trim() || "",
-      startDate:      startDate || null,
-      endDate:        endDate   || null,
-      createdBy:      req.user._id,
+      mentor: session.mentor,
+      mentee: session.mentee,
+      title: title.trim(),
+      description: description?.trim() || "",
+      startDate: startDate || null,
+      endDate: endDate || null,
+      createdBy: req.user._id,
     });
+
+    // ✅ Push to both mentor and mentee in real-time
+    emitToRoom(connectRequestId, "goal_created", { goal });
 
     return res.status(201).json({ success: true, goal });
   } catch (err) {
@@ -60,7 +77,6 @@ const createGoal = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/goals/:connectRequestId
-// Fetch goal + milestones grouped by slotIndex
 // ─────────────────────────────────────────────────────────────
 const getGoal = async (req, res) => {
   try {
@@ -76,26 +92,14 @@ const getGoal = async (req, res) => {
 
     const goal = await Goal.findOne({ connectRequest: connectRequestId }).lean();
     if (!goal) {
-      return res.json({ success: true, goal: null, milestones: [], milestonesBySlot: {} });
+      return res.json({ success: true, goal: null, milestones: [] });
     }
 
     const milestones = await Milestone.find({ goal: goal._id })
       .sort({ order: 1, createdAt: 1 })
       .lean();
 
-    // ✅ Group milestones by slotIndex for easy frontend consumption
-    // milestonesBySlot = { "0": [...], "1": [...], "null": [...] }
-    // "null" key = goal-level milestones not tied to any session
-    const milestonesBySlot = milestones.reduce((acc, m) => {
-      const key = m.slotIndex !== null && m.slotIndex !== undefined
-        ? String(m.slotIndex)
-        : "null";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(m);
-      return acc;
-    }, {});
-
-    return res.json({ success: true, goal, milestones, milestonesBySlot });
+    return res.json({ success: true, goal, milestones });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -123,8 +127,8 @@ const updateGoal = async (req, res) => {
       goal.title = title.trim();
     }
     if (description !== undefined) goal.description = description.trim();
-    if (startDate    !== undefined) goal.startDate   = startDate || null;
-    if (endDate      !== undefined) goal.endDate     = endDate   || null;
+    if (startDate !== undefined) goal.startDate = startDate || null;
+    if (endDate !== undefined) goal.endDate = endDate || null;
     if (status !== undefined) {
       if (!["active", "completed", "abandoned"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
@@ -133,6 +137,10 @@ const updateGoal = async (req, res) => {
     }
 
     await goal.save();
+
+    // ✅ Push updated goal to both users in real-time
+    emitToRoom(goal.connectRequest, "goal_updated", { goal });
+
     return res.json({ success: true, goal });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -141,9 +149,6 @@ const updateGoal = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/goals/:goalId/milestones
-// Add a milestone — now accepts slotIndex to tie it to a session
-// slotIndex = null → goal-level milestone (general)
-// slotIndex = 0,1,2 → belongs to selectedSlots[0], [1], [2]
 // ─────────────────────────────────────────────────────────────
 const addMilestone = async (req, res) => {
   try {
@@ -157,42 +162,27 @@ const addMilestone = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { title, description, slotIndex } = req.body;
+    const { title, description, dueDate } = req.body;
     if (!title?.trim()) {
       return res.status(400).json({ message: "title is required" });
     }
 
-    // ✅ Validate slotIndex if provided
-    const parsedSlotIndex = slotIndex !== undefined && slotIndex !== null
-      ? parseInt(slotIndex)
-      : null;
-
-    if (parsedSlotIndex !== null) {
-      if (isNaN(parsedSlotIndex) || parsedSlotIndex < 0) {
-        return res.status(400).json({ message: "Invalid slotIndex" });
-      }
-      if (parsedSlotIndex >= session.selectedSlots.length) {
-        return res.status(400).json({ message: "slotIndex out of range" });
-      }
-    }
-
-    // Set order to last position within same slotIndex group
-    const lastMilestone = await Milestone.findOne({
-      goal:       goal._id,
-      slotIndex:  parsedSlotIndex,
-    })
+    const lastMilestone = await Milestone.findOne({ goal: goal._id })
       .sort({ order: -1 })
       .lean();
     const order = lastMilestone ? lastMilestone.order + 1 : 0;
 
     const milestone = await Milestone.create({
-      goal:           goal._id,
+      goal: goal._id,
       connectRequest: goal.connectRequest,
-      title:          title.trim(),
-      description:    description?.trim() || "",
-      slotIndex:      parsedSlotIndex,   // ✅ new field
+      title: title.trim(),
+      description: description?.trim() || "",
+      dueDate: dueDate || null,
       order,
     });
+
+    // ✅ Push new milestone to both users in real-time
+    emitToRoom(goal.connectRequest, "milestone_added", { milestone });
 
     return res.status(201).json({ success: true, milestone });
   } catch (err) {
@@ -230,6 +220,10 @@ const updateMilestone = async (req, res) => {
     }
 
     await milestone.save();
+
+    // ✅ Push updated milestone to both users in real-time
+    emitToRoom(milestone.connectRequest, "milestone_updated", { milestone });
+
     return res.json({ success: true, milestone });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -251,7 +245,14 @@ const deleteMilestone = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    const connectRequestId = milestone.connectRequest;
+    const milestoneId = milestone._id.toString();
+
     await Milestone.findByIdAndDelete(req.params.milestoneId);
+
+    // ✅ Push deletion to both users in real-time
+    emitToRoom(connectRequestId, "milestone_deleted", { milestoneId });
+
     return res.json({ success: true, message: "Milestone deleted" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
