@@ -6,18 +6,23 @@ const {
   getSlots,
   setMeetingLink,
   markSlotComplete,
+  addSlot,
+  getMentorAvailability,
 } = require("../controllers/session.controller");
 
 // GET  /api/sessions/:connectRequestId/slots
-// Returns all slots with completion status + overall progress
 router.get("/:connectRequestId/slots", authenticate, getSlots);
 
+// GET  /api/sessions/:connectRequestId/mentor-availability
+router.get("/:connectRequestId/mentor-availability", authenticate, getMentorAvailability);
+
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
-// Mentor or mentee sets meeting link for a specific slot
 router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, setMeetingLink);
 
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
-// Mentor or mentee marks a slot complete — auto-releases escrow when all done
 router.patch("/:connectRequestId/slots/:slotIndex/mark-complete", authenticate, markSlotComplete);
+
+// ✅ NEW — POST /api/sessions/:connectRequestId/add-slot
+router.post("/:connectRequestId/add-slot", authenticate, addSlot);
 
 module.exports = router;

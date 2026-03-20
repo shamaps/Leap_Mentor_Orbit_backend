@@ -1,7 +1,8 @@
 // backend/controllers/session.controller.js
-const mongoose = require("mongoose");
+const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const releaseEscrow = require("../utils/releaseEscrow");
+const Availability   = require("../models/Availability");
+const releaseEscrow  = require("../utils/releaseEscrow");
 
 // ── Auth helper ───────────────────────────────────────────────
 const assertParticipant = (connectRequest, userId) => {
@@ -21,9 +22,20 @@ const getValidatedSlot = (connectRequest, slotIndex) => {
   return { slot: connectRequest.selectedSlots[idx], idx };
 };
 
+// ✅ Helper — emit slot update to both participants in real time
+const emitSlotUpdate = (connectRequest, payload) => {
+  try {
+    const { emitToUser } = require("../socket/socketHandler");
+    if (!emitToUser) return;
+    emitToUser(connectRequest.mentor.toString(), "session_slots_updated", payload);
+    emitToUser(connectRequest.mentee.toString(), "session_slots_updated", payload);
+  } catch (e) {
+    console.warn("⚠️ emitSlotUpdate failed:", e.message);
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 // GET /api/sessions/:connectRequestId/slots
-// Returns all selectedSlots for a session
 // ─────────────────────────────────────────────────────────────
 const getSlots = async (req, res) => {
   try {
@@ -60,7 +72,6 @@ const getSlots = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
-// Mentor or mentee sets meeting link for a slot
 // ─────────────────────────────────────────────────────────────
 const setMeetingLink = async (req, res) => {
   try {
@@ -87,10 +98,24 @@ const setMeetingLink = async (req, res) => {
       return res.status(400).json({ message: "Invalid slot index" });
     }
 
-    // ✅ Update meeting link for this slot
     connectRequest.selectedSlots[validated.idx].meetingLink = meetingLink.trim();
     connectRequest.markModified("selectedSlots");
     await connectRequest.save();
+
+    const completedCount = connectRequest.selectedSlots.filter(
+      (s) => s.menteeMarked && s.mentorMarked
+    ).length;
+
+    const payload = {
+      connectRequestId,
+      slots:         connectRequest.selectedSlots,
+      totalSlots:    connectRequest.selectedSlots.length,
+      completedSlots: completedCount,
+      progress:      Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
+    };
+
+    // ✅ Emit to other participant instantly
+    emitSlotUpdate(connectRequest, payload);
 
     return res.json({
       success: true,
@@ -105,9 +130,6 @@ const setMeetingLink = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
-// Mentor or mentee marks a slot as complete
-// When BOTH mark it → slot.completedAt is set
-// When ALL slots complete → escrow auto-releases to mentor
 // ─────────────────────────────────────────────────────────────
 const markSlotComplete = async (req, res) => {
   const mongoSession = await mongoose.startSession();
@@ -140,17 +162,15 @@ const markSlotComplete = async (req, res) => {
     }
 
     const { idx } = validated;
-    const slot = connectRequest.selectedSlots[idx];
+    const slot     = connectRequest.selectedSlots[idx];
     const isMentor = connectRequest.mentor.toString() === userId.toString();
     const isMentee = connectRequest.mentee.toString() === userId.toString();
 
-    // ✅ Already fully completed
     if (slot.menteeMarked && slot.mentorMarked) {
       await mongoSession.abortTransaction();
       return res.status(400).json({ message: "This session is already marked complete by both parties" });
     }
 
-    // ✅ Set the appropriate mark
     if (isMentee) {
       if (slot.menteeMarked) {
         await mongoSession.abortTransaction();
@@ -167,27 +187,23 @@ const markSlotComplete = async (req, res) => {
       connectRequest.selectedSlots[idx].mentorMarked = true;
     }
 
-    // ✅ Check if BOTH have now marked this slot
     const bothMarked =
       connectRequest.selectedSlots[idx].menteeMarked &&
       connectRequest.selectedSlots[idx].mentorMarked;
 
     if (bothMarked) {
       connectRequest.selectedSlots[idx].completedAt = new Date();
-      console.log(`✅ Slot ${idx} completed by both parties`);
     }
 
     connectRequest.markModified("selectedSlots");
     await connectRequest.save({ session: mongoSession });
 
-    // ✅ Check if ALL slots are now complete
     const allComplete = connectRequest.selectedSlots.every(
       (s) => s.menteeMarked && s.mentorMarked
     );
 
     let releaseResult = null;
     if (allComplete) {
-      console.log(`🎉 All slots complete — releasing escrow for ${connectRequestId}`);
       releaseResult = await releaseEscrow(connectRequestId, mongoSession);
     }
 
@@ -197,22 +213,34 @@ const markSlotComplete = async (req, res) => {
       (s) => s.menteeMarked && s.mentorMarked
     ).length;
 
-    return res.json({
+    const responsePayload = {
       success: true,
       message: allComplete
         ? "All sessions complete! Tokens released to mentor."
         : bothMarked
           ? "Session marked complete by both parties."
           : `Session marked complete. Waiting for ${isMentee ? "mentor" : "mentee"} to confirm.`,
-      slot: connectRequest.selectedSlots[idx],
-      slotIndex: idx,
+      slot:          connectRequest.selectedSlots[idx],
+      slotIndex:     idx,
       bothMarked,
       allComplete,
       completedSlots: completedCount,
-      totalSlots: connectRequest.selectedSlots.length,
-      progress: Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
+      totalSlots:    connectRequest.selectedSlots.length,
+      progress:      Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
       escrowRelease: releaseResult,
+    };
+
+    // ✅ Emit full slots update to both parties instantly
+    emitSlotUpdate(connectRequest, {
+      connectRequestId,
+      slots:          connectRequest.selectedSlots,
+      totalSlots:     connectRequest.selectedSlots.length,
+      completedSlots: completedCount,
+      progress:       responsePayload.progress,
+      allComplete,
     });
+
+    return res.json(responsePayload);
 
   } catch (err) {
     await mongoSession.abortTransaction();
@@ -223,4 +251,125 @@ const markSlotComplete = async (req, res) => {
   }
 };
 
-module.exports = { getSlots, setMeetingLink, markSlotComplete };
+// ─────────────────────────────────────────────────────────────
+// POST /api/sessions/:connectRequestId/add-slot
+// ─────────────────────────────────────────────────────────────
+const addSlot = async (req, res) => {
+  try {
+    const { connectRequestId } = req.params;
+    let { day, date, startTime, endTime } = req.body;
+
+    if (!date || !startTime || !endTime) {
+      return res.status(400).json({ message: "date, startTime and endTime are required" });
+    }
+
+    if (!day) {
+      const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      day = DAYS[new Date(date + "T00:00:00").getDay()];
+    }
+
+    const connectRequest = await ConnectRequest.findById(connectRequestId);
+    if (!connectRequest) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (!assertParticipant(connectRequest, req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    if (connectRequest.status !== "ongoing") {
+      return res.status(400).json({ message: "Can only add slots to an ongoing session" });
+    }
+
+    const slotTaken = connectRequest.selectedSlots.find(
+      (s) => s.date === date && s.startTime === startTime && s.endTime === endTime
+    );
+    if (slotTaken) {
+      return res.status(409).json({ message: "This slot already exists in the session" });
+    }
+
+    const newSlot = {
+      day, date, startTime, endTime,
+      meetingLink:  "",
+      menteeMarked: false,
+      mentorMarked: false,
+      completedAt:  null,
+    };
+
+    connectRequest.selectedSlots.push(newSlot);
+    connectRequest.markModified("selectedSlots");
+    await connectRequest.save();
+
+    const completedCount = connectRequest.selectedSlots.filter(
+      (s) => s.menteeMarked && s.mentorMarked
+    ).length;
+
+    const socketPayload = {
+      connectRequestId,
+      slots:          connectRequest.selectedSlots,
+      totalSlots:     connectRequest.selectedSlots.length,
+      completedSlots: completedCount,
+      progress:       Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
+    };
+
+    // ✅ Notify both parties instantly about new slot
+    emitSlotUpdate(connectRequest, socketPayload);
+
+    return res.status(201).json({
+      success: true,
+      message: "Additional session slot added successfully",
+      slot:    newSlot,
+      ...socketPayload,
+    });
+  } catch (err) {
+    console.error("❌ addSlot error:", err.message);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/sessions/:connectRequestId/mentor-availability
+// ─────────────────────────────────────────────────────────────
+const getMentorAvailability = async (req, res) => {
+  try {
+    const { connectRequestId } = req.params;
+    const duration = parseInt(req.query.duration) || 60;
+
+    const connectRequest = await ConnectRequest.findById(connectRequestId)
+      .select("mentor mentee status selectedSlots")
+      .lean();
+
+    if (!connectRequest) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (!assertParticipant(connectRequest, req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const availability = await Availability.findOne({ mentor: connectRequest.mentor }).lean();
+
+    if (!availability || !availability.specificDates?.length) {
+      return res.json({ success: true, slots: [], timezone: "Asia/Kolkata" });
+    }
+
+    const bookedSlots = (connectRequest.selectedSlots || []).map((s) => ({
+      date: s.date, startTime: s.startTime, endTime: s.endTime,
+    }));
+
+    const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
+    const grouped = generateSlotsFromSpecificDates(
+      availability.specificDates,
+      duration,
+      bookedSlots
+    );
+
+    return res.json({
+      success:          true,
+      slots:            grouped,
+      timezone:         availability.timezone || "Asia/Kolkata",
+      sessionDurations: availability.sessionDurations || [30, 60],
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getSlots, setMeetingLink, markSlotComplete, addSlot, getMentorAvailability };
