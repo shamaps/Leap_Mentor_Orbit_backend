@@ -77,6 +77,7 @@ app.use("/api/admin", require("./routes/admin.routes"));
 app.use("/api/admin/settings",  require("./routes/adminSettings.routes"));
 app.use("/api/admin/payments",  require("./routes/adminPayments.routes"));
 app.use("/api/admin/reports",  require("./routes/adminReports.routes"));
+app.use("/api/support", require("./routes/support.routes"));
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
