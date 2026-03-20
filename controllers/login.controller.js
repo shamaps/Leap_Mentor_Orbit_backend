@@ -21,6 +21,13 @@ const login = async (req, res) => {
     if (!ok) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        message: "Please verify your email before logging in.",
+        isEmailVerified: false,
+        email: user.email,
+        });
+    } 
 
     const token = signToken(user._id);
     return res.json({
