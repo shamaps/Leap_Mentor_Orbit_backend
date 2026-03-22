@@ -32,7 +32,7 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
 
   await VerificationToken.create({ user: user._id, otp: otpHash, token: tokenHash, expiresAt });
 
-  const base = process.env.APP_BASE_URL || "http://localhost:3000";
+  const base = process.env.APP_BASE_URL || "http://localhost:5173";
   const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
   await transporter.sendMail({

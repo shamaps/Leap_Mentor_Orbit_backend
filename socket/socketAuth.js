@@ -2,7 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// ✅ JWT middleware for socket.io handshake
+// JWT middleware for socket.io handshake
 // Mirrors the HTTP authenticate middleware pattern
 const socketAuth = async (socket, next) => {
   try {
@@ -19,7 +19,7 @@ const socketAuth = async (socket, next) => {
       return next(new Error("Authentication error: user not found"));
     }
 
-    // ✅ Attach user to socket — available throughout socket lifecycle
+    // Attach user to socket — available throughout socket lifecycle
     socket.user = user;
     next();
   } catch (err) {

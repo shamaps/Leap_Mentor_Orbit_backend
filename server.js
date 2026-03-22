@@ -54,6 +54,7 @@ app.use("/api/auth",             require("./routes/auth.routes"));
 app.use("/api/verification",     require("./routes/verification.routes"));
 app.use("/api/auth",             require("./routes/forgotPassword.routes"));
 app.use("/api/users",            require("./routes/user.routes"));
+app.use("/api/upload", require("./routes/upload.routes"));
 app.use("/api/mentor-profile",   require("./routes/mentorProfile.routes"));
 app.use("/api/mentee-profile",   require("./routes/menteeProfile.routes"));
 app.use("/api/mentors",          require("./routes/mentorSearch.routes"));
