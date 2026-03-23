@@ -1,7 +1,7 @@
 // backend/controllers/connectRequest.controller.js
-const mongoose       = require("mongoose");
+const mongoose = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const MentorProfile  = require("../models/MentorProfile");
+const MentorProfile = require("../models/MentorProfile");
 const createNotification = require("../utils/createNotification");
 const {
   sendConnectRequestEmail,
@@ -49,9 +49,9 @@ const sendConnectRequest = async (req, res) => {
       const slotTaken = await ConnectRequest.findOne({
         mentor: mentorId,
         status: { $in: ["pending", "accepted"] },
-        "selectedSlots.date":      slot.date,
+        "selectedSlots.date": slot.date,
         "selectedSlots.startTime": slot.startTime,
-        "selectedSlots.endTime":   slot.endTime,
+        "selectedSlots.endTime": slot.endTime,
       });
       if (slotTaken)
         return res.status(409).json({
@@ -65,16 +65,16 @@ const sendConnectRequest = async (req, res) => {
       return res.status(400).json({ message: "sessionCount must be at least 1" });
 
     const request = await ConnectRequest.create({
-      mentee:       menteeId,
-      mentor:       mentorId,
-      message:      message?.trim() || "",
+      mentee: menteeId,
+      mentor: mentorId,
+      message: message?.trim() || "",
       selectedSlots,
-      requestedAt:  new Date(),
-      sessionRate:  sessionRate  ? Number(sessionRate)  : null,
+      requestedAt: new Date(),
+      sessionRate: sessionRate ? Number(sessionRate) : null,
       sessionCount: sessionCount ? Number(sessionCount) : null,
-      totalAmount:  sessionRate && sessionCount
-                      ? Number(sessionRate) * Number(sessionCount)
-                      : null,
+      totalAmount: sessionRate && sessionCount
+        ? Number(sessionRate) * Number(sessionCount)
+        : null,
     });
 
     // ── Populate mentor for email ─────────────────────────────
@@ -84,29 +84,35 @@ const sendConnectRequest = async (req, res) => {
 
     await createNotification({
       recipient: mentorUserId,
-      type:      "connect_request_received",
-      title:     "New Connect Request",
-      message:   `You have a new connect request from a mentee.`,
-      metadata:  { requestId: request._id, menteeId: menteeId },
+      type: "connect_request_received",
+      title: "New Connect Request",
+      message: `You have a new connect request from a mentee.`,
+      metadata: { requestId: request._id, menteeId: menteeId },
     });
 
     // ── Emit real-time toast to mentor if online ──────────────
     const emitToUser = getEmitToUser();
     if (emitToUser) {
       emitToUser(mentorId, "new_connect_request", {
-        title:   "New Connect Request 🔔",
+        title: "New Connect Request 🔔",
         message: `${req.user.name} sent you a connect request.`,
-        type:    "info",
+        type: "info",
+      });
+
+      // ✅ Tell mentor's dashboard to refetch incoming requests list
+      emitToUser(mentorId, "request_status_changed", {
+        requestId: request._id.toString(),
+        status: "pending",
       });
     }
 
     // ── Notify mentor via email (non-blocking) ────────────────
     sendConnectRequestEmail({
-      mentorName:  request.mentor?.name  || "Mentor",
+      mentorName: request.mentor?.name || "Mentor",
       mentorEmail: request.mentor?.email,
-      menteeName:  req.user.name,
-      slots:       selectedSlots,
-      message:     message?.trim() || "",
+      menteeName: req.user.name,
+      slots: selectedSlots,
+      message: message?.trim() || "",
     }).catch((err) => console.error("❌ Connect request email failed:", err.message));
 
     return res.status(201).json({
@@ -127,7 +133,7 @@ const sendConnectRequest = async (req, res) => {
 const getMyRequests = async (req, res) => {
   try {
     const requests = await ConnectRequest.find({ mentee: req.user._id })
-      .populate("mentor",     "name email")
+      .populate("mentor", "name email")
       .populate("referredTo", "name email")
       .sort({ requestedAt: -1 })
       .lean();
@@ -140,13 +146,13 @@ const getMyRequests = async (req, res) => {
 
         const referredToProfile = r.referredTo
           ? await MentorProfile.findOne({ user: r.referredTo?._id })
-              .select("currentRole company industry bio hourlyRate avgRating yearsOfExperience profilePicture skills")
-              .lean()
+            .select("currentRole company industry bio hourlyRate avgRating yearsOfExperience profilePicture skills")
+            .lean()
           : null;
 
         return {
           ...r,
-          mentorProfile:     mentorProfile     || null,
+          mentorProfile: mentorProfile || null,
           referredToProfile: referredToProfile || null,
         };
       })
@@ -172,7 +178,7 @@ const getIncomingRequests = async (req, res) => {
     }
 
     const requests = await ConnectRequest.find(filter)
-      .populate("mentee",     "name email")
+      .populate("mentee", "name email")
       .populate("referredBy", "name email")
       .sort({ requestedAt: -1 })
       .lean();
@@ -181,8 +187,8 @@ const getIncomingRequests = async (req, res) => {
       requests.map(async (r) => {
         const referredByProfile = r.referredBy
           ? await MentorProfile.findOne({ user: r.referredBy._id })
-              .select("currentRole company industry bio hourlyRate avgRating yearsOfExperience profilePicture skills")
-              .lean()
+            .select("currentRole company industry bio hourlyRate avgRating yearsOfExperience profilePicture skills")
+            .lean()
           : null;
 
         return {
@@ -227,68 +233,80 @@ const respondToRequest = async (req, res) => {
     if (request.status !== "pending")
       return res.status(400).json({ message: `Request already ${request.status}` });
 
-    request.status      = status;
+    request.status = status;
     request.respondedAt = new Date();
     if (status === "accepted") request.confirmedSlot = confirmedSlot;
     await request.save();
 
     const emitToUser = getEmitToUser();
 
+    // ✅ Tell BOTH dashboards to refetch their requests lists in real-time
+    if (emitToUser) {
+      emitToUser(request.mentee._id.toString(), "request_status_changed", {
+        requestId: request._id.toString(),
+        status,
+      });
+      emitToUser(request.mentor._id.toString(), "request_status_changed", {
+        requestId: request._id.toString(),
+        status,
+      });
+    }
+
     if (status === "accepted") {
       await createNotification({
         recipient: request.mentee._id,
-        type:      "connect_request_accepted",
-        title:     "Connect Request Accepted! 🎉",
-        message:   `${request.mentor.name} has accepted your connect request. Your session is confirmed on ${confirmedSlot.date} at ${confirmedSlot.startTime}.`,
-        metadata:  { requestId: request._id, mentorId: request.mentor._id },
+        type: "connect_request_accepted",
+        title: "Connect Request Accepted! 🎉",
+        message: `${request.mentor.name} has accepted your connect request. Your session is confirmed on ${confirmedSlot.date} at ${confirmedSlot.startTime}.`,
+        metadata: { requestId: request._id, mentorId: request.mentor._id },
       });
 
       // ── Emit real-time toast to mentee ────────────────────
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_accepted", {
-          title:   "Request Accepted! 🎉",
+          title: "Request Accepted! 🎉",
           message: `${request.mentor.name} accepted your connect request.`,
-          type:    "success",
+          type: "success",
         });
       }
 
       await ConnectRequest.updateMany(
         {
-          _id:    { $ne: request._id },
+          _id: { $ne: request._id },
           mentor: request.mentor._id,
           status: "pending",
-          "selectedSlots.date":      confirmedSlot.date,
+          "selectedSlots.date": confirmedSlot.date,
           "selectedSlots.startTime": confirmedSlot.startTime,
-          "selectedSlots.endTime":   confirmedSlot.endTime,
+          "selectedSlots.endTime": confirmedSlot.endTime,
         },
         { $set: { status: "rejected", respondedAt: new Date() } }
       );
 
       // ── Notify mentee via email (non-blocking) ────────────
       sendRequestAcceptedEmail({
-        menteeName:    request.mentee.name,
-        menteeEmail:   request.mentee.email,
-        mentorName:    request.mentor.name,
+        menteeName: request.mentee.name,
+        menteeEmail: request.mentee.email,
+        mentorName: request.mentor.name,
         confirmedSlot,
-        slots:         request.selectedSlots,
+        slots: request.selectedSlots,
       }).catch((err) => console.error("❌ Request accepted email failed:", err.message));
     }
 
     if (status === "rejected") {
       await createNotification({
         recipient: request.mentee._id,
-        type:      "connect_request_declined",
-        title:     "Connect Request Declined",
-        message:   `${request.mentor.name} was unable to accept your connect request at this time.`,
-        metadata:  { requestId: request._id, mentorId: request.mentor._id },
+        type: "connect_request_declined",
+        title: "Connect Request Declined",
+        message: `${request.mentor.name} was unable to accept your connect request at this time.`,
+        metadata: { requestId: request._id, mentorId: request.mentor._id },
       });
 
       // ── Emit real-time toast to mentee ────────────────────
       if (emitToUser) {
         emitToUser(request.mentee._id.toString(), "request_declined", {
-          title:   "Request Declined",
+          title: "Request Declined",
           message: `${request.mentor.name} was unable to accept your request at this time.`,
-          type:    "warning",
+          type: "warning",
         });
       }
     }
@@ -359,52 +377,64 @@ const referRequest = async (req, res) => {
       return res.status(409).json({ message: "Mentee already has a pending request with this mentor" });
 
     const newRequest = await ConnectRequest.create({
-      mentee:        request.mentee._id,
-      mentor:        referToMentorId,
-      message:       request.message,
+      mentee: request.mentee._id,
+      mentor: referToMentorId,
+      message: request.message,
       selectedSlots: request.selectedSlots,
-      requestedAt:   new Date(),
-      referredBy:    req.user._id,
+      requestedAt: new Date(),
+      referredBy: req.user._id,
     });
 
     await createNotification({
       recipient: new mongoose.Types.ObjectId(referToMentorId),
-      type:      "connect_request_received",
-      title:     "New Connect Request (Referred)",
-      message:   `You have received a referred connect request from ${request.mentee.name}.`,
-      metadata:  { requestId: newRequest._id, menteeId: request.mentee._id },
+      type: "connect_request_received",
+      title: "New Connect Request (Referred)",
+      message: `You have received a referred connect request from ${request.mentee.name}.`,
+      metadata: { requestId: newRequest._id, menteeId: request.mentee._id },
     });
 
     await createNotification({
       recipient: request.mentee._id,
-      type:      "connect_request_declined",
-      title:     "Request Referred to Another Mentor",
-      message:   `${request.mentor.name} has referred your request to another mentor who may be a better fit.`,
-      metadata:  { requestId: request._id, mentorId: request.mentor._id },
+      type: "connect_request_declined",
+      title: "Request Referred to Another Mentor",
+      message: `${request.mentor.name} has referred your request to another mentor who may be a better fit.`,
+      metadata: { requestId: request._id, mentorId: request.mentor._id },
     });
 
     const emitToUser = getEmitToUser();
     if (emitToUser) {
       emitToUser(request.mentee._id.toString(), "request_referred", {
-        title:   "Request Referred",
+        title: "Request Referred",
         message: `${request.mentor.name} referred your request to another mentor.`,
-        type:    "info",
+        type: "info",
       });
       emitToUser(referToMentorId, "new_connect_request", {
-        title:   "New Connect Request (Referred) 🔔",
+        title: "New Connect Request (Referred) 🔔",
         message: `${request.mentee.name} was referred to you by ${request.mentor.name}.`,
-        type:    "info",
+        type: "info",
+      });
+
+      // ✅ Tell mentee's dashboard to refetch — request is now referred
+      emitToUser(request.mentee._id.toString(), "request_status_changed", {
+        requestId: request._id.toString(),
+        status: "referred",
+      });
+
+      // ✅ Tell new mentor's dashboard to refetch — they have a new request
+      emitToUser(referToMentorId, "request_status_changed", {
+        requestId: newRequest._id.toString(),
+        status: "pending",
       });
     }
 
-    request.status            = "referred";
-    request.referredTo        = referToMentorId;
+    request.status = "referred";
+    request.referredTo = referToMentorId;
     request.referredRequestId = newRequest._id;
-    request.respondedAt       = new Date();
+    request.respondedAt = new Date();
     await request.save();
 
     return res.json({
-      message:         "Request referred successfully",
+      message: "Request referred successfully",
       originalRequest: request,
       newRequest,
     });
@@ -469,7 +499,7 @@ const getConnectDetail = async (req, res) => {
     if (!request)
       return res.status(404).json({ message: "Session not found" });
 
-    const userId   = req.user._id.toString();
+    const userId = req.user._id.toString();
     const isMentee = request.mentee._id.toString() === userId;
     const isMentor = request.mentor._id.toString() === userId;
 
@@ -491,7 +521,7 @@ const getConnectDetail = async (req, res) => {
         ...request,
         mentorProfile: mentorProfile || null,
         menteeProfile: menteeProfile || null,
-        viewerRole:    isMentee ? "mentee" : "mentor",
+        viewerRole: isMentee ? "mentee" : "mentor",
       },
     });
   } catch (err) {
