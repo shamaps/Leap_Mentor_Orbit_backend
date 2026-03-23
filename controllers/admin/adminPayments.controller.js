@@ -14,8 +14,11 @@ const getPaymentStats = async (req, res) => {
       .select("commissionRate").lean();
     const commissionRate = adminUser?.commissionRate ?? 20;
 
-    const completedSessions = await ConnectRequest.find({ status: "completed" })
-      .select("totalAmount").lean();
+    const completedSessions = await ConnectRequest.find({
+      status: "completed",
+      paymentStatus: "paid",
+      totalAmount: { $gt: 0 },
+      }).select("totalAmount").lean();
     const totalRevenue = completedSessions.reduce((s, r) => s + (r.totalAmount || 0), 0);
 
     const platformCommission = Math.ceil((totalRevenue * commissionRate) / 100);
@@ -85,8 +88,13 @@ const getTransactions = async (req, res) => {
       }).select("_id").lean();
       filter.user = { $in: matchingUsers.map((u) => u._id) };
     }
+    // ✅ Only exclude "credit" (welcome bonus) — keep everything else
+    if (type) {
+      filter.type = type;
+    } else {
+      filter.type = { $ne: "credit" }; // hide welcome bonus credits by default 
 
-    if (type) filter.type = type;
+    }
 
     const [totalCount, transactions] = await Promise.all([
       Transaction.countDocuments(filter),
