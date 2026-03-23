@@ -145,15 +145,28 @@ const searchMentors = async (req, res) => {
             { $sort: { searchScore: -1, avgRating: -1 } },
             { $skip: 0 }, // get all then filter in JS for union
             { $limit: 200 }, // cap at 200 for safety
-            {
-              $project: {
-                _id: 1, currentRole: 1, industry: 1, company: 1,
-                skills: 1, hourlyRate: 1, avgRating: 1,
-                profilePicture: 1, linkedInUrl: 1, portfolioUrl: 1,
-                searchScore: 1,
-                user: { _id: "$userDoc._id", name: "$userDoc.name", email: "$userDoc.email" },
-              },
-            },
+           {
+  $project: {
+    _id:                1,
+    currentRole:        1,
+    industry:           1,
+    company:            1,
+    skills:             1,
+    hourlyRate:         1,
+    avgRating:          1,
+    profilePicture:     1,
+    linkedInUrl:        1,
+    portfolioUrl:       1,
+    searchScore:        1,
+    yearsOfExperience:  1,  // ✅ add this
+    bio:                1,  // ✅ add this too — used in modal
+    user: {
+      _id:   "$userDoc._id",
+      name:  "$userDoc.name",
+      email: "$userDoc.email",
+    },
+  },
+}
           ],
         },
       },
@@ -181,7 +194,7 @@ const searchMentors = async (req, res) => {
           isProfileComplete:  true,
         })
           .populate("user", "name email")
-          .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl")
+          .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")  // ✅
           .lean();
 
         // Give name matches a lower score than skill matches (score: boost 10)
@@ -249,7 +262,7 @@ const plainList = async (res, pageNum, limitNum, skip) => {
     MentorProfile.countDocuments(filter),
     MentorProfile.find(filter)
       .populate("user", "name email")
-      .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl")
+      .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")
       .sort({ avgRating: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -372,7 +385,7 @@ const fallbackSearch = async (req, res) => {
       MentorProfile.countDocuments(filter),
       MentorProfile.find(filter)
         .populate("user", "name email")
-        .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl")
+        .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")
         .sort({ avgRating: -1 })
         .skip(skip)
         .limit(limitNum)
