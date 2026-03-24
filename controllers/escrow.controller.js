@@ -307,6 +307,11 @@ const release = async (req, res) => {
     connectRequest.completedAt = new Date();
     await connectRequest.save();
 
+    await MentorProfile.findOneAndUpdate(
+  { user: mentorId },
+  { $inc: { totalSessions: 1 } }
+);
+
     // ── Log 3 transactions ────────────────────────────────────
     await Transaction.create([
       {

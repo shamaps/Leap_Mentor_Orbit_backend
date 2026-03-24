@@ -4,9 +4,7 @@ const ConnectRequest = require("../models/ConnectRequest");
 const SlotLock       = require("../models/SlotLock");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 
-// ─────────────────────────────────────────────────────────────
 // GET /api/availability/me
-// ─────────────────────────────────────────────────────────────
 const getMyAvailability = async (req, res) => {
   try {
     let availability = await Availability.findOne({ mentor: req.user._id });

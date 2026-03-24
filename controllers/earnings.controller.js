@@ -34,8 +34,19 @@ const getEarningsSummary = async (req, res) => {
     const avgRating = mentorProfile?.avgRating || 0;
 
     // Pending payout from wallet escrow
-    const wallet = await Wallet.findOne({ user: mentorId }).lean();
-    const pendingPayout = wallet?.escrow || 0;
+    // Pending payout — sum of mentorPayout from ongoing sessions
+// (paid by mentee but not yet released to mentor)
+const ongoingSessions = await ConnectRequest.find({
+  mentor: mentorId,
+  status: "ongoing",
+  paymentStatus: "paid",
+}).lean();
+
+const pendingPayout = ongoingSessions.reduce(
+  (sum, r) => sum + (r.mentorPayout || 0), 0
+);
+
+const wallet = await Wallet.findOne({ user: mentorId }).lean();
 
     return res.json({
       success: true,
