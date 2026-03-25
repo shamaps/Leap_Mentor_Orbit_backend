@@ -12,6 +12,7 @@ const {
   deleteUser,
   getEngagementStats,
   getEngagements,
+  getUserGrowth, 
 } = require("../controllers/admin.controller");
 
 // ── Auth (public) ─────────────────────────────────────────────
@@ -21,6 +22,7 @@ router.get ("/auth/me",    adminAuthenticate, adminMe);
 // ── Stats ─────────────────────────────────────────────────────
 router.get("/stats", adminAuthenticate, getStats);
 
+router.get("/user-growth", adminAuthenticate, getUserGrowth);
 // ── User management ───────────────────────────────────────────
 router.get   ("/users",        adminAuthenticate, getUsers);
 router.get   ("/users/:userId", adminAuthenticate, getUserDetail);

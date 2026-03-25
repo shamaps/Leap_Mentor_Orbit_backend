@@ -111,6 +111,33 @@ const getStats = async (req, res) => {
   }
 };
 
+const getUserGrowth = async (req, res) => {
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - 90);
+
+    const growth = await User.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const formatted = growth.map((g) => ({
+      label: new Date(g._id).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: g.count,
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch growth data" });
+  }
+};
+
 // ═════════════════════════════════════════════════════════════
 // USER MANAGEMENT
 // ═════════════════════════════════════════════════════════════
@@ -339,4 +366,5 @@ module.exports = {
   deleteUser,
   getEngagementStats,
   getEngagements,
+  getUserGrowth, 
 };
