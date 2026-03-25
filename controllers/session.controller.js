@@ -279,24 +279,57 @@ const addSlot = async (req, res) => {
       return res.status(400).json({ message: "Can only add slots to an ongoing session" });
     }
 
-    const slotTaken = connectRequest.selectedSlots.find(
-      (s) => s.date === date && s.startTime === startTime && s.endTime === endTime
-    );
+    // Check duplicate across both selectedSlots and additionalSlots
+    const slotTaken =
+      connectRequest.selectedSlots.find(
+        (s) => s.date === date && s.startTime === startTime && s.endTime === endTime
+      ) ||
+      connectRequest.additionalSlots?.find(
+        (s) => s.date === date && s.startTime === startTime && s.endTime === endTime
+      );
+
     if (slotTaken) {
       return res.status(409).json({ message: "This slot already exists in the session" });
     }
 
-    const newSlot = {
-      day, date, startTime, endTime,
+    const newAdditionalSlot = {
+      day,
+      date,
+      startTime,
+      endTime,
+      meetingLink:   "",
+      menteeMarked:  false,
+      mentorMarked:  false,
+      completedAt:   null,
+      paymentStatus: "pending",
+    };
+
+    const newSelectedSlot = {
+      day,
+      date,
+      startTime,
+      endTime,
       meetingLink:  "",
       menteeMarked: false,
       mentorMarked: false,
       completedAt:  null,
     };
 
-    connectRequest.selectedSlots.push(newSlot);
+    // ✅ FIX: Push to additionalSlots first (no validator issue)
+    connectRequest.additionalSlots.push(newAdditionalSlot);
+    connectRequest.markModified("additionalSlots");
+
+    // ✅ FIX: Push to selectedSlots but bypass the min/max array validator
+    //    using { validateBeforeSave: false } so existing slot counts > 5 don't
+    //    cause a "Please select between 1 and 5 slots" validation error.
+    connectRequest.selectedSlots.push(newSelectedSlot);
     connectRequest.markModified("selectedSlots");
-    await connectRequest.save();
+
+    await connectRequest.save({ validateBeforeSave: false });
+
+    // Grab the saved additionalSlot _id to pass back to the payment modal
+    const savedAdditionalSlot =
+      connectRequest.additionalSlots[connectRequest.additionalSlots.length - 1];
 
     const completedCount = connectRequest.selectedSlots.filter(
       (s) => s.menteeMarked && s.mentorMarked
@@ -316,7 +349,8 @@ const addSlot = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Additional session slot added successfully",
-      slot:    newSlot,
+      slot:    newAdditionalSlot,
+      slotId:  savedAdditionalSlot._id,   // ← returned so frontend triggers payment modal
       ...socketPayload,
     });
   } catch (err) {

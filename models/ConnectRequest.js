@@ -1,6 +1,29 @@
 // backend/models/ConnectRequest.js
 const mongoose = require("mongoose");
 
+// Additional session slot schema — tracks per-slot payment for extra sessions
+const additionalSlotSchema = new mongoose.Schema(
+  {
+    day:       { type: String, required: true },
+    date:      { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime:   { type: String, required: true },
+
+    // per-slot session tracking (mirrors selectedSlotSchema)
+    meetingLink:  { type: String,  default: "" },
+    menteeMarked: { type: Boolean, default: false },
+    mentorMarked: { type: Boolean, default: false },
+    completedAt:  { type: Date,    default: null },
+
+    // payment tracking for this individual additional slot
+    paymentStatus: { type: String, enum: ["pending", "paid"], default: "pending" },
+    paidAt:        { type: Date,   default: null },
+    sessionRate:   { type: Number, default: null },
+    totalAmount:   { type: Number, default: null },
+  },
+  { _id: true } // _id: true so each slot gets an id for payAdditional lookup
+);
+
 // Single slot schema — reused in array
 const selectedSlotSchema = new mongoose.Schema(
   {
@@ -121,6 +144,14 @@ const connectRequestSchema = new mongoose.Schema(
       type:    Number,
       default: null, // tokens actually sent to mentor = totalAmount - commissionAmount
       min:     0,
+    },
+
+    // ── Additional Sessions ───────────────────────────────────
+    // Extra slots added via the shared dashboard after the session is ongoing.
+    // Each slot tracks its own escrow payment independently.
+    additionalSlots: {
+      type:    [additionalSlotSchema],
+      default: [],
     },
   },
   { timestamps: true }
