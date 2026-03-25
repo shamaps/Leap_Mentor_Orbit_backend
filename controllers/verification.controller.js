@@ -2,6 +2,9 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const User = require("../models/User");
 const VerificationToken = require("../models/VerificationToken");
 
@@ -35,8 +38,8 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
   const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
-  await transporter.sendMail({
-    from: process.env.FROM_EMAIL,
+await resend.emails.send({
+  from: "LeapMentor <onboarding@resend.dev>",
     to: user.email,
     subject: `LeapMentor Email Verification${subjectSuffix}`,
     text: `
