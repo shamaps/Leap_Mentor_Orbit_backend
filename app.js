@@ -34,6 +34,8 @@ app.use((req, res, next) => {
 /* ===========================
    🔹 ROUTES
 =========================== */
+const aiRoute = require("./routes/ai.routes");
+app.use("/api/ai", aiRoute);
 app.use("/api/auth",             require("./routes/auth.routes"));
 app.use("/api/verification",     require("./routes/verification.routes"));
 app.use("/api/auth",             require("./routes/forgotPassword.routes"));
