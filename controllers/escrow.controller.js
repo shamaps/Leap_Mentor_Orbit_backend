@@ -307,11 +307,6 @@ const release = async (req, res) => {
     connectRequest.completedAt = new Date();
     await connectRequest.save();
 
-    await MentorProfile.findOneAndUpdate(
-  { user: mentorId },
-  { $inc: { totalSessions: 1 } }
-);
-
     // ── Log 3 transactions ────────────────────────────────────
     await Transaction.create([
       {
@@ -529,5 +524,129 @@ const getMyWallet = async (req, res) => {
   }
 };
 
+// escrow_controller.js — add this function before module.exports
 
-module.exports = { pay, release, refund, getStatus, getMyWallet };
+// ─────────────────────────────────────────────────────────────
+// POST /api/escrow/pay-additional
+// Pay for an additional session slot on an ongoing connect request
+// ─────────────────────────────────────────────────────────────
+const payAdditional = async (req, res) => {
+  let admin, commissionRate;
+  try {
+    admin = await getAdmin();
+    commissionRate = admin.commissionRate ?? 20;
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { connectRequestId, sessionRate, slotId } = req.body;
+    const menteeId = req.user._id;
+
+    if (!connectRequestId || !sessionRate || !slotId) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "connectRequestId, sessionRate, and slotId are required" });
+    }
+    if (sessionRate < 1) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "sessionRate must be at least 1" });
+    }
+
+    const platformFee = Math.ceil((sessionRate * commissionRate) / 100);
+    const totalAmount = sessionRate + platformFee;
+
+    const connectRequest = await ConnectRequest.findById(connectRequestId)
+      .populate("mentee", "name email")
+      .populate("mentor", "name email")
+      .session(session);
+
+    if (!connectRequest) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Connect request not found" });
+    }
+    if (connectRequest.mentee._id.toString() !== menteeId.toString()) {
+      await session.abortTransaction();
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    if (connectRequest.status !== "ongoing") {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Additional payment only allowed on ongoing sessions" });
+    }
+
+    // Find the specific additional slot and check it's not already paid
+    const additionalSlot = connectRequest.additionalSlots?.id(slotId);
+    if (!additionalSlot) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Additional slot not found" });
+    }
+    if (additionalSlot.paymentStatus === "paid") {
+      await session.abortTransaction();
+      return res.status(409).json({ message: "This slot has already been paid for" });
+    }
+
+    const menteeWallet = await Wallet.findOne({ user: menteeId }).session(session);
+    if (!menteeWallet) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Mentee wallet not found" });
+    }
+    if (menteeWallet.balance < totalAmount) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        message: `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`,
+        balance: menteeWallet.balance,
+        required: totalAmount,
+      });
+    }
+
+    // Deduct from mentee balance → escrow
+    menteeWallet.balance -= totalAmount;
+    menteeWallet.escrow  += totalAmount;
+    await menteeWallet.save({ session });
+
+    // Mark the specific slot as paid
+    additionalSlot.paymentStatus = "paid";
+    additionalSlot.paidAt = new Date();
+    additionalSlot.sessionRate = sessionRate;
+    additionalSlot.totalAmount = totalAmount;
+    await connectRequest.save({ session });
+
+    await Transaction.create([{
+      user:           menteeId,
+      type:           "escrow_hold",
+      amount:         totalAmount,
+      connectRequest: connectRequest._id,
+      description:    `Escrow hold — additional session × ${sessionRate} tokens + ${commissionRate}% platform fee`,
+      balanceAfter:   menteeWallet.balance,
+    }], { session });
+
+    await session.commitTransaction();
+
+    console.log(`💳 Additional session payment — fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+
+    return res.status(200).json({
+      message:       "Additional session payment successful. Tokens locked in escrow.",
+      sessionRate,
+      platformFee,
+      totalAmount,
+      commissionRate,
+      balance:       menteeWallet.balance,
+      escrow:        menteeWallet.escrow,
+      slotId,
+    });
+
+  } catch (err) {
+    await session.abortTransaction();
+    console.error("❌ Additional session pay error:", err);
+    return res.status(500).json({ message: err.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+// Update module.exports:
+module.exports = { pay, payAdditional, release, refund, getStatus, getMyWallet };
+
+

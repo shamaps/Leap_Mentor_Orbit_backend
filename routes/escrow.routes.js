@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authenticate");
-const { pay, release, refund, getStatus ,getMyWallet } = require("../controllers/escrow.controller");
+const { pay, release, refund, getStatus, getMyWallet, payAdditional } = require("../controllers/escrow.controller");
 
 // All escrow routes are protected
 router.use(authenticate);
@@ -26,5 +26,9 @@ router.get("/status/:requestId", getStatus);
 // GET /api/escrow/wallet
 // Get logged in user's wallet balance
 router.get("/wallet", getMyWallet);
+
+// POST /api/escrow/pay-additional
+// Mentee locks tokens for a single additional session slot
+router.post("/pay-additional", payAdditional);
 
 module.exports = router;
