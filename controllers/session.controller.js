@@ -42,7 +42,7 @@ const getSlots = async (req, res) => {
     const { connectRequestId } = req.params;
 
     const connectRequest = await ConnectRequest.findById(connectRequestId)
-      .select("mentor mentee selectedSlots status")
+      .select("mentor mentee selectedSlots additionalSlots status")
       .lean();
 
     if (!connectRequest) {
@@ -59,6 +59,7 @@ const getSlots = async (req, res) => {
     return res.json({
       success: true,
       slots: connectRequest.selectedSlots,
+      additionalSlots: connectRequest.additionalSlots || [],
       totalSlots: connectRequest.selectedSlots.length,
       completedSlots: completedCount,
       progress: connectRequest.selectedSlots.length > 0
@@ -337,10 +338,11 @@ const addSlot = async (req, res) => {
 
     const socketPayload = {
       connectRequestId,
-      slots:          connectRequest.selectedSlots,
-      totalSlots:     connectRequest.selectedSlots.length,
-      completedSlots: completedCount,
-      progress:       Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
+      slots:           connectRequest.selectedSlots,
+      additionalSlots: connectRequest.additionalSlots,
+      totalSlots:      connectRequest.selectedSlots.length,
+      completedSlots:  completedCount,
+      progress:        Math.round((completedCount / connectRequest.selectedSlots.length) * 100),
     };
 
     // ✅ Notify both parties instantly about new slot
@@ -368,7 +370,7 @@ const getMentorAvailability = async (req, res) => {
     const duration = parseInt(req.query.duration) || 60;
 
     const connectRequest = await ConnectRequest.findById(connectRequestId)
-      .select("mentor mentee status selectedSlots")
+      .select("mentor mentee status selectedSlots additionalSlots")
       .lean();
 
     if (!connectRequest) {
@@ -384,7 +386,11 @@ const getMentorAvailability = async (req, res) => {
       return res.json({ success: true, slots: [], timezone: "Asia/Kolkata" });
     }
 
-    const bookedSlots = (connectRequest.selectedSlots || []).map((s) => ({
+    // ✅ Block both selectedSlots AND additionalSlots from re-appearing in picker
+    const bookedSlots = [
+      ...(connectRequest.selectedSlots || []),
+      ...(connectRequest.additionalSlots || []),
+    ].map((s) => ({
       date: s.date, startTime: s.startTime, endTime: s.endTime,
     }));
 
