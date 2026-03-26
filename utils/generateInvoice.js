@@ -1,22 +1,6 @@
 // backend/utils/generateInvoice.js
 const PDFDocument = require("pdfkit");
 
-/**
- * Generates an invoice PDF as a Buffer
- * @param {Object} data
- * @param {string}   data.invoiceNumber
- * @param {string}   data.menteeName
- * @param {string}   data.menteeEmail
- * @param {string}   data.mentorName
- * @param {string}   data.mentorEmail
- * @param {Array}    data.selectedSlots  - [{ day, date, startTime, endTime }, ...]
- * @param {Object}   [data.confirmedSlot] - fallback if selectedSlots is empty
- * @param {number}   data.sessionRate
- * @param {number}   data.sessionCount
- * @param {number}   data.totalAmount
- * @param {Date}     data.paidAt
- * @returns {Promise<Buffer>}
- */
 const generateInvoice = (data) => {
   return new Promise((resolve, reject) => {
     try {
@@ -34,20 +18,18 @@ const generateInvoice = (data) => {
         paidAt,
       } = data;
 
-      // ── Normalise slots ──────────────────────────────────────
-      // Prefer selectedSlots array; fall back to confirmedSlot for old data
       const slots =
         Array.isArray(selectedSlots) && selectedSlots.length > 0
           ? selectedSlots
           : confirmedSlot
-          ? [confirmedSlot]
-          : [];
+            ? [confirmedSlot]
+            : [];
 
       const doc = new PDFDocument({ margin: 50, size: "A4" });
       const buffers = [];
 
       doc.on("data", (chunk) => buffers.push(chunk));
-      doc.on("end",  () => resolve(Buffer.concat(buffers)));
+      doc.on("end", () => resolve(Buffer.concat(buffers)));
       doc.on("error", reject);
 
       // ── Helpers ──────────────────────────────────────────────
@@ -62,14 +44,22 @@ const generateInvoice = (data) => {
       const formatDate = (dateStr) => {
         if (!dateStr) return "—";
         const d = new Date(dateStr + "T00:00:00");
-        return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        return d.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
       };
 
       const paidDate = paidAt
-        ? new Date(paidAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        ? new Date(paidAt).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
         : "—";
 
-      // ── Brand header ─────────────────────────────────────────
+      // ── Header ──────────────────────────────────────────────
       doc.rect(0, 0, doc.page.width, 80).fill("#1D4ED8");
 
       doc
@@ -85,7 +75,7 @@ const generateInvoice = (data) => {
 
       doc.moveDown(3);
 
-      // ── Invoice title + number ───────────────────────────────
+      // ── Invoice title ───────────────────────────────────────
       doc
         .fillColor("#1D4ED8")
         .fontSize(22)
@@ -99,7 +89,7 @@ const generateInvoice = (data) => {
         .text(`Invoice No: ${invoiceNumber}`, 50, 138)
         .text(`Date Issued: ${paidDate}`, 50, 153);
 
-      // ── Divider ──────────────────────────────────────────────
+      // ── Divider ─────────────────────────────────────────────
       doc
         .moveTo(50, 175)
         .lineTo(545, 175)
@@ -107,7 +97,7 @@ const generateInvoice = (data) => {
         .lineWidth(1)
         .stroke();
 
-      // ── Billed To / Mentor ───────────────────────────────────
+      // ── Billed To / Mentor ──────────────────────────────────
       doc
         .fillColor("#0F172A")
         .fontSize(10)
@@ -134,7 +124,7 @@ const generateInvoice = (data) => {
         .fontSize(10)
         .text(mentorEmail, 320, 228);
 
-      // ── Divider ──────────────────────────────────────────────
+      // ── Divider ─────────────────────────────────────────────
       doc
         .moveTo(50, 255)
         .lineTo(545, 255)
@@ -142,12 +132,17 @@ const generateInvoice = (data) => {
         .lineWidth(1)
         .stroke();
 
-      // ── Session details — dynamic multi-slot ─────────────────
+      // ── Session details ─────────────────────────────────────
       doc
         .fillColor("#0F172A")
         .fontSize(10)
         .font("Helvetica-Bold")
-        .text(`SESSION DETAILS (${slots.length} session${slots.length !== 1 ? "s" : ""})`, 50, 270);
+        .text(
+          `SESSION DETAILS (${slots.length} session${slots.length !== 1 ? "s" : ""
+          })`,
+          50,
+          270
+        );
 
       let slotY = 290;
       const slotLineHeight = 17;
@@ -164,9 +159,12 @@ const generateInvoice = (data) => {
           const sessionDate = slot?.date
             ? `${slot.day}, ${formatDate(slot.date)}`
             : "—";
+
           const sessionTime =
             slot?.startTime && slot?.endTime
-              ? `${formatTime(slot.startTime)} – ${formatTime(slot.endTime)}`
+              ? `${formatTime(slot.startTime)} – ${formatTime(
+                slot.endTime
+              )}`
               : "—";
 
           doc
@@ -181,7 +179,7 @@ const generateInvoice = (data) => {
         });
       }
 
-      // ── Table header — positioned below the last slot ────────
+      // ── Table ───────────────────────────────────────────────
       const tableTop = slotY + 18;
 
       doc.rect(50, tableTop, 495, 30).fill("#F1F5F9");
@@ -190,12 +188,11 @@ const generateInvoice = (data) => {
         .fillColor("#475569")
         .fontSize(10)
         .font("Helvetica-Bold")
-        .text("Description",   65,  tableTop + 10)
+        .text("Description", 65, tableTop + 10)
         .text("Rate (tokens)", 280, tableTop + 10)
-        .text("Sessions",      380, tableTop + 10)
-        .text("Total",         470, tableTop + 10);
+        .text("Sessions", 380, tableTop + 10)
+        .text("Total", 470, tableTop + 10);
 
-      // ── Table row ────────────────────────────────────────────
       const rowTop = tableTop + 30;
 
       doc
@@ -209,46 +206,14 @@ const generateInvoice = (data) => {
         .fillColor("#334155")
         .fontSize(11)
         .font("Helvetica")
-        .text("Mentorship Session", 65,  rowTop + 10)
-        .text(`${sessionRate}`,     310, rowTop + 10)
-        .text(`× ${sessionCount}`,  390, rowTop + 10)
+        .text("Mentorship Session", 65, rowTop + 10)
+        .text(`${sessionRate}`, 310, rowTop + 10)
+        .text(`× ${sessionCount}`, 390, rowTop + 10)
         .font("Helvetica-Bold")
-        .text(`${totalAmount}`,     470, rowTop + 10);
+        .text(`${totalAmount}`, 470, rowTop + 10);
 
-      // ── Total box ────────────────────────────────────────────
-      const totalDividerY = rowTop + 38;
-
-      doc
-        .moveTo(50, totalDividerY)
-        .lineTo(545, totalDividerY)
-        .strokeColor("#E2E8F0")
-        .lineWidth(1)
-        .stroke();
-
-      const totalBoxY = totalDividerY + 10;
-
-      doc.rect(380, totalBoxY, 165, 40).fill("#1D4ED8");
-
-      doc
-        .fillColor("#FFFFFF")
-        .fontSize(11)
-        .font("Helvetica")
-        .text("Total Amount", 395, totalBoxY + 10)
-        .font("Helvetica-Bold")
-        .fontSize(13)
-        .text(`${totalAmount} tokens`, 460, totalBoxY + 10, { align: "right", width: 75 });
-
-      // ── Payment status badge ─────────────────────────────────
-      doc.rect(50, totalBoxY, 120, 40).fill("#DCFCE7");
-
-      doc
-        .fillColor("#166534")
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("✓  PAID", 75, totalBoxY + 15);
-
-      // ── Footer ───────────────────────────────────────────────
-      const footerY = totalBoxY + 60;
+      // ── Footer (adjusted) ───────────────────────────────────
+      const footerY = rowTop + 48;
 
       doc
         .moveTo(50, footerY)
@@ -263,9 +228,16 @@ const generateInvoice = (data) => {
         .font("Helvetica")
         .text(
           "This is a system-generated invoice. Tokens are the internal currency of the Leapmentor platform.",
-          50, footerY + 12, { align: "center", width: 495 }
+          50,
+          footerY + 12,
+          { align: "center", width: 495 }
         )
-        .text("For support, contact support@leapmentor.com", 50, footerY + 28, { align: "center", width: 495 });
+        .text(
+          "For support, contact support@leapmentor.com",
+          50,
+          footerY + 28,
+          { align: "center", width: 495 }
+        );
 
       doc.end();
     } catch (err) {
