@@ -24,7 +24,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api/google-calendar/callback")) {
+  if (req.path.startsWith("/api/v1/google-calendar/callback")) {
     res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
   } else {
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
@@ -33,40 +33,46 @@ app.use((req, res, next) => {
 });
 
 /* ===========================
-   🔹 ROUTES
+   🔹 API v1 ROUTER
 =========================== */
-const aiRoute = require("./routes/ai.routes");
-app.use("/api/ai", aiRoute);
-app.use("/api/auth",             require("./routes/auth.routes"));
-app.use("/api/verification",     require("./routes/verification.routes"));
-app.use("/api/auth",             require("./routes/forgotPassword.routes"));
-app.use("/api/users",            require("./routes/user.routes"));
-app.use("/api/upload",           require("./routes/upload.routes"));
-app.use("/api/mentor-profile",   require("./routes/mentorProfile.routes"));
-app.use("/api/mentee-profile",   require("./routes/menteeProfile.routes"));
-app.use("/api/mentors",          require("./routes/mentorSearch.routes"));
-app.use("/api/availability",     require("./routes/availability.routes"));
-app.use("/api/connect-requests", require("./routes/connectRequest.routes"));
-app.use("/api/slot-locks",       require("./routes/slotLock.routes"));
-app.use("/api/escrow",           require("./routes/escrow.routes"));
-app.use("/api/invoices",         require("./routes/invoice.routes"));
-app.use("/api/goals",            require("./routes/goal.routes"));
-app.use("/api/messages",         require("./routes/message.routes"));
-app.use("/api/notes",            require("./routes/note.routes"));
-app.use("/api/notifications",    require("./routes/notifications"));
-app.use("/api/feedback",         require("./routes/feedback.routes"));
-app.use("/api/reports",          require("./routes/report.routes"));
-app.use("/api/sessions",         require("./routes/session.routes"));
-app.use("/api/private-notes",    require("./routes/privateNote.routes"));
-app.use("/api/mentor/earnings",  require("./routes/earnings.routes"));
-app.use("/api/google-calendar",  require("./routes/googleCalendar.routes"));
+const v1 = express.Router();
 
-// Admin routes
-app.use("/api/admin",            require("./routes/admin.routes"));
-app.use("/api/admin/settings",   require("./routes/adminSettings.routes"));
-app.use("/api/admin/payments",   require("./routes/adminPayments.routes"));
-app.use("/api/admin/reports",    require("./routes/adminReports.routes"));
-app.use("/api/support",          require("./routes/support.routes"));
+v1.use("/ai",               require("./routes/ai.routes"));
+v1.use("/auth",             require("./routes/auth.routes"));
+v1.use("/auth",             require("./routes/forgotPassword.routes"));
+v1.use("/verification",     require("./routes/verification.routes"));
+v1.use("/users",            require("./routes/user.routes"));
+v1.use("/upload",           require("./routes/upload.routes"));
+v1.use("/mentor-profile",   require("./routes/mentorProfile.routes"));
+v1.use("/mentee-profile",   require("./routes/menteeProfile.routes"));
+v1.use("/mentors",          require("./routes/mentorSearch.routes"));
+v1.use("/availability",     require("./routes/availability.routes"));
+v1.use("/connect-requests", require("./routes/connectRequest.routes"));
+v1.use("/slot-locks",       require("./routes/slotLock.routes"));
+v1.use("/escrow",           require("./routes/escrow.routes"));
+v1.use("/invoices",         require("./routes/invoice.routes"));
+v1.use("/goals",            require("./routes/goal.routes"));
+v1.use("/messages",         require("./routes/message.routes"));
+v1.use("/notes",            require("./routes/note.routes"));
+v1.use("/notifications",    require("./routes/notifications"));
+v1.use("/feedback",         require("./routes/feedback.routes"));
+v1.use("/reports",          require("./routes/report.routes"));
+v1.use("/sessions",         require("./routes/session.routes"));
+v1.use("/private-notes",    require("./routes/privateNote.routes"));
+v1.use("/mentor/earnings",  require("./routes/earnings.routes"));
+v1.use("/google-calendar",  require("./routes/googleCalendar.routes"));
+v1.use("/support",          require("./routes/support.routes"));
+
+// Admin routes (still nested under /api/v1/admin)
+v1.use("/admin",            require("./routes/admin.routes"));
+v1.use("/admin/settings",   require("./routes/adminSettings.routes"));
+v1.use("/admin/payments",   require("./routes/adminPayments.routes"));
+v1.use("/admin/reports",    require("./routes/adminReports.routes"));
+
+/* ===========================
+   🔹 MOUNT VERSIONED ROUTER
+=========================== */
+app.use("/api/v1", v1);
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
