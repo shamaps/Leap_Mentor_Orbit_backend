@@ -203,7 +203,7 @@ const release = async ({ requestId, menteeId }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// refund — return escrowed tokens to mentee
+// refund — return ALL escrowed tokens to mentee (full session cancel)
 // ─────────────────────────────────────────────────────────────
 const refund = async ({ requestId, userId }) => {
   const session = await mongoose.startSession();
@@ -267,6 +267,77 @@ const refund = async ({ requestId, userId }) => {
     throw err;
   } finally {
     session.endSession();
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// ✅ NEW — refundSlot — partial refund for a single cancelled slot
+// Called automatically from cancelSlot in session.controller.js
+// Does NOT change connectRequest.paymentStatus or status —
+// the session stays "ongoing" with remaining slots intact.
+// ─────────────────────────────────────────────────────────────
+const refundSlot = async ({ connectRequestId, slotIndex, cancelledBy }) => {
+  const mongoSession = await mongoose.startSession();
+  mongoSession.startTransaction();
+
+  try {
+    const connectRequest = await repo.findConnectRequestRaw(connectRequestId, mongoSession);
+    if (!connectRequest)
+      throw Object.assign(new Error("Connect request not found"), { status: 404 });
+
+    if (connectRequest.paymentStatus !== "paid")
+      throw Object.assign(new Error("No paid escrow found for this session"), { status: 400 });
+
+    const { totalAmount, sessionCount, mentee: menteeId } = connectRequest;
+
+    // Need sessionCount to calculate per-slot value
+    if (!sessionCount || sessionCount < 1)
+      throw Object.assign(new Error("Session count missing on connect request"), { status: 400 });
+
+    // Per-slot refund = totalAmount ÷ sessionCount
+    // Math.floor — platform keeps fractional tokens (no over-refund)
+    const perSlotRefund = Math.floor(totalAmount / sessionCount);
+
+    if (perSlotRefund < 1)
+      throw Object.assign(new Error("Slot refund amount is too small to process"), { status: 400 });
+
+    const menteeWallet = await repo.findWalletByUser(menteeId, mongoSession);
+    if (!menteeWallet)
+      throw Object.assign(new Error("Mentee wallet not found"), { status: 404 });
+    if (menteeWallet.escrow < perSlotRefund)
+      throw Object.assign(new Error("Escrow balance too low for slot refund. Contact support."), { status: 400 });
+
+    // Move tokens: escrow → balance (instant refund)
+    menteeWallet.escrow  -= perSlotRefund;
+    menteeWallet.balance += perSlotRefund;
+    await repo.saveWallet(menteeWallet, mongoSession);
+
+    // Log the partial refund transaction
+    await repo.createTransactions(
+      [{
+        user:           menteeId,
+        type:           "escrow_refund",
+        amount:         perSlotRefund,
+        connectRequest: connectRequest._id,
+        description:    `Slot #${slotIndex + 1} cancelled by ${cancelledBy} — partial refund of ${perSlotRefund} tokens`,
+        balanceAfter:   menteeWallet.balance,
+      }],
+      mongoSession
+    );
+
+    await mongoSession.commitTransaction();
+
+    return {
+      refundedAmount: perSlotRefund,
+      balance:        menteeWallet.balance,
+      escrow:         menteeWallet.escrow,
+    };
+
+  } catch (err) {
+    await mongoSession.abortTransaction();
+    throw err;
+  } finally {
+    mongoSession.endSession();
   }
 };
 
@@ -361,4 +432,4 @@ const _sendPayInvoiceEmail = (connectRequest, { sessionRate, sessionCount, total
     .catch((err) => console.error("❌ Calendar invite failed:", err.message));
 };
 
-module.exports = { pay, release, refund, getStatus, getMyWallet };
+module.exports = { pay, release, refund, refundSlot, getStatus, getMyWallet };

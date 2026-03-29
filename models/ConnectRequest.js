@@ -37,6 +37,27 @@ const selectedSlotSchema = new mongoose.Schema(
     menteeMarked: { type: Boolean, default: false },
     mentorMarked: { type: Boolean, default: false },
     completedAt:  { type: Date,    default: null  },
+
+    // ✅ NEW — cancel fields
+    // "booked" is the default active state; "cancelled" hides from progress
+    status: {
+      type:    String,
+      enum:    ["booked", "cancelled"],
+      default: "booked",
+    },
+    cancelledBy: {
+      type:    String,
+      enum:    ["mentor", "mentee", null],
+      default: null,
+    },
+    cancelledAt:          { type: Date,   default: null },
+    cancellationReason:   { type: String, default: ""   },
+
+    // ✅ NEW — reschedule fields
+    // isRescheduled: true on BOTH the old (cancelled) slot and the new slot
+    isRescheduled:        { type: Boolean, default: false },
+    // On the new slot: which index was the original slot it replaced
+    rescheduledFromIndex: { type: Number,  default: null  },
   },
   { _id: false }
 );
@@ -141,24 +162,22 @@ const connectRequestSchema = new mongoose.Schema(
     // ── Commission fields (populated on escrow release) ───────
     commissionRate: {
       type:    Number,
-      default: null, // snapshot of admin's commissionRate at time of release
+      default: null,
       min:     0,
       max:     100,
     },
     commissionAmount: {
       type:    Number,
-      default: null, // tokens taken by platform
+      default: null,
       min:     0,
     },
     mentorPayout: {
       type:    Number,
-      default: null, // tokens actually sent to mentor = totalAmount - commissionAmount
+      default: null,
       min:     0,
     },
 
     // ── Additional Sessions ───────────────────────────────────
-    // Extra slots added via the shared dashboard after the session is ongoing.
-    // Each slot tracks its own escrow payment independently.
     additionalSlots: {
       type:    [additionalSlotSchema],
       default: [],
