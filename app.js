@@ -1,7 +1,7 @@
+require("dotenv").config();
 // backend/app.js
 // ✅ Pure Express app — no DB connection, no server start, no cron jobs
 // This is what Jest imports for testing
-require("dotenv").config(); 
 
 const express = require("express");
 const cors    = require("cors");
