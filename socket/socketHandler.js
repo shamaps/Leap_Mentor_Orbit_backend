@@ -2,10 +2,10 @@
 const Message = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
 
-// ✅ Track online users per room: { connectRequestId: Set<userId> }
+// Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
 
-// ✅ Track connected sockets per user: { userId: Set<socketId> }
+// Track connected sockets per user: { userId: Set<socketId> }
 // Set instead of single socketId — supports multiple simultaneous connections per user
 // (e.g. useGoals and window.__leapSocket both connecting independently)
 const userSockets = new Map();
@@ -38,7 +38,7 @@ const getOtherUserId = async (connectRequestId, userId) => {
 };
 
 // ── Helper: emit to a specific user by userId ─────────────────
-// ✅ Emits to ALL active sockets for this user (handles multiple connections)
+// Emits to ALL active sockets for this user (handles multiple connections)
 const emitToUser = (io, userId, event, data) => {
   const socketIds = userSockets.get(userId.toString());
   if (socketIds?.size) {
@@ -51,24 +51,24 @@ const emitToUser = (io, userId, event, data) => {
 // ── Export emitToUser so controllers can use it ───────────────
 module.exports.emitToUser = null; // will be set after io is initialized
 
-// ✅ NEW — expose io so goal controller can emit to rooms directly
+// NEW — expose io so goal controller can emit to rooms directly
 module.exports.io = null;
 
 // ── Main handler ──────────────────────────────────────────────
 const socketHandler = (io) => {
 
-  // ✅ Expose emitToUser globally so backend controllers can call it
+  // Expose emitToUser globally so backend controllers can call it
   module.exports.emitToUser = (userId, event, data) =>
     emitToUser(io, userId, event, data);
 
-  // ✅ NEW — expose io instance for goal controller room emits
+  //  NEW — expose io instance for goal controller room emits
   module.exports.io = io;
 
   io.on("connection", (socket) => {
     const userId = socket.user._id.toString();
     console.log(`🔌 Socket connected: ${socket.user.email} (${socket.id})`);
 
-    // ✅ Register this socket under the user — supports multiple sockets per user
+    //  Register this socket under the user — supports multiple sockets per user
     if (!userSockets.has(userId)) {
       userSockets.set(userId, new Set());
     }
@@ -188,7 +188,7 @@ const socketHandler = (io) => {
 
     // ── disconnect ──────────────────────────────────────────
     socket.on("disconnect", () => {
-      // ✅ Remove only this socket from the user's Set; clean up map if empty
+      // Remove only this socket from the user's Set; clean up map if empty
       const ids = userSockets.get(userId);
       if (ids) {
         ids.delete(socket.id);
