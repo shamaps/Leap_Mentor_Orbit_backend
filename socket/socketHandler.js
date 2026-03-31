@@ -5,8 +5,9 @@ const ConnectRequest = require("../models/ConnectRequest");
 // ✅ Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
 
-// ✅ Track connected sockets per user: { userId: socketId }
-// Used for direct user-to-user notifications
+// ✅ Track connected sockets per user: { userId: Set<socketId> }
+// Set instead of single socketId — supports multiple simultaneous connections per user
+// (e.g. useGoals and window.__leapSocket both connecting independently)
 const userSockets = new Map();
 
 // ── Helper: check user is part of this connectRequest ────────
@@ -37,11 +38,11 @@ const getOtherUserId = async (connectRequestId, userId) => {
 };
 
 // ── Helper: emit to a specific user by userId ─────────────────
-// ✅ Used for cross-dashboard notifications (not room-based)
+// ✅ Emits to ALL active sockets for this user (handles multiple connections)
 const emitToUser = (io, userId, event, data) => {
-  const socketId = userSockets.get(userId.toString());
-  if (socketId) {
-    io.to(socketId).emit(event, data);
+  const socketIds = userSockets.get(userId.toString());
+  if (socketIds?.size) {
+    socketIds.forEach((socketId) => io.to(socketId).emit(event, data));
     return true;
   }
   return false; // user is offline
@@ -67,8 +68,11 @@ const socketHandler = (io) => {
     const userId = socket.user._id.toString();
     console.log(`🔌 Socket connected: ${socket.user.email} (${socket.id})`);
 
-    // ✅ Register this user's socket for direct notifications
-    userSockets.set(userId, socket.id);
+    // ✅ Register this socket under the user — supports multiple sockets per user
+    if (!userSockets.has(userId)) {
+      userSockets.set(userId, new Set());
+    }
+    userSockets.get(userId).add(socket.id);
 
     // ── join_room ───────────────────────────────────────────
     socket.on("join_room", async ({ connectRequestId }) => {
@@ -184,8 +188,12 @@ const socketHandler = (io) => {
 
     // ── disconnect ──────────────────────────────────────────
     socket.on("disconnect", () => {
-      // ✅ Remove from userSockets map
-      userSockets.delete(userId);
+      // ✅ Remove only this socket from the user's Set; clean up map if empty
+      const ids = userSockets.get(userId);
+      if (ids) {
+        ids.delete(socket.id);
+        if (ids.size === 0) userSockets.delete(userId);
+      }
 
       const room = socket.currentRoom;
       if (room && onlineUsers.has(room)) {
