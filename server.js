@@ -42,6 +42,7 @@ const io = new Server(httpServer, {
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:3000",
+      "http://localhost:4173",
       process.env.APP_BASE_URL, 
     ],
     credentials: true,

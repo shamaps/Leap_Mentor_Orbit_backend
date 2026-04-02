@@ -165,7 +165,7 @@ const connectRequestSchema = new mongoose.Schema(
       default: null,
       min:     0,
       max:     100,
-    },
+    },  
     commissionAmount: {
       type:    Number,
       default: null,
