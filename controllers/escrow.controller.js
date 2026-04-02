@@ -1,12 +1,12 @@
 // backend/controllers/escrow.controller.js
-const mongoose       = require("mongoose");
+const mongoose = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const Wallet         = require("../models/Wallet");
-const Transaction    = require("../models/Transaction");
-const AdminUser      = require("../models/AdminUser");
+const Wallet = require("../models/Wallet");
+const Transaction = require("../models/Transaction");
+const AdminUser = require("../models/AdminUser");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
-const Availability            = require("../models/Availability");
+const Availability = require("../models/Availability");
 const { sendPaymentReceivedEmail } = require("../utils/sendNotificationEmail");
 // ─────────────────────────────────────────────────────────────
 // Helper — fetch active admin OUTSIDE transaction (read-only)
@@ -28,7 +28,7 @@ const pay = async (req, res) => {
   // ── Fetch admin BEFORE opening transaction ────────────────
   let admin, commissionRate;
   try {
-    admin          = await getAdmin();
+    admin = await getAdmin();
     commissionRate = admin.commissionRate ?? 20;
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -57,8 +57,8 @@ const pay = async (req, res) => {
 
     // ── Calculate amounts ─────────────────────────────────────
     const mentorAmount = sessionRate * sessionCount;
-    const platformFee  = Math.ceil((mentorAmount * commissionRate) / 100);
-    const totalAmount  = mentorAmount + platformFee;
+    const platformFee = Math.ceil((mentorAmount * commissionRate) / 100);
+    const totalAmount = mentorAmount + platformFee;
 
     // ── Find and verify connect request ───────────────────────
     const connectRequest = await ConnectRequest.findById(connectRequestId)
@@ -95,39 +95,39 @@ const pay = async (req, res) => {
     if (menteeWallet.balance < totalAmount) {
       await session.abortTransaction();
       return res.status(400).json({
-        message:  `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`,
-        balance:  menteeWallet.balance,
+        message: `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`,
+        balance: menteeWallet.balance,
         required: totalAmount,
       });
     }
 
     // ── Deduct from mentee balance → escrow ───────────────────
     menteeWallet.balance -= totalAmount;
-    menteeWallet.escrow  += totalAmount;
+    menteeWallet.escrow += totalAmount;
     await menteeWallet.save({ session });
 
     // ── Update connect request — snapshot commission at pay time
-    connectRequest.sessionRate      = sessionRate;
-    connectRequest.sessionCount     = sessionCount;
-    connectRequest.totalAmount      = totalAmount;
-    connectRequest.commissionRate   = commissionRate;
+    connectRequest.sessionRate = sessionRate;
+    connectRequest.sessionCount = sessionCount;
+    connectRequest.totalAmount = totalAmount;
+    connectRequest.commissionRate = commissionRate;
     connectRequest.commissionAmount = platformFee;
-    connectRequest.mentorPayout     = mentorAmount;
-    connectRequest.paymentStatus    = "paid";
-    connectRequest.status           = "ongoing";
-    connectRequest.paidAt           = new Date();
+    connectRequest.mentorPayout = mentorAmount;
+    connectRequest.paymentStatus = "paid";
+    connectRequest.status = "ongoing";
+    connectRequest.paidAt = new Date();
     await connectRequest.save({ session });
 
     // ── Log escrow_hold transaction ───────────────────────────
     await Transaction.create(
       [
         {
-          user:           menteeId,
-          type:           "escrow_hold",
-          amount:         totalAmount,
+          user: menteeId,
+          type: "escrow_hold",
+          amount: totalAmount,
           connectRequest: connectRequest._id,
-          description:    `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens + ${commissionRate}% platform fee`,
-          balanceAfter:   menteeWallet.balance,
+          description: `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens + ${commissionRate}% platform fee`,
+          balanceAfter: menteeWallet.balance,
         },
       ],
       { session }
@@ -137,77 +137,77 @@ const pay = async (req, res) => {
 
     // ── Send invoice email (non-blocking) ─────────────────────
     // ── Send invoice email (non-blocking) ─────────────────────
-sendInvoiceEmail({
-  connectRequestId: connectRequest._id.toString(),
-  menteeName:       connectRequest.mentee.name,
-  menteeEmail:      connectRequest.mentee.email,
-  mentorName:       connectRequest.mentor.name,
-  mentorEmail:      connectRequest.mentor.email,
-  selectedSlots:    connectRequest.selectedSlots,
-  confirmedSlot:    connectRequest.confirmedSlot,
-  sessionRate,
-  sessionCount,
-  totalAmount,
-  paidAt:           connectRequest.paidAt,
-}).then(() => {
-  console.log(`✅ Invoice email sent to ${connectRequest.mentee.email}`);
-}).catch((err) => {
-  console.error("❌ Invoice email failed:", err.message);
-});
-
-// ── Notify mentor payment received (non-blocking) ─────────
-sendPaymentReceivedEmail({
-  mentorName:     connectRequest.mentor.name,
-  mentorEmail:    connectRequest.mentor.email,
-  menteeName:     connectRequest.mentee.name,
-  slots:          connectRequest.selectedSlots,
-  sessionRate,
-  sessionCount,
-  mentorPayout:   mentorAmount,
-  commissionRate,
-}).catch((err) => console.error("❌ Payment received email failed:", err.message));
-
-// ── Send calendar invite (non-blocking) ───────────────────
-// ── Replace the sendCalendarInvite call in escrow.controller.js pay() ──
-// Find the existing sendCalendarInvite block and replace it with this:
-
-Availability.findOne({ mentor: connectRequest.mentor._id })
-  .select("timezone")
-  .lean()
-  .then((availability) => {
-    return sendCalendarInvite({
-      requestId:   connectRequest._id.toString(),
-      mentorName:  connectRequest.mentor.name,
-      mentorEmail: connectRequest.mentor.email,
-      menteeName:  connectRequest.mentee.name,
+    sendInvoiceEmail({
+      connectRequestId: connectRequest._id.toString(),
+      menteeName: connectRequest.mentee.name,
       menteeEmail: connectRequest.mentee.email,
-      slots:       connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({
-                     date, startTime, endTime,
-                   })),
-      timezone:    availability?.timezone || "Asia/Kolkata",
-      message:     connectRequest.message || "",
+      mentorName: connectRequest.mentor.name,
+      mentorEmail: connectRequest.mentor.email,
+      selectedSlots: connectRequest.selectedSlots,
+      confirmedSlot: connectRequest.confirmedSlot,
+      sessionRate,
+      sessionCount,
+      totalAmount,
+      paidAt: connectRequest.paidAt,
+    }).then(() => {
+      console.log(`✅ Invoice email sent to ${connectRequest.mentee.email}`);
+    }).catch((err) => {
+      console.error("❌ Invoice email failed:", err.message);
     });
-  })
-  .then(() => {
-    console.log(`✅ Calendar invite sent to ${connectRequest.mentee.email}`);
-  })
-  .catch((err) => {
-    console.error("❌ Calendar invite failed:", err.message);
-  });
 
-console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+    // ── Notify mentor payment received (non-blocking) ─────────
+    sendPaymentReceivedEmail({
+      mentorName: connectRequest.mentor.name,
+      mentorEmail: connectRequest.mentor.email,
+      menteeName: connectRequest.mentee.name,
+      slots: connectRequest.selectedSlots,
+      sessionRate,
+      sessionCount,
+      mentorPayout: mentorAmount,
+      commissionRate,
+    }).catch((err) => console.error("❌ Payment received email failed:", err.message));
 
-return res.status(200).json({
-  message:        "Payment successful. Tokens locked in escrow.",
-  mentorAmount,
-  platformFee,
-  totalAmount,
-  commissionRate,
-  balance:        menteeWallet.balance,
-  escrow:         menteeWallet.escrow,
-  paymentStatus:  "paid",
-  status:         "ongoing",
-});
+    // ── Send calendar invite (non-blocking) ───────────────────
+    // ── Replace the sendCalendarInvite call in escrow.controller.js pay() ──
+    // Find the existing sendCalendarInvite block and replace it with this:
+
+    Availability.findOne({ mentor: connectRequest.mentor._id })
+      .select("timezone")
+      .lean()
+      .then((availability) => {
+        return sendCalendarInvite({
+          requestId: connectRequest._id.toString(),
+          mentorName: connectRequest.mentor.name,
+          mentorEmail: connectRequest.mentor.email,
+          menteeName: connectRequest.mentee.name,
+          menteeEmail: connectRequest.mentee.email,
+          slots: connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({
+            date, startTime, endTime,
+          })),
+          timezone: availability?.timezone || "Asia/Kolkata",
+          message: connectRequest.message || "",
+        });
+      })
+      .then(() => {
+        console.log(`✅ Calendar invite sent to ${connectRequest.mentee.email}`);
+      })
+      .catch((err) => {
+        console.error("❌ Calendar invite failed:", err.message);
+      });
+
+    console.log(`💳 Payment success — mentor: ${mentorAmount} | fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
+
+    return res.status(200).json({
+      message: "Payment successful. Tokens locked in escrow.",
+      mentorAmount,
+      platformFee,
+      totalAmount,
+      commissionRate,
+      balance: menteeWallet.balance,
+      escrow: menteeWallet.escrow,
+      paymentStatus: "paid",
+      status: "ongoing",
+    });
 
   } catch (err) {
     await session.abortTransaction();
@@ -288,9 +288,9 @@ const release = async (req, res) => {
     }
 
     // ── Settle wallets ────────────────────────────────────────
-    menteeWallet.escrow  -= totalAmount;
+    menteeWallet.escrow -= totalAmount;
     mentorWallet.balance += mentorPayout;
-    admin.walletBalance  += commissionAmount;
+    admin.walletBalance += commissionAmount;
 
     await menteeWallet.save({ session });
     await mentorWallet.save({ session });
@@ -303,52 +303,52 @@ const release = async (req, res) => {
     });
 
     // ── Mark session complete ─────────────────────────────────
-    connectRequest.status      = "completed";
+    connectRequest.status = "completed";
     connectRequest.completedAt = new Date();
     await connectRequest.save();
 
     // ── Log 3 transactions ────────────────────────────────────
     await Transaction.create([
       {
-        user:           menteeId,
-        type:           "escrow_release",
-        amount:         totalAmount,
+        user: menteeId,
+        type: "escrow_release",
+        amount: totalAmount,
         connectRequest: connectRequest._id,
-        description:    `Escrow released on session completion`,
-        balanceAfter:   menteeWallet.escrow,
+        description: `Escrow released on session completion`,
+        balanceAfter: menteeWallet.escrow,
       },
       {
-        user:           mentorId,
-        type:           "commission_deduct",
-        amount:         commissionAmount,
+        user: mentorId,
+        type: "commission_deduct",
+        amount: commissionAmount,
         connectRequest: connectRequest._id,
-        description:    `Platform fee (${commissionRate}%) collected`,
-        balanceAfter:   mentorWallet.balance,
+        description: `Platform fee (${commissionRate}%) collected`,
+        balanceAfter: mentorWallet.balance,
       },
       {
-        user:           mentorId,
-        type:           "mentor_payout",
-        amount:         mentorPayout,
+        user: mentorId,
+        type: "mentor_payout",
+        amount: mentorPayout,
         connectRequest: connectRequest._id,
-        description:    `Session payout — full rate received`,
-        balanceAfter:   mentorWallet.balance,
+        description: `Session payout — full rate received`,
+        balanceAfter: mentorWallet.balance,
       },
     ]);
 
     console.log(`✅ Released — mentee paid: ${totalAmount} | platform: ${commissionAmount} (${commissionRate}%) | mentor: ${mentorPayout}`);
 
     return res.status(200).json({
-      message:         "Session marked complete. Tokens released to mentor.",
+      message: "Session marked complete. Tokens released to mentor.",
       totalAmount,
       commissionRate,
       commissionAmount,
       mentorPayout,
-      menteeEscrow:    menteeWallet.escrow,
-      status:          "completed",
+      menteeEscrow: menteeWallet.escrow,
+      status: "completed",
     });
 
   } catch (err) {
-    try { await session.abortTransaction(); } catch (_) {}
+    try { await session.abortTransaction(); } catch (_) { }
     console.error("❌ Escrow release error:", err);
     return res.status(500).json({ message: err.message });
   } finally {
@@ -404,23 +404,23 @@ const refund = async (req, res) => {
       return res.status(400).json({ message: "Escrow balance mismatch. Contact support." });
     }
 
-    menteeWallet.escrow  -= totalAmount;
+    menteeWallet.escrow -= totalAmount;
     menteeWallet.balance += totalAmount;
     await menteeWallet.save({ session });
 
     connectRequest.paymentStatus = "refunded";
-    connectRequest.status        = "rejected";
+    connectRequest.status = "rejected";
     await connectRequest.save({ session });
 
     await Transaction.create(
       [
         {
-          user:           menteeId,
-          type:           "escrow_refund",
-          amount:         totalAmount,
+          user: menteeId,
+          type: "escrow_refund",
+          amount: totalAmount,
           connectRequest: connectRequest._id,
-          description:    `Full refund — session cancelled (incl. platform fee)`,
-          balanceAfter:   menteeWallet.balance,
+          description: `Full refund — session cancelled (incl. platform fee)`,
+          balanceAfter: menteeWallet.balance,
         },
       ],
       { session }
@@ -429,11 +429,11 @@ const refund = async (req, res) => {
     await session.commitTransaction();
 
     return res.status(200).json({
-      message:       "Escrow refunded successfully. Tokens returned to mentee.",
+      message: "Escrow refunded successfully. Tokens returned to mentee.",
       totalAmount,
-      balance:       menteeWallet.balance,
-      escrow:        menteeWallet.escrow,
-      status:        "rejected",
+      balance: menteeWallet.balance,
+      escrow: menteeWallet.escrow,
+      status: "rejected",
       paymentStatus: "refunded",
     });
 
@@ -485,14 +485,14 @@ const getStatus = async (req, res) => {
       .lean();
 
     return res.status(200).json({
-      status:         connectRequest.status,
-      paymentStatus:  connectRequest.paymentStatus,
-      sessionRate:    connectRequest.sessionRate,
-      sessionCount:   connectRequest.sessionCount,
-      totalAmount:    connectRequest.totalAmount,
-      paidAt:         connectRequest.paidAt,
-      completedAt:    connectRequest.completedAt,
-      confirmedSlot:  connectRequest.confirmedSlot,
+      status: connectRequest.status,
+      paymentStatus: connectRequest.paymentStatus,
+      sessionRate: connectRequest.sessionRate,
+      sessionCount: connectRequest.sessionCount,
+      totalAmount: connectRequest.totalAmount,
+      paidAt: connectRequest.paidAt,
+      completedAt: connectRequest.completedAt,
+      confirmedSlot: connectRequest.confirmedSlot,
       commissionRate, // ✅ now returned — frontend uses this in EscrowPaymentModal
       wallet: menteeWallet
         ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow }
@@ -517,7 +517,7 @@ const getMyWallet = async (req, res) => {
     }
     return res.status(200).json({
       balance: wallet.balance,
-      escrow:  wallet.escrow,
+      escrow: wallet.escrow,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -603,7 +603,7 @@ const payAdditional = async (req, res) => {
 
     // Deduct from mentee balance → escrow
     menteeWallet.balance -= totalAmount;
-    menteeWallet.escrow  += totalAmount;
+    menteeWallet.escrow += totalAmount;
     await menteeWallet.save({ session });
 
     // Mark the specific slot as paid
@@ -614,12 +614,12 @@ const payAdditional = async (req, res) => {
     await connectRequest.save({ session });
 
     await Transaction.create([{
-      user:           menteeId,
-      type:           "escrow_hold",
-      amount:         totalAmount,
+      user: menteeId,
+      type: "escrow_hold",
+      amount: totalAmount,
       connectRequest: connectRequest._id,
-      description:    `Escrow hold — additional session × ${sessionRate} tokens + ${commissionRate}% platform fee`,
-      balanceAfter:   menteeWallet.balance,
+      description: `Escrow hold — additional session × ${sessionRate} tokens + ${commissionRate}% platform fee`,
+      balanceAfter: menteeWallet.balance,
     }], { session });
 
     await session.commitTransaction();
@@ -627,13 +627,13 @@ const payAdditional = async (req, res) => {
     console.log(`💳 Additional session payment — fee: ${platformFee} (${commissionRate}%) | total: ${totalAmount}`);
 
     return res.status(200).json({
-      message:       "Additional session payment successful. Tokens locked in escrow.",
+      message: "Additional session payment successful. Tokens locked in escrow.",
       sessionRate,
       platformFee,
       totalAmount,
       commissionRate,
-      balance:       menteeWallet.balance,
-      escrow:        menteeWallet.escrow,
+      balance: menteeWallet.balance,
+      escrow: menteeWallet.escrow,
       slotId,
     });
 
@@ -645,8 +645,25 @@ const payAdditional = async (req, res) => {
     session.endSession();
   }
 };
+// ─────────────────────────────────────────────────────────────
+// GET /api/escrow/commission-rate
+// ─────────────────────────────────────────────────────────────
+const getCommissionRate = async (req, res) => {
+  try {
+    const admin = await AdminUser.findOne({ isActive: true })
+      .select("commissionRate")
+      .lean();
+    if (!admin || admin.commissionRate == null) {
+      return res.status(404).json({ message: "Commission rate not configured" });
+    }
+    return res.status(200).json({ commissionRate: admin.commissionRate });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
 
-// Update module.exports:
-module.exports = { pay, payAdditional, release, refund, getStatus, getMyWallet };
+// replace the existing module.exports line with:
+module.exports = { pay, payAdditional, release, refund, getStatus, getMyWallet, getCommissionRate };
+
 
 

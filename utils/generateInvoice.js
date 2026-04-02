@@ -1,6 +1,27 @@
 // backend/utils/generateInvoice.js
 const PDFDocument = require("pdfkit");
+const path = require("path");
+const fs = require("fs");
 
+/**
+ * Generates a LeapMentor invoice PDF buffer.
+ *
+ * Required fields in `data`:
+ *   invoiceNumber, menteeName, menteeEmail, mentorName, mentorEmail,
+ *   selectedSlots | confirmedSlot, sessionRate, sessionCount, paidAt
+ *
+ * Payment fields:
+ *   platformFeePercent  — commission rate (MUST match what the modal used, e.g. 20)
+ *
+ * How the math works (mirrors EscrowPaymentModal exactly):
+ *   baseAmount   = sessionRate × sessionCount
+ *   platformFee  = ceil(baseAmount × feePercent / 100)
+ *   mentorGets   = baseAmount
+ *   escrowTotal  = baseAmount + platformFee
+ *
+ * Optional:
+ *   logoPath — absolute path to logo image (PNG/JPEG natively supported by pdfkit)
+ */
 const generateInvoice = (data) => {
   return new Promise((resolve, reject) => {
     try {
@@ -14,229 +35,267 @@ const generateInvoice = (data) => {
         confirmedSlot,
         sessionRate,
         sessionCount,
-        totalAmount,
+        platformFeePercent,   // ← passed from backend (commissionRate from DB)
         paidAt,
+        logoPath: customLogoPath,
       } = data;
 
+      // ── Payment math (mirrors EscrowPaymentModal.jsx exactly) ─
+      const rate = Number(sessionRate) || 0;
+      const count = Number(sessionCount) || 1;
+      const feePercent = Number(platformFeePercent) || 20; // default matches modal default
+
+      const baseAmount = rate * count;                              // 10 × 1 = 10
+      const feeTokens = Math.ceil((baseAmount * feePercent) / 100); // ceil(10×20/100) = 2
+      const mentorGets = baseAmount;                                // mentor gets full base
+      const escrowTotal = baseAmount + feeTokens;                    // 10 + 2 = 12
+
+      // ── Slots ─────────────────────────────────────────────────
       const slots =
         Array.isArray(selectedSlots) && selectedSlots.length > 0
           ? selectedSlots
-          : confirmedSlot
-            ? [confirmedSlot]
-            : [];
+          : confirmedSlot ? [confirmedSlot] : [];
 
+      // ── PDF setup ─────────────────────────────────────────────
       const doc = new PDFDocument({ margin: 50, size: "A4" });
       const buffers = [];
-
-      doc.on("data", (chunk) => buffers.push(chunk));
+      doc.on("data", (c) => buffers.push(c));
       doc.on("end", () => resolve(Buffer.concat(buffers)));
       doc.on("error", reject);
 
-      // ── Helpers ──────────────────────────────────────────────
-      const formatTime = (time) => {
-        if (!time) return "";
-        const [h, m] = time.split(":").map(Number);
-        const ampm = h >= 12 ? "PM" : "AM";
-        const hour = h % 12 || 12;
-        return `${String(hour).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+      // ── Colour palette ────────────────────────────────────────
+      const C = {
+        brand: "#1E3A8A",
+        brandMid: "#1D4ED8",
+        slate900: "#0F172A",
+        slate700: "#334155",
+        slate500: "#64748B",
+        slate400: "#94A3B8",
+        slate200: "#E2E8F0",
+        slate100: "#F1F5F9",
+        amber: "#D97706",
+        green: "#16A34A",
+        escrowBg: "#EFF6FF",
+        white: "#FFFFFF",
       };
 
-      const formatDate = (dateStr) => {
-        if (!dateStr) return "—";
-        const d = new Date(dateStr + "T00:00:00");
-        return d.toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
+      // ── Helpers ───────────────────────────────────────────────
+      const fmt12 = (t) => {
+        if (!t) return "";
+        const [h, m] = t.split(":").map(Number);
+        const ap = h >= 12 ? "PM" : "AM";
+        const hr = h % 12 || 12;
+        return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
+      };
+
+      const fmtDate = (s) => {
+        if (!s) return "—";
+        return new Date(s + "T00:00:00").toLocaleDateString("en-US", {
+          month: "long", day: "numeric", year: "numeric",
         });
       };
 
       const paidDate = paidAt
         ? new Date(paidAt).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
+          month: "long", day: "numeric", year: "numeric",
         })
         : "—";
 
-      // ── Header ──────────────────────────────────────────────
-      doc.rect(0, 0, doc.page.width, 80).fill("#1D4ED8");
+      // ── Layout constants ──────────────────────────────────────
+      const L = 50;
+      const R = 545;
+      const W = 495;
+      const HEADER_H = 78;
+      const COL_W = 110;
+      const LINE_SM = 16;
+      const LINE_MD = 20;
+
+      // ═════════════════════════════════════════════════════════
+      // HEADER
+      // ═════════════════════════════════════════════════════════
+      doc.rect(0, 0, doc.page.width, HEADER_H).fill(C.brand);
+
+      const logoPath = customLogoPath || path.resolve("public/images/logo.webp");
+      const LOGO_SIZE = 40;
+      const LOGO_X = L;
+      const LOGO_Y = (HEADER_H - LOGO_SIZE) / 2;
+      let logoLoaded = false;
+
+      if (fs.existsSync(logoPath)) {
+        try {
+          doc.image(logoPath, LOGO_X, LOGO_Y, { width: LOGO_SIZE, height: LOGO_SIZE });
+          logoLoaded = true;
+        } catch (_) { /* .webp skip */ }
+      }
+
+      const textX = logoLoaded ? LOGO_X + LOGO_SIZE + 10 : L;
+      doc
+        .fillColor(C.white)
+        .fontSize(24)
+        .font("Helvetica-Bold")
+        .text("LeapMentor", textX, (HEADER_H - 24) / 2 + 2);
+
+      // ═════════════════════════════════════════════════════════
+      // INVOICE TITLE
+      // ═════════════════════════════════════════════════════════
+      let y = HEADER_H + 28;
 
       doc
-        .fillColor("#FFFFFF")
+        .fillColor(C.brandMid)
         .fontSize(26)
         .font("Helvetica-Bold")
-        .text("Leapmentor", 50, 25);
+        .text("INVOICE", L, y);
 
+      doc.rect(L, y + 33, 72, 3).fill(C.brandMid);
+
+      y += 43;
       doc
-        .fontSize(10)
+        .fillColor(C.slate500)
+        .fontSize(9.5)
         .font("Helvetica")
-        .text("Mentorship Platform", 50, 55);
+        .text(`Invoice No:   ${invoiceNumber}`, L, y)
+        .text(`Date Issued:  ${paidDate}`, L, y + 14);
 
-      doc.moveDown(3);
+      y += 40;
+      doc.rect(L, y, W, 0.8).fill(C.slate200);
 
-      // ── Invoice title ───────────────────────────────────────
-      doc
-        .fillColor("#1D4ED8")
-        .fontSize(22)
-        .font("Helvetica-Bold")
-        .text("INVOICE", 50, 110);
+      // ═════════════════════════════════════════════════════════
+      // BILLED TO / SESSION WITH
+      // ═════════════════════════════════════════════════════════
+      y += 18;
+      const col2X = 310;
 
-      doc
-        .fillColor("#64748B")
-        .fontSize(10)
-        .font("Helvetica")
-        .text(`Invoice No: ${invoiceNumber}`, 50, 138)
-        .text(`Date Issued: ${paidDate}`, 50, 153);
+      doc.fillColor(C.slate400).fontSize(8).font("Helvetica-Bold")
+        .text("BILLED TO", L, y)
+        .text("SESSION WITH", col2X, y);
 
-      // ── Divider ─────────────────────────────────────────────
-      doc
-        .moveTo(50, 175)
-        .lineTo(545, 175)
-        .strokeColor("#E2E8F0")
-        .lineWidth(1)
-        .stroke();
+      y += 13;
+      doc.fillColor(C.slate900).fontSize(11).font("Helvetica-Bold")
+        .text(menteeName, L, y)
+        .text(mentorName, col2X, y);
 
-      // ── Billed To / Mentor ──────────────────────────────────
-      doc
-        .fillColor("#0F172A")
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("BILLED TO", 50, 195)
-        .font("Helvetica")
-        .fillColor("#334155")
-        .fontSize(11)
-        .text(menteeName, 50, 212)
-        .fillColor("#64748B")
-        .fontSize(10)
-        .text(menteeEmail, 50, 228);
+      y += 15;
+      doc.fillColor(C.slate500).fontSize(9.5).font("Helvetica")
+        .text(menteeEmail, L, y)
+        .text(mentorEmail, col2X, y);
 
-      doc
-        .fillColor("#0F172A")
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("SESSION WITH", 320, 195)
-        .font("Helvetica")
-        .fillColor("#334155")
-        .fontSize(11)
-        .text(mentorName, 320, 212)
-        .fillColor("#64748B")
-        .fontSize(10)
-        .text(mentorEmail, 320, 228);
+      y += 30;
+      doc.rect(L, y, W, 0.8).fill(C.slate200);
 
-      // ── Divider ─────────────────────────────────────────────
-      doc
-        .moveTo(50, 255)
-        .lineTo(545, 255)
-        .strokeColor("#E2E8F0")
-        .lineWidth(1)
-        .stroke();
-
-      // ── Session details ─────────────────────────────────────
-      doc
-        .fillColor("#0F172A")
-        .fontSize(10)
-        .font("Helvetica-Bold")
+      // ═════════════════════════════════════════════════════════
+      // SESSION DETAILS
+      // ═════════════════════════════════════════════════════════
+      y += 16;
+      doc.fillColor(C.slate400).fontSize(8).font("Helvetica-Bold")
         .text(
-          `SESSION DETAILS (${slots.length} session${slots.length !== 1 ? "s" : ""
-          })`,
-          50,
-          270
+          `SESSION DETAILS (${slots.length} session${slots.length !== 1 ? "s" : ""})`,
+          L, y
         );
 
-      let slotY = 290;
-      const slotLineHeight = 17;
-
+      y += 14;
       if (slots.length === 0) {
-        doc
-          .fillColor("#64748B")
-          .fontSize(10)
-          .font("Helvetica")
-          .text("No sessions found", 50, slotY);
-        slotY += slotLineHeight;
+        doc.fillColor(C.slate500).fontSize(10).font("Helvetica")
+          .text("No sessions found", L, y);
+        y += LINE_SM;
       } else {
         slots.forEach((slot, i) => {
-          const sessionDate = slot?.date
-            ? `${slot.day}, ${formatDate(slot.date)}`
+          const sd = slot?.date
+            ? `${slot.day}, ${fmtDate(slot.date)}`
+            : "—";
+          const st = slot?.startTime && slot?.endTime
+            ? `${fmt12(slot.startTime)} – ${fmt12(slot.endTime)}`
             : "—";
 
-          const sessionTime =
-            slot?.startTime && slot?.endTime
-              ? `${formatTime(slot.startTime)} – ${formatTime(
-                slot.endTime
-              )}`
-              : "—";
-
-          doc
-            .fillColor("#64748B")
-            .fontSize(10)
-            .font("Helvetica")
-            .text(`Session ${i + 1}:`, 50, slotY)
-            .fillColor("#334155")
-            .text(`${sessionDate}  •  ${sessionTime}`, 130, slotY);
-
-          slotY += slotLineHeight;
+          doc.fillColor(C.slate400).fontSize(9.5).font("Helvetica")
+            .text(`Session ${i + 1}:`, L, y);
+          doc.fillColor(C.slate700)
+            .text(`${sd}   •   ${st}`, 128, y);
+          y += LINE_SM;
         });
       }
 
-      // ── Table ───────────────────────────────────────────────
-      const tableTop = slotY + 18;
+      // ═════════════════════════════════════════════════════════
+      // SESSION TABLE
+      // ═════════════════════════════════════════════════════════
+      y += 14;
 
-      doc.rect(50, tableTop, 495, 30).fill("#F1F5F9");
+      doc.rect(L, y, W, 28).fill(C.slate100);
+      doc.fillColor(C.slate500).fontSize(9).font("Helvetica-Bold")
+        .text("Description", L + 14, y + 9)
+        .text("Rate (tokens)", 285, y + 9)
+        .text("Sessions", 385, y + 9)
+        .text("Total", 477, y + 9);
 
-      doc
-        .fillColor("#475569")
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("Description", 65, tableTop + 10)
-        .text("Rate (tokens)", 280, tableTop + 10)
-        .text("Sessions", 380, tableTop + 10)
-        .text("Total", 470, tableTop + 10);
+      y += 28;
+      doc.rect(L, y, W, 0.5).fill(C.slate200);
 
-      const rowTop = tableTop + 30;
+      doc.fillColor(C.slate700).fontSize(10.5).font("Helvetica")
+        .text("Mentorship Session", L + 14, y + 11)
+        .text(`${rate}`, 310, y + 11)
+        .text(`× ${count}`, 396, y + 11);
+      doc.fillColor(C.slate900).font("Helvetica-Bold")
+        .text(`${baseAmount}`, 472, y + 11);
 
-      doc
-        .moveTo(50, rowTop)
-        .lineTo(545, rowTop)
-        .strokeColor("#E2E8F0")
-        .lineWidth(0.5)
-        .stroke();
+      // ═════════════════════════════════════════════════════════
+      // PAYMENT BREAKDOWN
+      // ═════════════════════════════════════════════════════════
+      y += 44;
+      doc.rect(L, y, W, 0.8).fill(C.slate200);
 
-      doc
-        .fillColor("#334155")
-        .fontSize(11)
-        .font("Helvetica")
-        .text("Mentorship Session", 65, rowTop + 10)
-        .text(`${sessionRate}`, 310, rowTop + 10)
-        .text(`× ${sessionCount}`, 390, rowTop + 10)
-        .font("Helvetica-Bold")
-        .text(`${totalAmount}`, 470, rowTop + 10);
+      y += 14;
+      doc.fillColor(C.slate400).fontSize(8).font("Helvetica-Bold")
+        .text("PAYMENT BREAKDOWN", L, y);
 
-      // ── Footer (adjusted) ───────────────────────────────────
-      const footerY = rowTop + 48;
+      y += 16;
 
-      doc
-        .moveTo(50, footerY)
-        .lineTo(545, footerY)
-        .strokeColor("#E2E8F0")
-        .lineWidth(1)
-        .stroke();
+      // Row 1 — base
+      doc.fillColor(C.slate500).fontSize(10).font("Helvetica")
+        .text(`${rate} × ${count} session${count !== 1 ? "s" : ""}`, L, y);
+      doc.fillColor(C.slate700).font("Helvetica-Bold")
+        .text(`${baseAmount} tokens`, R - COL_W, y, { width: COL_W, align: "right" });
+      y += LINE_MD;
 
-      doc
-        .fillColor("#94A3B8")
-        .fontSize(9)
-        .font("Helvetica")
+      // Row 2 — platform fee (amber)
+      doc.fillColor(C.slate500).font("Helvetica")
+        .text(`Platform fee (${feePercent}%)`, L, y);
+      doc.fillColor(C.amber).font("Helvetica-Bold")
+        .text(`+ ${feeTokens} tokens`, R - COL_W, y, { width: COL_W, align: "right" });
+      y += LINE_MD;
+
+      // Row 3 — mentor receives (green)
+      doc.fillColor(C.slate500).font("Helvetica")
+        .text("Mentor receives", L, y);
+      doc.fillColor(C.green).font("Helvetica-Bold")
+        .text(`${mentorGets} tokens`, R - COL_W, y, { width: COL_W, align: "right" });
+      y += LINE_MD + 12;
+
+      // ── InTotal box ───────────────────────────────────────────
+      const BOX_H = 40;
+      doc.rect(L, y, W, BOX_H).fill(C.escrowBg);
+      doc.rect(L, y, 4, BOX_H).fill(C.brand);
+
+      doc.fillColor(C.brand).fontSize(10.5).font("Helvetica-Bold")
+        .text("InTotal", L + 14, y + 13);
+
+      doc.fillColor(C.brand).fontSize(14).font("Helvetica-Bold")
+        .text(`${escrowTotal} tokens`, R - COL_W, y + 12,
+          { width: COL_W, align: "right" });
+
+      // ═════════════════════════════════════════════════════════
+      // FOOTER
+      // ═════════════════════════════════════════════════════════
+      y += BOX_H + 30;
+      doc.rect(L, y, W, 0.8).fill(C.slate200);
+
+      y += 14;
+      doc.fillColor(C.slate400).fontSize(8.5).font("Helvetica")
         .text(
-          "This is a system-generated invoice. Tokens are the internal currency of the Leapmentor platform.",
-          50,
-          footerY + 12,
-          { align: "center", width: 495 }
+          "This is a system-generated invoice. Tokens are the internal currency of the LeapMentor platform.",
+          L, y, { align: "center", width: W }
         )
         .text(
           "For support, contact support@leapmentor.com",
-          50,
-          footerY + 28,
-          { align: "center", width: 495 }
+          L, y + 14, { align: "center", width: W }
         );
 
       doc.end();
