@@ -93,6 +93,11 @@ const socketHandler = (io) => {
 
         socket.to(connectRequestId).emit("user_online", { userId });
 
+        const otherId = await getOtherUserId(connectRequestId, userId);
+        if (otherId && onlineUsers.get(connectRequestId)?.has(otherId)) {
+          socket.emit("user_online", { userId: otherId });
+        }//changed here on 2nd april socket problem
+
         await Message.updateMany(
           {
             connectRequest: connectRequestId,
