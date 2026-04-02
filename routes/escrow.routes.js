@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authenticate");
-const { pay, release, refund, getStatus, getMyWallet, payAdditional } = require("../controllers/escrow.controller");
+const { pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate } = require("../controllers/escrow.controller");
 
 // All escrow routes are protected
 router.use(authenticate);
@@ -14,7 +14,8 @@ router.post("/pay", pay);
 // POST /api/escrow/release/:requestId
 // Mentee confirms session complete — tokens released to mentor
 router.post("/release/:requestId", release);
-
+// GET /api/escrow/commission-rate
+router.get("/commission-rate", getCommissionRate);
 // POST /api/escrow/refund/:requestId
 // Either party cancels — tokens returned to mentee
 router.post("/refund/:requestId", refund);
