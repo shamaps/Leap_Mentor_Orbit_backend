@@ -4,7 +4,10 @@ const ConnectRequest = require("../models/ConnectRequest");
 const Availability   = require("../models/Availability");
 const releaseEscrow  = require("../utils/releaseEscrow");
 const escrowService  = require("../services/escrow.service"); // ✅ NEW — for slot refunds
-
+const {
+  sendSlotCancelledEmail,
+  sendSlotRescheduledEmail,
+} = require("../utils/sendNotificationEmail");
 // ── Auth helper ───────────────────────────────────────────────
 const assertParticipant = (connectRequest, userId) => {
   const uid = userId.toString();
@@ -397,7 +400,7 @@ const addSlot = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// ✅ PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
+// PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
 // Both mentor and mentee can cancel a slot.
 // Triggers an immediate partial token refund to the mentee.
 // ─────────────────────────────────────────────────────────────
@@ -495,6 +498,24 @@ const cancelSlot = async (req, res) => {
         : null,
     });
 
+    // ── Notify both parties via email (non-blocking) ──
+ConnectRequest.findById(connectRequestId)
+  .populate("mentor", "name email")
+  .populate("mentee", "name email")
+  .then((populated) => {
+    sendSlotCancelledEmail({
+      connectRequestId,
+      mentorName:  populated.mentor.name,
+      mentorEmail: populated.mentor.email,
+      menteeName:  populated.mentee.name,
+      menteeEmail: populated.mentee.email,
+      slot:        connectRequest.selectedSlots[idx],
+      cancelledBy,
+      reason:      reason.trim(),
+    }).catch((err) => console.error("❌ Slot cancelled email failed:", err.message));
+  })
+  .catch((err) => console.error("❌ Failed to populate for cancel email:", err.message));
+
     return res.json({
       success:   true,
       message:   "Slot cancelled successfully",
@@ -517,7 +538,7 @@ const cancelSlot = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// ✅ PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
+// PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
 // Only mentee can reschedule — picks a new slot from mentor's availability.
 // No refund is issued on reschedule (the slot value carries over to the new slot).
 // ─────────────────────────────────────────────────────────────
@@ -636,6 +657,22 @@ const rescheduleSlot = async (req, res) => {
       oldSlot:       connectRequest.selectedSlots[idx],
       newSlot:       connectRequest.selectedSlots[newSlotIndex],
     });
+// ── Notify both parties via email (non-blocking) ──
+ConnectRequest.findById(connectRequestId)
+  .populate("mentor", "name email")
+  .populate("mentee", "name email")
+  .then((populated) => {
+    sendSlotRescheduledEmail({
+      connectRequestId,
+      mentorName:  populated.mentor.name,
+      mentorEmail: populated.mentor.email,
+      menteeName:  populated.mentee.name,
+      menteeEmail: populated.mentee.email,
+      oldSlot:     connectRequest.selectedSlots[idx],
+      newSlot:     connectRequest.selectedSlots[newSlotIndex],
+    }).catch((err) => console.error("❌ Slot rescheduled email failed:", err.message));
+  })
+  .catch((err) => console.error("❌ Failed to populate for reschedule email:", err.message));
 
     return res.json({
       success: true,

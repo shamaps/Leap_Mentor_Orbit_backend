@@ -397,9 +397,267 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
   console.log(`✅ Support resolved email sent to: ${toEmail}`);
 };
 
+
+// ─────────────────────────────────────────────────────────────
+// Email 5: Both mentor and mentee notified when a slot is cancelled
+// ─────────────────────────────────────────────────────────────
+const sendSlotCancelledEmail = async ({
+  connectRequestId,
+  mentorName, mentorEmail,
+  menteeName, menteeEmail,
+  slot,
+  cancelledBy,
+  reason = "",
+}) => {
+  const cancelledByName = cancelledBy === "mentor" ? mentorName : menteeName;
+const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
+  const buildHtml = (recipientName) => `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;
+      overflow:hidden;border:1px solid #e2e8f0;">
+
+      <div style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);padding:32px 32px 28px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <span style="color:white;font-size:20px;">🚀</span>
+          <span style="color:rgba(255,255,255,0.9);font-size:14px;font-weight:600;letter-spacing:0.5px;">LEAPMENTOR</span>
+        </div>
+        <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0;line-height:1.3;">
+          Session Slot Cancelled ❌
+        </h1>
+        <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:8px 0 0;">
+          ${cancelledByName} has cancelled a session slot
+        </p>
+      </div>
+
+      <div style="padding:28px 32px;">
+
+        <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid #e2e8f0;">
+          <h2 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 14px;">
+            👥 Session Participants
+          </h2>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;">
+              <span style="color:#64748b;">Mentor</span>
+              <span style="font-weight:600;color:#1e293b;">${mentorName}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;">
+              <span style="color:#64748b;">Mentee</span>
+              <span style="font-weight:600;color:#1e293b;">${menteeName}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <h2 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;">
+            📅 Cancelled Slot
+          </h2>
+          <div style="display:flex;align-items:center;justify-content:space-between;
+            padding:10px 14px;border-radius:10px;margin-bottom:8px;
+            background:#fef2f2;border:1px solid #fecaca;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:22px;height:22px;background:#dc2626;border-radius:50%;
+                display:flex;align-items:center;justify-content:center;
+                font-size:11px;font-weight:700;color:white;">✕</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#1e293b;">
+                  ${formatDate(slot.date)}
+                </div>
+                <div style="font-size:12px;color:#64748b;margin-top:2px;">
+                  ${formatTime(slot.startTime)} – ${formatTime(slot.endTime)}
+                </div>
+              </div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;
+              padding:3px 8px;border-radius:6px;">CANCELLED</span>
+          </div>
+        </div>
+
+        ${reason ? `
+        <div style="background:#fff7ed;border-radius:12px;padding:16px;margin-bottom:20px;border-left:3px solid #f97316;">
+          <div style="font-size:12px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+            Reason
+          </div>
+          <div style="font-size:14px;color:#334155;line-height:1.6;font-style:italic;">"${reason}"</div>
+        </div>` : ""}
+
+        <div style="background:#fffbeb;border-radius:12px;padding:16px;border:1px solid #fde68a;margin-bottom:20px;">
+          <p style="font-size:13px;color:#92400e;margin:0;font-weight:500;">
+            Hi ${recipientName}, this slot has been cancelled by ${cancelledByName}. Please visit your dashboard to view your updated session schedule.
+          </p>
+        </div>
+
+        <div style="text-align:center;">
+          <a href="${dashboardLink}"
+            style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+            color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+            text-decoration:none;letter-spacing:0.3px;">
+            View Dashboard →
+          </a>
+        </div>
+      </div>
+
+      <div style="padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="font-size:12px;color:#94a3b8;margin:0;">
+          LeapMentor · Empowering the next generation of talent
+        </p>
+      </div>
+    </div>
+  `;
+
+  await Promise.all([
+    transporter.sendMail({
+      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+      to:      mentorEmail,
+      subject: `❌ Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
+      html:    buildHtml(mentorName),
+    }),
+    transporter.sendMail({
+      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+      to:      menteeEmail,
+      subject: `❌ Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
+      html:    buildHtml(menteeName),
+    }),
+  ]);
+
+  console.log(`✅ Slot cancelled emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Email 6: Both mentor and mentee notified when a slot is rescheduled
+// ─────────────────────────────────────────────────────────────
+const sendSlotRescheduledEmail = async ({
+  connectRequestId,
+  mentorName, mentorEmail,
+  menteeName, menteeEmail,
+  oldSlot,
+  newSlot,
+}) => {
+const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
+
+  const buildHtml = (recipientName) => `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;
+      overflow:hidden;border:1px solid #e2e8f0;">
+
+      <div style="background:linear-gradient(135deg,#d97706 0%,#b45309 100%);padding:32px 32px 28px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <span style="color:white;font-size:20px;">🚀</span>
+          <span style="color:rgba(255,255,255,0.9);font-size:14px;font-weight:600;letter-spacing:0.5px;">LEAPMENTOR</span>
+        </div>
+        <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0;line-height:1.3;">
+          Session Rescheduled 🔄
+        </h1>
+        <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:8px 0 0;">
+          ${menteeName} has rescheduled a session slot
+        </p>
+      </div>
+
+      <div style="padding:28px 32px;">
+
+        <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid #e2e8f0;">
+          <h2 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 14px;">
+            👥 Session Participants
+          </h2>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;">
+              <span style="color:#64748b;">Mentor</span>
+              <span style="font-weight:600;color:#1e293b;">${mentorName}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;">
+              <span style="color:#64748b;">Mentee</span>
+              <span style="font-weight:600;color:#1e293b;">${menteeName}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <h2 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;">
+            📅 Schedule Change
+          </h2>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;
+            padding:10px 14px;border-radius:10px;margin-bottom:8px;
+            background:#fef2f2;border:1px solid #fecaca;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:22px;height:22px;background:#dc2626;border-radius:50%;
+                display:flex;align-items:center;justify-content:center;
+                font-size:11px;font-weight:700;color:white;">✕</div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Old Time</div>
+                <div style="font-size:13px;font-weight:700;color:#1e293b;">${formatDate(oldSlot.date)}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:2px;">${formatTime(oldSlot.startTime)} – ${formatTime(oldSlot.endTime)}</div>
+              </div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;
+              padding:3px 8px;border-radius:6px;">CANCELLED</span>
+          </div>
+
+          <div style="text-align:center;padding:4px 0;font-size:18px;">↓</div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;
+            padding:10px 14px;border-radius:10px;
+            background:#f0fdf4;border:1px solid #bbf7d0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:22px;height:22px;background:#16a34a;border-radius:50%;
+                display:flex;align-items:center;justify-content:center;
+                font-size:11px;font-weight:700;color:white;">✓</div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">New Time</div>
+                <div style="font-size:13px;font-weight:700;color:#1e293b;">${formatDate(newSlot.date)}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:2px;">${formatTime(newSlot.startTime)} – ${formatTime(newSlot.endTime)}</div>
+              </div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;
+              padding:3px 8px;border-radius:6px;">CONFIRMED</span>
+          </div>
+        </div>
+
+        <div style="background:#eff6ff;border-radius:12px;padding:16px;border-left:3px solid #2563eb;margin-bottom:20px;">
+          <p style="font-size:13px;color:#1e40af;margin:0;font-weight:500;">
+            Hi ${recipientName}, your session has been rescheduled by ${menteeName}. Please check your dashboard to confirm the updated time.
+          </p>
+        </div>
+
+        <div style="text-align:center;">
+          <a href="${dashboardLink}"
+            style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+            color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+            text-decoration:none;letter-spacing:0.3px;">
+            View Dashboard →
+          </a>
+        </div>
+      </div>
+
+      <div style="padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="font-size:12px;color:#94a3b8;margin:0;">
+          LeapMentor · Empowering the next generation of talent
+        </p>
+      </div>
+    </div>
+  `;
+
+  await Promise.all([
+    transporter.sendMail({
+      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+      to:      mentorEmail,
+      subject: `🔄 Session rescheduled by ${menteeName} — ${formatDate(newSlot.date)}`,
+      html:    buildHtml(mentorName),
+    }),
+    transporter.sendMail({
+      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+      to:      menteeEmail,
+      subject: `🔄 Session rescheduled — New time: ${formatDate(newSlot.date)} at ${formatTime(newSlot.startTime)}`,
+      html:    buildHtml(menteeName),
+    }),
+  ]);
+
+  console.log(`✅ Slot rescheduled emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
+};
 module.exports = {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
   sendPaymentReceivedEmail,
   sendSupportResolvedEmail,
+  sendSlotCancelledEmail,      
+  sendSlotRescheduledEmail,  
 };
