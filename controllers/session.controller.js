@@ -3,7 +3,7 @@ const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
 const Availability   = require("../models/Availability");
 const releaseEscrow  = require("../utils/releaseEscrow");
-const escrowService  = require("../services/escrow.service"); // ✅ NEW — for slot refunds
+const escrowService  = require("../services/escrow.service"); // NEW — for slot refunds
 
 const {
   sendSlotCancelledEmail,
@@ -28,7 +28,7 @@ const getValidatedSlot = (connectRequest, slotIndex) => {
   return { slot: connectRequest.selectedSlots[idx], idx };
 };
 
-// ✅ Helper — emit slot update to both participants in real time
+// Helper — emit slot update to both participants in real time
 const emitSlotUpdate = (connectRequest, payload) => {
   try {
     const { emitToUser } = require("../socket/socketHandler");
@@ -40,7 +40,7 @@ const emitSlotUpdate = (connectRequest, payload) => {
   }
 };
 
-// ✅ Helper — emit targeted event to only one user (the other party)
+// Helper — emit targeted event to only one user (the other party)
 const emitToOther = (connectRequest, currentUserId, event, payload) => {
   try {
     const { emitToUser } = require("../socket/socketHandler");
@@ -465,7 +465,7 @@ const cancelSlot = async (req, res) => {
     connectRequest.markModified("selectedSlots");
     await connectRequest.save({ validateBeforeSave: false });
 
-    // ✅ Trigger immediate partial refund to mentee
+    // Trigger immediate partial refund to mentee
     // Non-blocking — if refund fails the slot is still cancelled; error is logged
     let refundResult = null;
     try {
@@ -476,7 +476,7 @@ const cancelSlot = async (req, res) => {
           cancelledBy,
         });
         console.log(
-          `✅ Slot #${idx + 1} refund: ${refundResult.refundedAmount} tokens returned to mentee`
+          `Slot #${idx + 1} refund: ${refundResult.refundedAmount} tokens returned to mentee`
         );
       }
     } catch (refundErr) {
@@ -538,7 +538,7 @@ ConnectRequest.findById(connectRequestId)
       message:   "Slot cancelled successfully",
       slot:      connectRequest.selectedSlots[idx],
       slotIndex: idx,
-      // ✅ Refund details returned so the frontend can show the mentee their new balance
+      // Refund details returned so the frontend can show the mentee their new balance
       refund: refundResult
         ? {
             refundedAmount: refundResult.refundedAmount,
@@ -579,9 +579,6 @@ const rescheduleSlot = async (req, res) => {
 
     // Only mentee can reschedule
     const isMentee = connectRequest.mentee.toString() === userId.toString();
-    if (!isMentee) {
-      return res.status(403).json({ message: "Only the mentee can reschedule a slot" });
-    }
 
     if (connectRequest.status !== "ongoing") {
       return res.status(400).json({ message: "Session is not active" });
