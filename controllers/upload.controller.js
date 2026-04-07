@@ -1,8 +1,9 @@
 // backend/controllers/upload.controller.js
 const streamifier    = require("streamifier");
 const { cloudinary } = require("../config/cloudinary");
+const MentorProfile  = require("../models/MentorProfile");
 
-// ── Helper: stream buffer to Cloudinary ───────────────────────
+// ── Helper: stream buffer to Cloudinary 
 const uploadToCloudinary = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -54,5 +55,93 @@ const uploadProfilePicture = async (req, res) => {
     return res.status(500).json({ message: "Failed to upload image. Please try again." });
   }
 };
+// ─────────────────────────────────────────────────────────────
+// POST /api/upload/verification-documents
+// Accepts: multipart/form-data with fields:
+//   - "resume"              → single file (PDF/image)
+//   - "workExperienceDocs"  → up to 3 files (PDF/image)
+//   - "phoneNumber"         → string in req.body
+// Returns: { success: true, resumeDocument, workExperienceDocuments }
+// ─────────────────────────────────────────────────────────────
+const uploadVerificationDocuments = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    const resumeFile = req.files?.resume?.[0];
+    const workExperienceFiles = req.files?.workExperienceDocs || [];
 
-module.exports = { uploadProfilePicture };
+    // ✅ Validate — at least resume and phone number required
+    if (!resumeFile) {
+      return res.status(400).json({ message: "Resume is required" });
+    }
+
+    if (!phoneNumber || phoneNumber.trim() === "") {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    if (workExperienceFiles.length > 3) {
+      return res.status(400).json({ message: "Maximum 3 work experience documents allowed" });
+    }
+
+    // ✅ Upload resume to Cloudinary
+    const resumeResult = await uploadToCloudinary(resumeFile.buffer, {
+      folder:          "leapmentor/verification-docs/resumes",
+      resource_type:   "auto",
+      use_filename:    false,
+      unique_filename: true,
+    });
+
+    const resumeDocument = {
+      url:        resumeResult.secure_url,
+      publicId:   resumeResult.public_id,
+      uploadedAt: new Date(),
+    };
+
+    // ✅ Upload work experience docs in parallel (if any)
+    let workExperienceDocuments = [];
+
+    if (workExperienceFiles.length > 0) {
+      const workUploadPromises = workExperienceFiles.map((file) =>
+        uploadToCloudinary(file.buffer, {
+          folder:          "leapmentor/verification-docs/work-experience",
+          resource_type:   "auto",
+          use_filename:    false,
+          unique_filename: true,
+        })
+      );
+
+      const workResults = await Promise.all(workUploadPromises);
+
+      workExperienceDocuments = workResults.map((result) => ({
+        url:        result.secure_url,
+        publicId:   result.public_id,
+        uploadedAt: new Date(),
+      }));
+    }
+
+    // ✅ Save everything to MentorProfile
+    const mentorProfile = await MentorProfile.findOneAndUpdate(
+      { user: req.user._id },
+      {
+        phoneNumber:            phoneNumber.trim(),
+        resumeDocument,
+        workExperienceDocuments,
+      },
+      { new: true }
+    );
+
+    if (!mentorProfile) {
+      return res.status(404).json({ message: "Mentor profile not found" });
+    }
+
+    return res.status(200).json({
+      success:                true,
+      resumeDocument,
+      workExperienceDocuments,
+    });
+  } catch (err) {
+    console.error("❌ uploadVerificationDocuments error:", err.message);
+    return res.status(500).json({ message: "Failed to upload documents. Please try again." });
+  }
+};
+
+module.exports = { uploadProfilePicture,uploadVerificationDocuments };
