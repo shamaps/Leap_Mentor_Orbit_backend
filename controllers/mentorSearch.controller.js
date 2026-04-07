@@ -171,8 +171,9 @@ if (minPrice !== undefined && maxPrice !== undefined) {
     linkedInUrl:        1,
     portfolioUrl:       1,
     searchScore:        1,
-    yearsOfExperience:  1,  // ✅ add this
-    bio:                1,  // ✅ add this too — used in modal
+    yearsOfExperience:  1,  
+    bio:                1,  
+    verificationStatus: 1,
     user: {
       _id:   "$userDoc._id",
       name:  "$userDoc.name",
@@ -207,7 +208,7 @@ if (minPrice !== undefined && maxPrice !== undefined) {
           isProfileComplete:  true,
         })
           .populate("user", "name email")
-          .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")  // ✅
+          .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio verificationStatus")  // ✅
           .lean();
 
         // Give name matches a lower score than skill matches (score: boost 10)
@@ -275,7 +276,7 @@ const plainList = async (res, pageNum, limitNum, skip) => {
     MentorProfile.countDocuments(filter),
     MentorProfile.find(filter)
       .populate("user", "name email")
-      .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")
+      .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio verificationStatus")
       .sort({ avgRating: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -398,7 +399,7 @@ const fallbackSearch = async (req, res) => {
       MentorProfile.countDocuments(filter),
       MentorProfile.find(filter)
         .populate("user", "name email")
-        .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio")
+        .select("user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio verificationStatus")
         .sort({ avgRating: -1 })
         .skip(skip)
         .limit(limitNum)

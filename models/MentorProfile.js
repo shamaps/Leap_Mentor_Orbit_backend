@@ -1,13 +1,31 @@
 // models/MentorProfile.js
 const mongoose = require("mongoose");
 
+const documentSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const mentorProfileSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // one profile per mentor
+      unique: true,
     },
 
     // ✅ Core Identity
@@ -37,7 +55,7 @@ const mentorProfileSchema = new mongoose.Schema(
     },
 
     profilePicture: {
-      type: String, // URL
+      type: String,
       default: "",
     },
 
@@ -61,7 +79,6 @@ const mentorProfileSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // MentorProfile.js
     totalSessions: {
       type: Number,
       default: 0,
@@ -105,11 +122,35 @@ const mentorProfileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     emailNotifications: {
       type: Boolean,
       default: true,
     },
-    
+
+    // ✅ Verification
+    // ✅ Verification
+    verificationStatus: {
+      type: String,
+      enum: ["unverified", "verified"],
+      default: "unverified",
+    },
+
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    resumeDocument: {
+      type: documentSchema,
+      default: null,
+    },
+
+    workExperienceDocuments: {
+      type: [documentSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );

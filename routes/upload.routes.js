@@ -3,7 +3,8 @@ const express    = require("express");
 const router     = express.Router();
 const multer     = require("multer");
 const { authenticate }          = require("../middleware/authenticate");
-const { uploadProfilePicture }  = require("../controllers/upload.controller");
+const { upload } = require("../middleware/upload.middleware");
+const { uploadProfilePicture,uploadVerificationDocuments }  = require("../controllers/upload.controller");
 
 // ✅ Separate multer instance — images only, 5MB limit
 const uploadImage = multer({
@@ -24,6 +25,17 @@ router.post(
   authenticate,
   uploadImage.single("profilePicture"),
   uploadProfilePicture
+);
+
+// POST /api/upload/verification-documents
+router.post(
+  "/verification-documents",
+  authenticate,
+  upload.fields([
+    { name: "resume",             maxCount: 1 },
+    { name: "workExperienceDocs", maxCount: 3 },
+  ]),
+  uploadVerificationDocuments
 );
 
 module.exports = router;
