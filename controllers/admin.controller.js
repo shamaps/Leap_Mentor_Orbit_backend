@@ -5,6 +5,7 @@ const User           = require("../models/User");
 const MentorProfile  = require("../models/MentorProfile");
 const MenteeProfile  = require("../models/MenteeProfile");
 const ConnectRequest = require("../models/ConnectRequest");
+
 // ── Token helper ──────────────────────────────────────────────
 const signToken = (id) =>
   jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -15,34 +16,23 @@ const signToken = (id) =>
 // AUTH
 // ═════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/admin/auth/login
-// Body: { email, password }
-// ─────────────────────────────────────────────────────────────
 const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password)
       return res.status(400).json({ message: "Email and password are required." });
 
     const admin = await AdminUser.findOne({ email });
-    if (!admin)
-      return res.status(401).json({ message: "Invalid credentials." });
-
-    if (!admin.isActive)
-      return res.status(403).json({ message: "Admin account is deactivated." });
+    if (!admin) return res.status(401).json({ message: "Invalid credentials." });
+    if (!admin.isActive) return res.status(403).json({ message: "Admin account is deactivated." });
 
     const isMatch = await admin.comparePassword(password);
-    if (!isMatch)
-      return res.status(401).json({ message: "Invalid credentials." });
+    if (!isMatch) return res.status(401).json({ message: "Invalid credentials." });
 
-    // ── Stamp last login ──────────────────────────────────
     admin.lastLoginAt = new Date();
     await admin.save();
 
     const token = signToken(admin._id);
-
     return res.status(200).json({
       success: true,
       token,
@@ -60,9 +50,6 @@ const adminLogin = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/auth/me
-// ─────────────────────────────────────────────────────────────
 const adminMe = async (req, res) => {
   return res.status(200).json({ admin: req.admin });
 };
@@ -71,10 +58,6 @@ const adminMe = async (req, res) => {
 // STATS
 // ═════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/stats
-// Returns: total users, mentors, mentees + new this month
-// ─────────────────────────────────────────────────────────────
 const getStats = async (req, res) => {
   try {
     const startOfMonth = new Date();
@@ -120,7 +103,7 @@ const getUserGrowth = async (req, res) => {
       { $match: { createdAt: { $gte: since } } },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          _id:   { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           count: { $sum: 1 },
         },
       },
@@ -138,26 +121,51 @@ const getUserGrowth = async (req, res) => {
   }
 };
 
+// ── NEW: Mentor Industry Distribution ─────────────────────────
+const getMentorIndustryStats = async (req, res) => {
+  try {
+    const industries = await MentorProfile.aggregate([
+      {
+        $match: {
+          industry: { $exists: true, $ne: null, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id:   "$industry",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 12 },
+    ]);
+
+    const formatted = industries.map((i) => ({
+      industry: i._id,
+      count:    i.count,
+    }));
+
+    return res.status(200).json(formatted);
+  } catch (err) {
+    console.error("❌ getMentorIndustryStats error:", err);
+    return res.status(500).json({ message: "Server error." });
+  }
+};
+
 // ═════════════════════════════════════════════════════════════
 // USER MANAGEMENT
 // ═════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/users
-// Query: search, role, page, limit
-// ─────────────────────────────────────────────────────────────
 const getUsers = async (req, res) => {
   try {
     const { search, role, page = 1, limit = 20 } = req.query;
 
     const filter = {};
 
-    // ── Role filter ───────────────────────────────────────
     if (role && ["mentor", "mentee"].includes(role)) {
       filter.roles = role;
     }
 
-    // ── Search by name or email ───────────────────────────
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), "i");
       filter.$or = [{ name: regex }, { email: regex }];
@@ -173,7 +181,6 @@ const getUsers = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    // ── Attach profile completion status ──────────────────
     const userIds = users.map((u) => u._id);
 
     const [mentorProfiles, menteeProfiles] = await Promise.all([
@@ -208,10 +215,6 @@ const getUsers = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/users/:userId
-// Returns full user detail with profile
-// ─────────────────────────────────────────────────────────────
 const getUserDetail = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -238,10 +241,6 @@ const getUserDetail = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// DELETE /api/admin/users/:userId
-// Hard delete: User + Profile + ConnectRequests
-// ─────────────────────────────────────────────────────────────
 const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -249,7 +248,6 @@ const deleteUser = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    // ── Cascade delete in parallel ────────────────────────
     await Promise.all([
       User.findByIdAndDelete(userId),
       MentorProfile.findOneAndDelete({ user: userId }),
@@ -270,14 +268,11 @@ const deleteUser = async (req, res) => {
     return res.status(500).json({ message: "Server error." });
   }
 };
+
 // ═════════════════════════════════════════════════════════════
-// ENGAGEMENTS — add these to backend/controllers/admin.controller.js
+// ENGAGEMENTS
 // ═════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/engagements/stats
-// Returns count of each status + total
-// ─────────────────────────────────────────────────────────────
 const getEngagementStats = async (req, res) => {
   try {
     const statuses = ["pending", "accepted", "rejected", "referred", "ongoing", "completed"];
@@ -296,15 +291,10 @@ const getEngagementStats = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/engagements
-// Query: status, search, dateFrom, dateTo, page, limit
-// ─────────────────────────────────────────────────────────────
 const getEngagements = async (req, res) => {
   try {
     const { status, search, dateFrom, dateTo, page = 1, limit = 15 } = req.query;
 
-    // ── 1. Build filter ───────────────────────────────────
     const filter = {};
 
     if (status) filter.status = status;
@@ -315,7 +305,6 @@ const getEngagements = async (req, res) => {
       if (dateTo)   filter.requestedAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
 
-    // ── 2. If search, resolve matching user IDs first ─────
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), "i");
       const matchingUsers = await User.find({
@@ -328,7 +317,6 @@ const getEngagements = async (req, res) => {
       filter.$or = [{ mentor: { $in: ids } }, { mentee: { $in: ids } }];
     }
 
-    // ── 3. Paginate ───────────────────────────────────────
     const skip  = (Number(page) - 1) * Number(limit);
     const total = await ConnectRequest.countDocuments(filter);
 
@@ -354,17 +342,20 @@ const getEngagements = async (req, res) => {
     return res.status(500).json({ message: "Server error." });
   }
 };
+
 module.exports = {
   // auth
   adminLogin,
   adminMe,
   // stats
   getStats,
+  getUserGrowth,
+  getMentorIndustryStats,   // ← new
   // users
   getUsers,
   getUserDetail,
   deleteUser,
+  // engagements
   getEngagementStats,
   getEngagements,
-  getUserGrowth, 
 };
