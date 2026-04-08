@@ -60,11 +60,19 @@ v1.use("/mentor/earnings",  require("./routes/earnings.routes"));
 v1.use("/google-calendar",  require("./routes/googleCalendar.routes"));
 v1.use("/support",          require("./routes/support.routes"));
 
+// ── Leap Requests (mentee-facing) ─────────────────────────────
+// Mentee frontend calls: POST /leap-requests, GET /leap-requests/my-request
+// These resolve to: /api/v1/leap-requests/...
+
+
+v1.use("/leap-requests",    require("./routes/leapRequest.routes")); 
+
 // Admin routes (still nested under /api/v1/admin)
 v1.use("/admin",            require("./routes/admin.routes"));
 v1.use("/admin/settings",   require("./routes/adminSettings.routes"));
 v1.use("/admin/payments",   require("./routes/adminPayments.routes"));
 v1.use("/admin/reports",    require("./routes/adminReports.routes"));
+
 
 /* ===========================
    🔹 MOUNT VERSIONED ROUTER
