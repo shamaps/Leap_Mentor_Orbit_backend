@@ -26,7 +26,7 @@ const transactionSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0.01,
     },
 
     // Reference to the session this transaction is for (optional for signup bonus)

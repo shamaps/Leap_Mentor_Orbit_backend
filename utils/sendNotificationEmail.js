@@ -2,8 +2,8 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host:   process.env.SMTP_HOST,
-  port:   Number(process.env.SMTP_PORT) || 587,
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === "true",
   auth: {
     user: process.env.SMTP_USER,
@@ -29,8 +29,12 @@ const LOGO_URL = "https://res.cloudinary.com/dturqwsyo/image/upload/v1775526481/
 const buildHeader = (bgGradient, title, subtitle) => `
   <div style="background:${bgGradient};padding:28px 32px 24px;text-align:center;">
     <div style="margin-bottom:14px;">
-      <img src="${LOGO_URL}" alt="LeapMentor" width="44" height="44"
-        style="display:block;margin:0 auto;width:44px;height:44px;object-fit:contain;" />
+      <div style="display:inline-block;background:#ffffff;border-radius:50%;
+        width:56px;height:56px;line-height:56px;text-align:center;
+        box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+        <img src="${LOGO_URL}" alt="LeapMentor" width="36" height="36"
+          style="display:inline-block;vertical-align:middle;width:36px;height:36px;object-fit:contain;" />
+      </div>
     </div>
     <div style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;
       letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">
@@ -134,16 +138,16 @@ const sendConnectRequestEmail = async ({
   slots = [],
   message = "",
 }) => {
-  const slotCount    = slots.length;
+  const slotCount = slots.length;
   const slotRowsHtml = buildSlotRows(slots);
   const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
-      "New Connect Request",
-      `${menteeName} wants to book a session with you`
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "New Connect Request",
+    `${menteeName} wants to book a session with you`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
@@ -170,7 +174,7 @@ const sendConnectRequestEmail = async ({
 
       <div style="background:#f0fdf4;border-radius:12px;padding:14px 16px;border:1px solid #bbf7d0;margin-bottom:18px;">
         <p style="font-size:13px;color:#15803d;margin:0;font-weight:500;">
-          Log in to your Leapmentor dashboard to accept or decline this request.
+          Log in to your LeapMentor dashboard to accept or decline this request.
         </p>
       </div>
 
@@ -191,9 +195,9 @@ const sendConnectRequestEmail = async ({
   `);
 
   await transporter.sendMail({
-    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-    to:      mentorEmail,
-    subject: `New Connect Request from ${menteeName} — Leapmentor`,
+    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    to: mentorEmail,
+    subject: `New Connect Request from ${menteeName} — LeapMentor`,
     html,
   });
 
@@ -216,10 +220,10 @@ const sendRequestAcceptedEmail = async ({
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
-      "Your request was accepted!",
-      `${mentorName} has accepted your connect request`
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "Your request was accepted!",
+    `${mentorName} has accepted your connect request`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
@@ -259,8 +263,8 @@ const sendRequestAcceptedEmail = async ({
   `);
 
   await transporter.sendMail({
-    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-    to:      menteeEmail,
+    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    to: menteeEmail,
     subject: `${mentorName} accepted your request — Complete your payment`,
     html,
   });
@@ -281,16 +285,16 @@ const sendPaymentReceivedEmail = async ({
   mentorPayout,
   commissionRate,
 }) => {
-  const slotCount    = slots.length;
+  const slotCount = slots.length;
   const slotRowsHtml = buildSlotRows(slots);
   const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
-      "Payment Received",
-      `${menteeName} has paid for ${slotCount} session${slotCount > 1 ? "s" : ""} with you`
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "Payment Received",
+    `${menteeName} has paid for ${slotCount} session${slotCount > 1 ? "s" : ""} with you`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       <div style="margin-bottom:18px;">
@@ -300,56 +304,53 @@ const sendPaymentReceivedEmail = async ({
         ${slotRowsHtml}
       </div>
 
-      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
-        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
-          Payment Summary
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;">
-            <span style="color:#64748b;">Rate per session</span>
-            <span style="font-weight:600;color:#1e293b;">${sessionRate} tokens</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;">
-            <span style="color:#64748b;">Sessions</span>
-            <span style="font-weight:600;color:#1e293b;">&times; ${sessionCount}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;">
-            <span style="color:#64748b;">Platform fee (${commissionRate}%)</span>
-            <span style="font-weight:600;color:#f59e0b;">deducted by platform</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:14px;
-            padding-top:10px;border-top:1px solid #e2e8f0;margin-top:4px;">
-            <span style="font-weight:700;color:#0f172a;">You will receive</span>
-            <span style="font-weight:700;color:#16a34a;">${mentorPayout} tokens</span>
-          </div>
-        </div>
-      </div>
+     <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+  <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+    Payment Summary
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+    <tr>
+      <td style="font-size:13px;color:#64748b;padding:5px 0;">Rate per session</td>
+      <td style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;padding:5px 0;">
+        ${sessionRate} tokens
+      </td>
+    </tr>
+    <tr>
+      <td style="font-size:13px;color:#64748b;padding:5px 0;">Sessions</td>
+      <td style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;padding:5px 0;">
+        &times; ${sessionCount}
+      </td>
+    </tr>
+    <tr>
+      <td style="font-size:13px;color:#64748b;padding:5px 0;">
+        Platform fee (${commissionRate}%)
+      </td>
+      <td style="font-size:13px;font-weight:600;color:#f59e0b;text-align:right;padding:5px 0;">
+        deducted by platform
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding:0;">
+        <div style="border-top:1px solid #e2e8f0;margin:8px 0;"></div>
+      </td>
+    </tr>
+    <tr>
+      <td style="font-size:14px;font-weight:700;color:#0f172a;padding:5px 0;">
+        You will receive
+      </td>
+      <td style="font-size:14px;font-weight:700;color:#16a34a;text-align:right;padding:5px 0;">
+        ${mentorPayout} tokens
+      </td>
+    </tr>
+  </table>
+</div>
 
-      <div style="background:#f0fdf4;border-radius:12px;padding:14px 16px;border:1px solid #bbf7d0;margin-bottom:18px;">
-        <p style="font-size:13px;color:#15803d;margin:0;font-weight:500;">
-          Tokens are held in escrow and will be released to you automatically once all sessions are marked complete by both parties.
-        </p>
-      </div>
-
-      <div style="text-align:center;">
-        <a href="${dashboardLink}" class="cta-btn"
-          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
-          color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
-          text-decoration:none;letter-spacing:0.3px;">
-          View Sessions
-        </a>
-        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
-          Opens your <strong>Requests</strong> tab directly
-        </p>
-      </div>
-    </div>
-
-    ${FOOTER}
+${FOOTER}
   `);
 
   await transporter.sendMail({
-    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-    to:      mentorEmail,
+    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    to: mentorEmail,
     subject: `Payment received from ${menteeName} — ${mentorPayout} tokens in escrow`,
     html,
   });
@@ -363,10 +364,10 @@ const sendPaymentReceivedEmail = async ({
 const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
-      "Your support request is resolved",
-      "Our team has looked into your issue and marked it as resolved."
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "Your support request is resolved",
+    "Our team has looked into your issue and marked it as resolved."
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
@@ -393,9 +394,9 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
   `);
 
   await transporter.sendMail({
-    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-    to:      toEmail,
-    subject: `Your support request has been resolved — Leapmentor`,
+    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Your support request has been resolved — LeapMentor`,
     html,
   });
 
@@ -418,10 +419,10 @@ const sendSlotCancelledEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)",
-      "Session Slot Cancelled",
-      `${cancelledByName} has cancelled a session slot`
-    )}
+    "linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)",
+    "Session Slot Cancelled",
+    `${cancelledByName} has cancelled a session slot`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       ${buildParticipantBlock(mentorName, menteeName)}
@@ -476,16 +477,16 @@ const sendSlotCancelledEmail = async ({
 
   await Promise.all([
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      mentorEmail,
+      from: `"Leapmentor" <${process.env.SMTP_USER}>`,
+      to: mentorEmail,
       subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
-      html:    buildHtml(mentorName),
+      html: buildHtml(mentorName),
     }),
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      menteeEmail,
+      from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      to: menteeEmail,
       subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
-      html:    buildHtml(menteeName),
+      html: buildHtml(menteeName),
     }),
   ]);
 
@@ -506,10 +507,10 @@ const sendSlotRescheduledEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#d97706 0%,#b45309 100%)",
-      "Session Rescheduled",
-      `${menteeName} has rescheduled a session slot`
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "Session Rescheduled",
+    `${menteeName} has rescheduled a session slot`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       ${buildParticipantBlock(mentorName, menteeName)}
@@ -569,16 +570,16 @@ const sendSlotRescheduledEmail = async ({
 
   await Promise.all([
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      mentorEmail,
+      from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      to: mentorEmail,
       subject: `Session rescheduled by ${menteeName} — ${formatDate(newSlot.date)}`,
-      html:    buildHtml(mentorName),
+      html: buildHtml(mentorName),
     }),
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      menteeEmail,
+      from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      to: menteeEmail,
       subject: `Session rescheduled — New time: ${formatDate(newSlot.date)} at ${formatTime(newSlot.startTime)}`,
-      html:    buildHtml(menteeName),
+      html: buildHtml(menteeName),
     }),
   ]);
 
@@ -598,10 +599,10 @@ const sendAdditionalSlotEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
-      "Additional Session Added",
-      `${menteeName} has added a new session slot`
-    )}
+    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "Additional Session Added",
+    `${menteeName} has added a new session slot`
+  )}
 
     <div class="email-body" style="padding:24px 32px;">
       ${buildParticipantBlock(mentorName, menteeName)}
@@ -648,16 +649,16 @@ const sendAdditionalSlotEmail = async ({
 
   await Promise.all([
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      mentorEmail,
-      subject: `New session slot added by ${menteeName} — Leapmentor`,
-      html:    buildHtml(mentorName),
+      from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      to: mentorEmail,
+      subject: `New session slot added by ${menteeName} — LeapMentor`,
+      html: buildHtml(mentorName),
     }),
     transporter.sendMail({
-      from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
-      to:      menteeEmail,
+      from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      to: menteeEmail,
       subject: `Session slot confirmed — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
-      html:    buildHtml(menteeName),
+      html: buildHtml(menteeName),
     }),
   ]);
 
