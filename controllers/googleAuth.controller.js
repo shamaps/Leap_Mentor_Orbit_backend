@@ -67,21 +67,21 @@ const googleAuth = async (req, res) => {
       });
 
       // ✅ Create wallet — 500 points for mentee, 0 for mentor
-      const isMentee        = uniqueRoles.includes("mentee");
+      const isMentee = uniqueRoles.includes("mentee");
       const startingBalance = isMentee ? 500 : 0;
 
       await Wallet.create({
-        user:    user._id,
+        user: user._id,
         balance: startingBalance,
-        escrow:  0,
+        escrow: 0,
       });
 
       if (isMentee) {
         await Transaction.create({
-          user:         user._id,
-          type:         "credit",
-          amount:       500,
-          description:  "Welcome bonus — 500 points to get started",
+          user: user._id,
+          type: "credit",
+          amount: 500,
+          description: "Welcome bonus — 500 points to get started",
           balanceAfter: 500,
         });
       }
@@ -113,7 +113,7 @@ const googleAuth = async (req, res) => {
 
   } catch (err) {
     console.error("FULL ERROR:", err);
-    return res.status(401).json({ message: "Google authentication failed", error: err.message });
+    return res.status(401).json({ message: "User Already Exists!", error: err.message });
   }
 };
 
