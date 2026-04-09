@@ -665,6 +665,322 @@ const sendAdditionalSlotEmail = async ({
   console.log(`✅ Additional slot emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
 };
 
+// ─────────────────────────────────────────────────────────────
+// Email 8: Mentor notified when they successfully upload verification documents
+// ─────────────────────────────────────────────────────────────
+const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
+  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
+
+  const html = wrapEmail(`
+    ${buildHeader(
+      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+      "Application Received",
+      "We've received your verification documents"
+    )}
+
+    <div class="email-body" style="padding:24px 32px;">
+      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+          Applicant
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${mentorName}</div>
+      </div>
+
+      <div style="background:#eff6ff;border-radius:12px;padding:16px 18px;margin-bottom:18px;border-left:3px solid #2563eb;">
+        <p style="font-size:13px;color:#1e40af;margin:0 0 8px;font-weight:600;">
+          Thank you for submitting your documents!
+        </p>
+        <p style="font-size:13px;color:#334155;margin:0;line-height:1.6;">
+          Our team will review your profile and documents. This process usually takes <strong>24–48 hours</strong>. 
+          You'll receive an email notification once your account has been verified.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          What happens next?
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#2563eb;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">1</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">Admin reviews your resume and work documents</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#2563eb;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">2</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">Your profile is verified and activated</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#2563eb;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">3</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">You're ready to start mentoring on LeapMentor</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${dashboardLink}" class="cta-btn"
+          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+          text-decoration:none;letter-spacing:0.3px;">
+          View Dashboard
+        </a>
+        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
+          Check your application status anytime
+        </p>
+      </div>
+    </div>
+
+    ${FOOTER}
+  `);
+
+  await transporter.sendMail({
+    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+    to:      mentorEmail,
+    subject: `We received your documents — Application under review`,
+    html,
+  });
+
+  console.log(`✅ Documents submitted email sent to mentor: ${mentorEmail}`);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Email 9: Mentor notified when admin verifies their profile
+// ─────────────────────────────────────────────────────────────
+const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
+  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
+
+  const html = wrapEmail(`
+    ${buildHeader(
+      "linear-gradient(135deg,#16a34a 0%,#2563eb 100%)",
+      "Account Verified!",
+      "Congratulations — you're now a verified mentor"
+    )}
+
+    <div class="email-body" style="padding:24px 32px;">
+      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+          Verified Mentor
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:15px;font-weight:700;color:#1e293b;">${mentorName}</div>
+          <span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;
+            padding:3px 8px;border-radius:6px;">VERIFIED</span>
+        </div>
+      </div>
+
+      <div style="background:#f0fdf4;border-radius:12px;padding:16px 18px;margin-bottom:18px;border:1px solid #bbf7d0;">
+        <p style="font-size:13px;color:#15803d;margin:0 0 8px;font-weight:600;">
+          Welcome to the LeapMentor mentor community!
+        </p>
+        <p style="font-size:13px;color:#334155;margin:0;line-height:1.6;">
+          Your profile has been reviewed and verified by our admin team. You can now complete your profile 
+          and start receiving mentee connect requests.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          Get started
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#16a34a;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">1</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">Complete your mentor profile with bio, skills and expertise</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#16a34a;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">2</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">Set your availability so mentees can book sessions</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:22px;height:22px;background:#16a34a;border-radius:50%;display:flex;align-items:center;
+              justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff;margin-top:1px;">3</div>
+            <div style="font-size:13px;color:#334155;line-height:1.5;">Start accepting connect requests from mentees</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${dashboardLink}" class="cta-btn"
+          style="display:inline-block;background:linear-gradient(135deg,#16a34a,#2563eb);
+          color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+          text-decoration:none;letter-spacing:0.3px;">
+          Complete Your Profile
+        </a>
+        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
+          You're one step away from your first session
+        </p>
+      </div>
+    </div>
+
+    ${FOOTER}
+  `);
+
+  await transporter.sendMail({
+    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+    to:      mentorEmail,
+    subject: `Your account is verified — Welcome to LeapMentor! 🎉`,
+    html,
+  });
+
+  console.log(`✅ Mentor verified email sent to: ${mentorEmail}`);
+};
+// ─────────────────────────────────────────────────────────────
+// Email 10: Reporter notified when they successfully submit a report
+// ─────────────────────────────────────────────────────────────
+const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaintType, description }) => {
+  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard`;
+
+  const formattedType = complaintType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const html = wrapEmail(`
+    ${buildHeader(
+      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+      "Report Submitted",
+      "We've received your report and will review it shortly"
+    )}
+
+    <div class="email-body" style="padding:24px 32px;">
+      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+          Submitted By
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${reporterName}</div>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          Report Details
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:3px;">Complaint Type</div>
+          <div style="font-size:14px;font-weight:700;color:#1e293b;">${formattedType}</div>
+        </div>
+        <div style="border-top:1px solid #e2e8f0;padding-top:10px;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:3px;">Description</div>
+          <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${description}"</div>
+        </div>
+      </div>
+
+      <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;margin-bottom:18px;border-left:3px solid #2563eb;">
+        <p style="font-size:13px;color:#1e40af;margin:0;font-weight:500;">
+          Our admin team will review your report and take appropriate action. This usually takes <strong>24–48 hours</strong>. You'll receive an email once it's resolved.
+        </p>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${dashboardLink}" class="cta-btn"
+          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+          text-decoration:none;letter-spacing:0.3px;">
+          View Dashboard
+        </a>
+      </div>
+    </div>
+
+    ${FOOTER}
+  `);
+
+  await transporter.sendMail({
+    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+    to:      reporterEmail,
+    subject: `Your report has been received — Leapmentor`,
+    html,
+  });
+
+  console.log(`✅ Report submitted email sent to: ${reporterEmail}`);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Email 11: Reporter notified when admin resolves/dismisses their report
+// ─────────────────────────────────────────────────────────────
+const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintType, status, adminNote }) => {
+  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard`;
+
+  const isResolved = status === "resolved";
+
+  const formattedType = complaintType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const statusLabel   = isResolved ? "Resolved" : "Dismissed";
+  const statusColor   = isResolved ? "#16a34a"  : "#dc2626";
+  const statusBg      = isResolved ? "#dcfce7"  : "#fee2e2";
+  const headerGradient = isResolved
+    ? "linear-gradient(135deg,#16a34a 0%,#2563eb 100%)"
+    : "linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)";
+  const bannerBg      = isResolved ? "#f0fdf4"  : "#fef2f2";
+  const bannerBorder  = isResolved ? "#bbf7d0"  : "#fecaca";
+  const bannerText    = isResolved ? "#15803d"  : "#991b1b";
+  const bannerMsg     = isResolved
+    ? "Your report has been reviewed and resolved by our admin team. Thank you for helping keep LeapMentor safe."
+    : "After reviewing your report, our admin team has determined that it does not meet the threshold for action. If you believe this is an error, please contact support.";
+
+  const html = wrapEmail(`
+    ${buildHeader(
+      headerGradient,
+      `Report ${statusLabel}`,
+      `An update on your report has been made by our team`
+    )}
+
+    <div class="email-body" style="padding:24px 32px;">
+      <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          Report Summary
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:3px;">Complaint Type</div>
+          <div style="font-size:14px;font-weight:700;color:#1e293b;">${formattedType}</div>
+        </div>
+        <div style="border-top:1px solid #e2e8f0;padding-top:10px;display:flex;align-items:center;gap:10px;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:3px;">Status</div>
+          <span style="font-size:11px;font-weight:700;color:${statusColor};background:${statusBg};
+            padding:3px 8px;border-radius:6px;">${statusLabel.toUpperCase()}</span>
+        </div>
+      </div>
+
+      ${adminNote ? `
+      <div style="background:#fffbeb;border-radius:12px;padding:14px 16px;margin-bottom:18px;border-left:3px solid #f59e0b;">
+        <div style="font-size:11px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+          Note from Admin
+        </div>
+        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${adminNote}"</div>
+      </div>` : ""}
+
+      <div style="background:${bannerBg};border-radius:12px;padding:14px 16px;border:1px solid ${bannerBorder};margin-bottom:18px;">
+        <p style="font-size:13px;color:${bannerText};margin:0;font-weight:500;">
+          ${bannerMsg}
+        </p>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${dashboardLink}" class="cta-btn"
+          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+          text-decoration:none;letter-spacing:0.3px;">
+          View Dashboard
+        </a>
+      </div>
+    </div>
+
+    ${FOOTER}
+  `);
+
+  await transporter.sendMail({
+    from:    `"Leapmentor" <${process.env.SMTP_USER}>`,
+    to:      reporterEmail,
+    subject: `Your report has been ${statusLabel.toLowerCase()} — Leapmentor`,
+    html,
+  });
+
+  console.log(`✅ Report ${statusLabel.toLowerCase()} email sent to: ${reporterEmail}`);
+};
+
 module.exports = {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
@@ -673,4 +989,8 @@ module.exports = {
   sendSlotCancelledEmail,
   sendSlotRescheduledEmail,
   sendAdditionalSlotEmail,
+  sendDocumentsSubmittedEmail,  
+  sendMentorVerifiedEmail,  
+  sendReportSubmittedEmail,
+  sendReportResolvedEmail, 
 };

@@ -1,11 +1,8 @@
 // controllers/adminVerification.controller.js
 const MentorProfile = require("../models/MentorProfile.js");
 const User = require("../models/User.js");
+const { sendMentorVerifiedEmail } = require("../utils/sendNotificationEmail");
 
-// ─────────────────────────────────────────────────────────
-// GET /api/admin/mentor-verifications
-// Returns all mentors with their user info + mentorProfile
-// ─────────────────────────────────────────────────────────
 const getAllMentorVerifications = async (req, res) => {
   try {
     const mentorProfiles = await MentorProfile.find({})
@@ -22,7 +19,7 @@ const getAllMentorVerifications = async (req, res) => {
       user: profile.user,
       mentorProfile: {
         ...profile,
-        user: undefined, // avoid duplication
+        user: undefined,
       },
     }));
 
@@ -33,10 +30,6 @@ const getAllMentorVerifications = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────
-// GET /api/admin/mentor-verifications/:mentorProfileId
-// Returns a single mentor's full profile + docs
-// ─────────────────────────────────────────────────────────
 const getMentorVerificationById = async (req, res) => {
   try {
     const { mentorProfileId } = req.params;
@@ -59,10 +52,6 @@ const getMentorVerificationById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────
-// PATCH /api/admin/mentor-verifications/:mentorProfileId/verify
-// Marks a mentor as verified
-// ─────────────────────────────────────────────────────────
 const verifyMentor = async (req, res) => {
   try {
     const { mentorProfileId } = req.params;
@@ -83,6 +72,14 @@ const verifyMentor = async (req, res) => {
     profile.verificationStatus = "verified";
     await profile.save();
 
+    // ── Send mentor verified email (non-blocking) ──
+    sendMentorVerifiedEmail({
+  mentorName:  profile.user.name,
+  mentorEmail: profile.user.email,
+}).catch((emailErr) => {
+  console.error("❌ sendMentorVerifiedEmail failed:", emailErr.message);
+});
+
     return res.status(200).json({
       message: `${profile.user?.name || "Mentor"} has been verified successfully`,
       mentorProfileId: profile._id,
@@ -94,10 +91,6 @@ const verifyMentor = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────
-// PATCH /api/admin/mentor-verifications/:mentorProfileId/revoke
-// Revokes verification (back to unverified)
-// ─────────────────────────────────────────────────────────
 const revokeMentorVerification = async (req, res) => {
   try {
     const { mentorProfileId } = req.params;

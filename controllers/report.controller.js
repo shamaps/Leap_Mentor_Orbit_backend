@@ -1,9 +1,11 @@
-// backend/controllers/report.controller.js
 const Report          = require("../models/Report");
 const ConnectRequest  = require("../models/ConnectRequest");
 const { cloudinary }  = require("../config/cloudinary");
+const {
+  sendReportSubmittedEmail,
+  sendReportResolvedEmail,
+} = require("../utils/sendNotificationEmail");
 
-// ── Helper: stream buffer to Cloudinary ──────────────────────
 const uploadToCloudinary = (buffer, mimetype) =>
   new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -18,19 +20,11 @@ const uploadToCloudinary = (buffer, mimetype) =>
     stream.end(buffer);
   });
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/reports
-// Auth: mentor | mentee
-// Body (multipart/form-data):
-//   connectRequestId, complaintType, description
-// File (optional): screenshot
-// ─────────────────────────────────────────────────────────────
 const submitReport = async (req, res) => {
   try {
     const { connectRequestId, complaintType, description } = req.body;
     const reportedById = req.user._id;
 
-    // ── 1. Validate required fields ───────────────────────────
     if (!connectRequestId || !complaintType || !description) {
       return res.status(400).json({
         message: "connectRequestId, complaintType, and description are required.",
@@ -43,13 +37,11 @@ const submitReport = async (req, res) => {
       });
     }
 
-    // ── 2. Fetch the connect request ──────────────────────────
     const connect = await ConnectRequest.findById(connectRequestId);
     if (!connect) {
       return res.status(404).json({ message: "Connect request not found." });
     }
 
-    // ── 3. Ensure requester is part of this connect request ───
     const isMentee = connect.mentee.toString() === reportedById.toString();
     const isMentor = connect.mentor.toString() === reportedById.toString();
 
@@ -59,10 +51,9 @@ const submitReport = async (req, res) => {
       });
     }
 
-    const reporterRole  = isMentee ? "mentee" : "mentor";
+    const reporterRole   = isMentee ? "mentee" : "mentor";
     const reportedUserId = isMentee ? connect.mentor : connect.mentee;
 
-    // ── 4. Check for duplicate report ────────────────────────
     const existing = await Report.findOne({
       connectRequest: connectRequestId,
       reportedBy:     reportedById,
@@ -74,20 +65,15 @@ const submitReport = async (req, res) => {
       });
     }
 
-    // ── 5. Upload screenshot if provided ─────────────────────
     let screenshotUrl      = "";
     let screenshotPublicId = "";
 
     if (req.file) {
-      const uploaded = await uploadToCloudinary(
-        req.file.buffer,
-        req.file.mimetype
-      );
+      const uploaded = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
       screenshotUrl      = uploaded.secure_url;
       screenshotPublicId = uploaded.public_id;
     }
 
-    // ── 6. Create report ──────────────────────────────────────
     const report = await Report.create({
       connectRequest:    connectRequestId,
       reportedBy:        reportedById,
@@ -98,6 +84,14 @@ const submitReport = async (req, res) => {
       screenshotUrl,
       screenshotPublicId,
     });
+
+    // ── Send report submitted email (non-blocking) ──
+    sendReportSubmittedEmail({
+      reporterName:  req.user.name,
+      reporterEmail: req.user.email,
+      complaintType,
+      description:   description.trim(),
+    }).catch((err) => console.error("❌ sendReportSubmittedEmail failed:", err.message));
 
     return res.status(201).json({
       success: true,
@@ -110,11 +104,6 @@ const submitReport = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reports/my/:connectRequestId
-// Auth: mentor | mentee
-// Returns: the current user's report for this connect request (if any)
-// ─────────────────────────────────────────────────────────────
 const getMyReport = async (req, res) => {
   try {
     const { connectRequestId } = req.params;
@@ -131,11 +120,6 @@ const getMyReport = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reports/admin
-// Auth: admin only (wire up requireRole("admin") in route)
-// Query: status, page, limit
-// ─────────────────────────────────────────────────────────────
 const getAllReports = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
@@ -150,9 +134,9 @@ const getAllReports = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
-      .populate("reportedBy",   "name email")
-      .populate("reportedUser", "name email")
-      .populate("connectRequest", "status totalAmount")
+      .populate("reportedBy",      "name email")
+      .populate("reportedUser",    "name email")
+      .populate("connectRequest",  "status totalAmount")
       .lean();
 
     return res.status(200).json({
@@ -170,11 +154,6 @@ const getAllReports = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/reports/admin/:reportId
-// Auth: admin only
-// Body: { status, adminNote }
-// ─────────────────────────────────────────────────────────────
 const updateReportStatus = async (req, res) => {
   try {
     const { reportId } = req.params;
@@ -193,14 +172,25 @@ const updateReportStatus = async (req, res) => {
     }
 
     const report = await Report.findByIdAndUpdate(reportId, update, {
-      new:              true,
-      runValidators:    true,
+      new:           true,
+      runValidators: true,
     })
       .populate("reportedBy",   "name email")
       .populate("reportedUser", "name email");
 
     if (!report) {
       return res.status(404).json({ message: "Report not found." });
+    }
+
+    // ── Send resolved/dismissed email only on terminal statuses (non-blocking) ──
+    if (status === "resolved" || status === "dismissed") {
+      sendReportResolvedEmail({
+        reporterName:  report.reportedBy.name,
+        reporterEmail: report.reportedBy.email,
+        complaintType: report.complaintType,
+        status,
+        adminNote:     adminNote?.trim() || "",
+      }).catch((err) => console.error("❌ sendReportResolvedEmail failed:", err.message));
     }
 
     return res.status(200).json({ success: true, report });

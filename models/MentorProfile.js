@@ -132,7 +132,7 @@ const mentorProfileSchema = new mongoose.Schema(
     // ✅ Verification
     verificationStatus: {
       type: String,
-      enum: ["unverified", "verified"],
+      enum: ["unverified", "verified","pending"],
       default: "unverified",
     },
 

@@ -1,13 +1,12 @@
 const streamifier = require("streamifier");
 const { cloudinary } = require("../config/cloudinary");
 const MentorProfile = require("../models/MentorProfile");
+const { sendDocumentsSubmittedEmail } = require("../utils/sendNotificationEmail");
 
-// ── Helper: stream buffer to Cloudinary 
-// We explicitly spread the options to ensure resource_type is handled correctly
 const uploadToCloudinary = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { ...options }, // Ensure options like resource_type: "raw" are passed here
+      { ...options },
       (error, result) => {
         if (error) return reject(error);
         resolve(result);
@@ -17,9 +16,6 @@ const uploadToCloudinary = (buffer, options) => {
   });
 };
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/upload/profile-picture
-// ─────────────────────────────────────────────────────────────
 const uploadProfilePicture = async (req, res) => {
   try {
     if (!req.file) {
@@ -32,7 +28,7 @@ const uploadProfilePicture = async (req, res) => {
 
     const result = await uploadToCloudinary(req.file.buffer, {
       folder: "leapmentor/profiles",
-      resource_type: "image", // Profile pics must stay as "image" for transformations
+      resource_type: "image",
       use_filename: false,
       unique_filename: true,
       transformation: [
@@ -52,9 +48,6 @@ const uploadProfilePicture = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/upload/verification-documents
-// ─────────────────────────────────────────────────────────────
 const uploadVerificationDocuments = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
@@ -69,9 +62,8 @@ const uploadVerificationDocuments = async (req, res) => {
       return res.status(400).json({ message: "Phone number is required" });
     }
 
-    // ✅ Upload resume as "raw" to ensure PDFs load correctly
     const resumeResult = await uploadToCloudinary(resumeFile.buffer, {
-      resource_type: "raw", // 👈 CRITICAL: Changed from "auto" to "raw" for PDFs
+      resource_type: "raw",
       folder: "leapmentor/verification-docs/resumes",
       use_filename: true,
       unique_filename: true,
@@ -88,7 +80,7 @@ const uploadVerificationDocuments = async (req, res) => {
     if (workExperienceFiles.length > 0) {
       const workUploadPromises = workExperienceFiles.map((file) =>
         uploadToCloudinary(file.buffer, {
-          resource_type: "raw", // 👈 CRITICAL: Changed to "raw"
+          resource_type: "raw",
           folder: "leapmentor/verification-docs/work-experience",
           use_filename: true,
           unique_filename: true,
@@ -110,6 +102,7 @@ const uploadVerificationDocuments = async (req, res) => {
         phoneNumber: phoneNumber.trim(),
         resumeDocument,
         workExperienceDocuments,
+        verificationStatus: "pending",
       },
       { new: true }
     );
@@ -117,6 +110,14 @@ const uploadVerificationDocuments = async (req, res) => {
     if (!mentorProfile) {
       return res.status(404).json({ message: "Mentor profile not found" });
     }
+
+    // ── Send documents submitted email (non-blocking) ──
+   sendDocumentsSubmittedEmail({
+  mentorName:  req.user.name,
+  mentorEmail: req.user.email,
+}).catch((emailErr) => {
+  console.error("❌ sendDocumentsSubmittedEmail failed:", emailErr.message);
+});
 
     return res.status(200).json({
       success: true,

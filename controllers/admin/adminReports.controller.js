@@ -5,10 +5,10 @@ const Wallet         = require("../../models/Wallet");
 const Transaction    = require("../../models/Transaction");
 const ConnectRequest = require("../../models/ConnectRequest");
 const createNotification = require("../../utils/createNotification");
+const {
+  sendReportResolvedEmail,
+} = require("../../utils/sendNotificationEmail");
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/reports/stats
-// ─────────────────────────────────────────────────────────────
 const getReportStats = async (req, res) => {
   try {
     const today = new Date();
@@ -26,9 +26,6 @@ const getReportStats = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/reports
-// ─────────────────────────────────────────────────────────────
 const getReports = async (req, res) => {
   try {
     const page   = Math.max(1, parseInt(req.query.page)  || 1);
@@ -79,7 +76,6 @@ const getReports = async (req, res) => {
       adminNote:        r.adminNote     || "",
       status:           r.status,
       refundProcessed:  r.refundProcessed || false,
-      // ✅ session info for refund/delete actions
       connectRequestId: r.connectRequest?._id || null,
       sessionStatus:    r.connectRequest?.status || null,
       paymentStatus:    r.connectRequest?.paymentStatus || null,
@@ -104,10 +100,6 @@ const getReports = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/admin/reports/:id
-// Handle report — resolved or dismissed + notify reporter
-// ─────────────────────────────────────────────────────────────
 const handleReport = async (req, res) => {
   try {
     const { status, adminNote } = req.body;
@@ -128,7 +120,7 @@ const handleReport = async (req, res) => {
     report.resolvedBy = req.admin._id;
     await report.save();
 
-    // Notify reporter
+    // ── Notify reporter (in-app) ──
     const recipientId = report.reportedBy?._id;
     if (recipientId) {
       const otherPerson = report.reportedUser?.name || "the other user";
@@ -145,13 +137,24 @@ const handleReport = async (req, res) => {
       });
     }
 
+    // ── Notify reporter (email, non-blocking) ──
+    if (report.reportedBy?.email) {
+      sendReportResolvedEmail({
+        reporterName:  report.reportedBy.name,
+        reporterEmail: report.reportedBy.email,
+        complaintType: report.complaintType,
+        status,
+        adminNote:     adminNote?.trim() || "",
+      }).catch((err) => console.error("❌ sendReportResolvedEmail failed:", err.message));
+    }
+
     return res.json({
       success: true,
       message: `Report ${status}.`,
       report: {
-        id:        report._id,
-        status:    report.status,
-        adminNote: report.adminNote,
+        id:         report._id,
+        status:     report.status,
+        adminNote:  report.adminNote,
         resolvedAt: report.resolvedAt,
       },
     });
@@ -160,13 +163,6 @@ const handleReport = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/admin/reports/:id/refund
-// Admin processes refund for a refund-type report
-// → moves escrow back to mentee wallet
-// → marks session as refunded
-// → notifies mentee
-// ─────────────────────────────────────────────────────────────
 const processRefund = async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
@@ -184,9 +180,6 @@ const processRefund = async (req, res) => {
     if (report.complaintType !== "refund") {
       return res.status(400).json({ message: "This report is not a refund request." });
     }
-    if (report.complaintType !== "refund") {
-      return res.status(400).json({ message: "This report is not a refund request." });
-    }
     if (report.refundProcessed) {
       return res.status(400).json({ message: "Refund already processed." });
     }
@@ -200,41 +193,37 @@ const processRefund = async (req, res) => {
     const menteeId    = connectRequest.mentee;
     const totalAmount = connectRequest.totalAmount || 0;
 
-    // ── 1. Find mentee wallet ─────────────────────────────
     const menteeWallet = await Wallet.findOne({ user: menteeId });
     if (!menteeWallet) return res.status(404).json({ message: "Mentee wallet not found." });
 
-    // ── 2. Move escrow → mentee balance ──────────────────
     const refundAmount = Math.min(totalAmount, menteeWallet.escrow);
     menteeWallet.escrow  = Math.max(0, menteeWallet.escrow - refundAmount);
     menteeWallet.balance += refundAmount;
     await menteeWallet.save();
 
-    // ── 3. Create refund transaction ──────────────────────
     await Transaction.create({
-      user:         menteeId,
-      type:         "escrow_refund",
-      amount:       refundAmount,
-      description:  "Admin refund — report resolved",
-      balanceAfter: menteeWallet.balance,
+      user:           menteeId,
+      type:           "escrow_refund",
+      amount:         refundAmount,
+      description:    "Admin refund — report resolved",
+      balanceAfter:   menteeWallet.balance,
       connectRequest: connectRequest._id,
     });
 
-    // ── 4. Update ConnectRequest status ──────────────────
     connectRequest.paymentStatus = "refunded";
-    connectRequest.status        = "rejected"; // close the session
+    connectRequest.status        = "rejected";
     await connectRequest.save();
 
-    // ── 5. Mark report as refund processed ───────────────
+    const resolvedAdminNote = req.body.adminNote?.trim() || "Refund processed by admin.";
+
     report.refundProcessed = true;
     report.refundedAt      = new Date();
     report.status          = "resolved";
     report.resolvedAt      = new Date();
     report.resolvedBy      = req.admin._id;
-    report.adminNote       = req.body.adminNote?.trim() || "Refund processed by admin.";
+    report.adminNote       = resolvedAdminNote;
     await report.save();
 
-    // ── 6. Notify mentee ─────────────────────────────────
     await createNotification({
       recipient: menteeId,
       type:      "new_review",
@@ -242,6 +231,17 @@ const processRefund = async (req, res) => {
       message:   `Your refund of ${refundAmount} tokens has been returned to your wallet by the admin team.`,
       metadata:  { requestId: connectRequest._id, amount: refundAmount },
     });
+
+    // ── Email reporter (mentee) about refund resolution (non-blocking) ──
+    if (report.reportedBy?.email) {
+      sendReportResolvedEmail({
+        reporterName:  report.reportedBy.name,
+        reporterEmail: report.reportedBy.email,
+        complaintType: report.complaintType,
+        status:        "resolved",
+        adminNote:     resolvedAdminNote,
+      }).catch((err) => console.error("❌ sendReportResolvedEmail (refund) failed:", err.message));
+    }
 
     return res.json({
       success: true,
@@ -253,12 +253,6 @@ const processRefund = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// DELETE /api/admin/reports/:id/session
-// Admin deletes the connect request tied to a report
-// → hard deletes the ConnectRequest
-// → notifies both mentee and mentor
-// ─────────────────────────────────────────────────────────────
 const deleteSession = async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
@@ -277,15 +271,13 @@ const deleteSession = async (req, res) => {
     const connectRequest = report.connectRequest;
     if (!connectRequest) return res.status(404).json({ message: "Session not found or already deleted." });
 
-    const menteeId = connectRequest.mentee?._id || connectRequest.mentee;
-    const mentorId = connectRequest.mentor?._id || connectRequest.mentor;
+    const menteeId   = connectRequest.mentee?._id || connectRequest.mentee;
+    const mentorId   = connectRequest.mentor?._id || connectRequest.mentor;
     const menteeName = connectRequest.mentee?.name || "Mentee";
     const mentorName = connectRequest.mentor?.name || "Mentor";
 
-    // ── Delete the ConnectRequest ─────────────────────────
     await ConnectRequest.findByIdAndDelete(connectRequest._id);
 
-    // ── Notify both parties ───────────────────────────────
     if (menteeId) {
       await createNotification({
         recipient: menteeId,
@@ -306,12 +298,24 @@ const deleteSession = async (req, res) => {
       });
     }
 
-    // ── Clear connectRequest ref from report ──────────────
-    report.adminNote  = req.body.adminNote?.trim() || "Session deleted by admin.";
+    const resolvedAdminNote = req.body.adminNote?.trim() || "Session deleted by admin.";
+
+    report.adminNote  = resolvedAdminNote;
     report.status     = "resolved";
     report.resolvedAt = new Date();
     report.resolvedBy = req.admin._id;
     await report.save();
+
+    // ── Email reporter about session deletion resolution (non-blocking) ──
+    if (report.reportedBy?.email) {
+      sendReportResolvedEmail({
+        reporterName:  report.reportedBy.name,
+        reporterEmail: report.reportedBy.email,
+        complaintType: report.complaintType,
+        status:        "resolved",
+        adminNote:     resolvedAdminNote,
+      }).catch((err) => console.error("❌ sendReportResolvedEmail (deleteSession) failed:", err.message));
+    }
 
     return res.json({
       success: true,
