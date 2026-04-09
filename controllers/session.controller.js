@@ -1,15 +1,40 @@
 // backend/controllers/session.controller.js
-const mongoose       = require("mongoose");
+const mongoose = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const Availability   = require("../models/Availability");
-const releaseEscrow  = require("../utils/releaseEscrow");
-const escrowService  = require("../services/escrow.service"); // NEW — for slot refunds
+const Availability = require("../models/Availability");
+const releaseEscrow = require("../utils/releaseEscrow");
+const escrowService = require("../services/escrow.service"); // NEW — for slot refunds
 
 const {
   sendSlotCancelledEmail,
   sendSlotRescheduledEmail,
   sendAdditionalSlotEmail,
 } = require("../utils/sendNotificationEmail");
+
+// ── Meeting link validator ─────────────────────────────────────
+const ALLOWED_MEETING_DOMAINS = [
+  "meet.google.com",
+  "zoom.us",
+  "teams.microsoft.com",
+  "whereby.com",
+  "around.co",
+  "meet.jit.si",
+  "webex.com",
+];
+
+const isValidMeetingLink = (rawUrl) => {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "https:") return false;
+    const host = url.hostname.toLowerCase();
+    return ALLOWED_MEETING_DOMAINS.some(
+      (d) => host === d || host.endsWith(`.${d}`)
+    );
+  } catch {
+    return false;
+  }
+};
+
 // ── Auth helper ───────────────────────────────────────────────
 const assertParticipant = (connectRequest, userId) => {
   const uid = userId.toString();
@@ -107,6 +132,11 @@ const setMeetingLink = async (req, res) => {
     if (!meetingLink?.trim()) {
       return res.status(400).json({ message: "meetingLink is required" });
     }
+    if (!isValidMeetingLink(meetingLink.trim())) {
+      return res.status(400).json({
+        message: "Only links from trusted platforms (Google Meet, Zoom, etc.) are allowed.",
+      });
+    }
 
     const connectRequest = await ConnectRequest.findById(connectRequestId);
     if (!connectRequest) {
@@ -137,10 +167,10 @@ const setMeetingLink = async (req, res) => {
 
     const payload = {
       connectRequestId,
-      slots:         connectRequest.selectedSlots,
-      totalSlots:    activeSlots.length,
+      slots: connectRequest.selectedSlots,
+      totalSlots: activeSlots.length,
       completedSlots: completedCount,
-      progress:      activeSlots.length > 0
+      progress: activeSlots.length > 0
         ? Math.round((completedCount / activeSlots.length) * 100)
         : 0,
     };
@@ -192,7 +222,7 @@ const markSlotComplete = async (req, res) => {
     }
 
     const { idx } = validated;
-    const slot     = connectRequest.selectedSlots[idx];
+    const slot = connectRequest.selectedSlots[idx];
 
     // Block marking cancelled slots complete
     if (slot.status === "cancelled") {
@@ -261,13 +291,13 @@ const markSlotComplete = async (req, res) => {
         : bothMarked
           ? "Session marked complete by both parties."
           : `Session marked complete. Waiting for ${isMentee ? "mentor" : "mentee"} to confirm.`,
-      slot:          connectRequest.selectedSlots[idx],
-      slotIndex:     idx,
+      slot: connectRequest.selectedSlots[idx],
+      slotIndex: idx,
       bothMarked,
       allComplete,
       completedSlots: completedCount,
-      totalSlots:    activeSlots.length,
-      progress:      activeSlots.length > 0
+      totalSlots: activeSlots.length,
+      progress: activeSlots.length > 0
         ? Math.round((completedCount / activeSlots.length) * 100)
         : 0,
       escrowRelease: releaseResult,
@@ -275,10 +305,10 @@ const markSlotComplete = async (req, res) => {
 
     emitSlotUpdate(connectRequest, {
       connectRequestId,
-      slots:          connectRequest.selectedSlots,
-      totalSlots:     activeSlots.length,
+      slots: connectRequest.selectedSlots,
+      totalSlots: activeSlots.length,
       completedSlots: completedCount,
-      progress:       responsePayload.progress,
+      progress: responsePayload.progress,
       allComplete,
     });
 
@@ -306,7 +336,7 @@ const addSlot = async (req, res) => {
     }
 
     if (!day) {
-      const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       day = DAYS[new Date(date + "T00:00:00").getDay()];
     }
 
@@ -338,10 +368,10 @@ const addSlot = async (req, res) => {
       date,
       startTime,
       endTime,
-      meetingLink:   "",
-      menteeMarked:  false,
-      mentorMarked:  false,
-      completedAt:   null,
+      meetingLink: "",
+      menteeMarked: false,
+      mentorMarked: false,
+      completedAt: null,
       paymentStatus: "pending",
     };
 
@@ -350,11 +380,11 @@ const addSlot = async (req, res) => {
       date,
       startTime,
       endTime,
-      meetingLink:  "",
+      meetingLink: "",
       menteeMarked: false,
       mentorMarked: false,
-      completedAt:  null,
-      status:       "booked",
+      completedAt: null,
+      status: "booked",
     };
 
     connectRequest.additionalSlots.push(newAdditionalSlot);
@@ -377,37 +407,38 @@ const addSlot = async (req, res) => {
 
     const socketPayload = {
       connectRequestId,
-      slots:           connectRequest.selectedSlots,
+      slots: connectRequest.selectedSlots,
       additionalSlots: connectRequest.additionalSlots,
-      totalSlots:      activeSlots.length,
-      completedSlots:  completedCount,
-      progress:        activeSlots.length > 0
+      totalSlots: activeSlots.length,
+      completedSlots: completedCount,
+      progress: activeSlots.length > 0
         ? Math.round((completedCount / activeSlots.length) * 100)
         : 0,
     };
 
     emitSlotUpdate(connectRequest, socketPayload);
+
     // ── Notify both parties via email (non-blocking) ──
-ConnectRequest.findById(connectRequestId)
-  .populate("mentor", "name email")
-  .populate("mentee", "name email")
-  .then((populated) => {
-    sendAdditionalSlotEmail({
-      connectRequestId,
-      mentorName:  populated.mentor.name,
-      mentorEmail: populated.mentor.email,
-      menteeName:  populated.mentee.name,
-      menteeEmail: populated.mentee.email,
-      slot:        newSelectedSlot,
-    }).catch((err) => console.error("❌ Additional slot email failed:", err.message));
-  })
-  .catch((err) => console.error("❌ Failed to populate for additional slot email:", err.message));
+    ConnectRequest.findById(connectRequestId)
+      .populate("mentor", "name email")
+      .populate("mentee", "name email")
+      .then((populated) => {
+        sendAdditionalSlotEmail({
+          connectRequestId,
+          mentorName: populated.mentor.name,
+          mentorEmail: populated.mentor.email,
+          menteeName: populated.mentee.name,
+          menteeEmail: populated.mentee.email,
+          slot: newSelectedSlot,
+        }).catch((err) => console.error("❌ Additional slot email failed:", err.message));
+      })
+      .catch((err) => console.error("❌ Failed to populate for additional slot email:", err.message));
 
     return res.status(201).json({
       success: true,
       message: "Additional session slot added successfully",
-      slot:    newAdditionalSlot,
-      slotId:  savedAdditionalSlot._id,
+      slot: newAdditionalSlot,
+      slotId: savedAdditionalSlot._id,
       ...socketPayload,
     });
   } catch (err) {
@@ -453,13 +484,13 @@ const cancelSlot = async (req, res) => {
       return res.status(400).json({ message: "Cannot cancel a completed slot" });
     }
 
-    const isMentor  = connectRequest.mentor.toString() === userId.toString();
+    const isMentor = connectRequest.mentor.toString() === userId.toString();
     const cancelledBy = isMentor ? "mentor" : "mentee";
 
     // Mark slot as cancelled
-    connectRequest.selectedSlots[idx].status             = "cancelled";
-    connectRequest.selectedSlots[idx].cancelledBy        = cancelledBy;
-    connectRequest.selectedSlots[idx].cancelledAt        = new Date();
+    connectRequest.selectedSlots[idx].status = "cancelled";
+    connectRequest.selectedSlots[idx].cancelledBy = cancelledBy;
+    connectRequest.selectedSlots[idx].cancelledAt = new Date();
     connectRequest.selectedSlots[idx].cancellationReason = reason.trim();
 
     connectRequest.markModified("selectedSlots");
@@ -492,10 +523,10 @@ const cancelSlot = async (req, res) => {
 
     const socketPayload = {
       connectRequestId,
-      slots:          connectRequest.selectedSlots,
-      totalSlots:     activeSlots.length,
+      slots: connectRequest.selectedSlots,
+      totalSlots: activeSlots.length,
       completedSlots: completedCount,
-      progress:       activeSlots.length > 0
+      progress: activeSlots.length > 0
         ? Math.round((completedCount / activeSlots.length) * 100)
         : 0,
     };
@@ -507,44 +538,44 @@ const cancelSlot = async (req, res) => {
     emitToOther(connectRequest, userId, "slot_cancelled", {
       connectRequestId,
       slotIndex: idx,
-      slot:        connectRequest.selectedSlots[idx],
+      slot: connectRequest.selectedSlots[idx],
       cancelledBy,
-      reason:      reason.trim(),
-      refund:      refundResult
+      reason: reason.trim(),
+      refund: refundResult
         ? { amount: refundResult.refundedAmount }
         : null,
     });
 
     // ── Notify both parties via email (non-blocking) ──
-ConnectRequest.findById(connectRequestId)
-  .populate("mentor", "name email")
-  .populate("mentee", "name email")
-  .then((populated) => {
-    sendSlotCancelledEmail({
-      connectRequestId,
-      mentorName:  populated.mentor.name,
-      mentorEmail: populated.mentor.email,
-      menteeName:  populated.mentee.name,
-      menteeEmail: populated.mentee.email,
-      slot:        connectRequest.selectedSlots[idx],
-      cancelledBy,
-      reason:      reason.trim(),
-    }).catch((err) => console.error("❌ Slot cancelled email failed:", err.message));
-  })
-  .catch((err) => console.error("❌ Failed to populate for cancel email:", err.message));
+    ConnectRequest.findById(connectRequestId)
+      .populate("mentor", "name email")
+      .populate("mentee", "name email")
+      .then((populated) => {
+        sendSlotCancelledEmail({
+          connectRequestId,
+          mentorName: populated.mentor.name,
+          mentorEmail: populated.mentor.email,
+          menteeName: populated.mentee.name,
+          menteeEmail: populated.mentee.email,
+          slot: connectRequest.selectedSlots[idx],
+          cancelledBy,
+          reason: reason.trim(),
+        }).catch((err) => console.error("❌ Slot cancelled email failed:", err.message));
+      })
+      .catch((err) => console.error("❌ Failed to populate for cancel email:", err.message));
 
     return res.json({
-      success:   true,
-      message:   "Slot cancelled successfully",
-      slot:      connectRequest.selectedSlots[idx],
+      success: true,
+      message: "Slot cancelled successfully",
+      slot: connectRequest.selectedSlots[idx],
       slotIndex: idx,
       // Refund details returned so the frontend can show the mentee their new balance
       refund: refundResult
         ? {
-            refundedAmount: refundResult.refundedAmount,
-            newBalance:     refundResult.balance,
-            newEscrow:      refundResult.escrow,
-          }
+          refundedAmount: refundResult.refundedAmount,
+          newBalance: refundResult.balance,
+          newEscrow: refundResult.escrow,
+        }
         : null,
       ...socketPayload,
     });
@@ -612,27 +643,27 @@ const rescheduleSlot = async (req, res) => {
     }
 
     // Compute day for the new slot
-    const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const newDay = DAYS[new Date(date + "T00:00:00").getDay()];
 
     // 1️⃣ Cancel the old slot and tag it as rescheduled
-    connectRequest.selectedSlots[idx].status             = "cancelled";
-    connectRequest.selectedSlots[idx].cancelledBy        = "mentee";
-    connectRequest.selectedSlots[idx].cancelledAt        = new Date();
+    connectRequest.selectedSlots[idx].status = "cancelled";
+    connectRequest.selectedSlots[idx].cancelledBy = "mentee";
+    connectRequest.selectedSlots[idx].cancelledAt = new Date();
     connectRequest.selectedSlots[idx].cancellationReason = "rescheduled";
-    connectRequest.selectedSlots[idx].isRescheduled      = true;
+    connectRequest.selectedSlots[idx].isRescheduled = true;
 
     // 2️⃣ Add the new slot tagged as a reschedule
     const newSlot = {
-      day:           newDay,
+      day: newDay,
       date,
       startTime,
       endTime,
-      meetingLink:   "",
-      menteeMarked:  false,
-      mentorMarked:  false,
-      completedAt:   null,
-      status:        "booked",
+      meetingLink: "",
+      menteeMarked: false,
+      mentorMarked: false,
+      completedAt: null,
+      status: "booked",
       isRescheduled: true,
       rescheduledFromIndex: idx,
     };
@@ -652,10 +683,10 @@ const rescheduleSlot = async (req, res) => {
 
     const socketPayload = {
       connectRequestId,
-      slots:          connectRequest.selectedSlots,
-      totalSlots:     activeSlots.length,
+      slots: connectRequest.selectedSlots,
+      totalSlots: activeSlots.length,
       completedSlots: completedCount,
-      progress:       activeSlots.length > 0
+      progress: activeSlots.length > 0
         ? Math.round((completedCount / activeSlots.length) * 100)
         : 0,
     };
@@ -666,33 +697,34 @@ const rescheduleSlot = async (req, res) => {
     // Notify mentor with a dedicated event
     emitToOther(connectRequest, userId, "slot_rescheduled", {
       connectRequestId,
-      oldSlotIndex:  idx,
+      oldSlotIndex: idx,
       newSlotIndex,
-      oldSlot:       connectRequest.selectedSlots[idx],
-      newSlot:       connectRequest.selectedSlots[newSlotIndex],
+      oldSlot: connectRequest.selectedSlots[idx],
+      newSlot: connectRequest.selectedSlots[newSlotIndex],
     });
-// ── Notify both parties via email (non-blocking) ──
-ConnectRequest.findById(connectRequestId)
-  .populate("mentor", "name email")
-  .populate("mentee", "name email")
-  .then((populated) => {
-    sendSlotRescheduledEmail({
-      connectRequestId,
-      mentorName:  populated.mentor.name,
-      mentorEmail: populated.mentor.email,
-      menteeName:  populated.mentee.name,
-      menteeEmail: populated.mentee.email,
-      oldSlot:     connectRequest.selectedSlots[idx],
-      newSlot:     connectRequest.selectedSlots[newSlotIndex],
-    }).catch((err) => console.error("❌ Slot rescheduled email failed:", err.message));
-  })
-  .catch((err) => console.error("❌ Failed to populate for reschedule email:", err.message));
+
+    // ── Notify both parties via email (non-blocking) ──
+    ConnectRequest.findById(connectRequestId)
+      .populate("mentor", "name email")
+      .populate("mentee", "name email")
+      .then((populated) => {
+        sendSlotRescheduledEmail({
+          connectRequestId,
+          mentorName: populated.mentor.name,
+          mentorEmail: populated.mentor.email,
+          menteeName: populated.mentee.name,
+          menteeEmail: populated.mentee.email,
+          oldSlot: connectRequest.selectedSlots[idx],
+          newSlot: connectRequest.selectedSlots[newSlotIndex],
+        }).catch((err) => console.error("❌ Slot rescheduled email failed:", err.message));
+      })
+      .catch((err) => console.error("❌ Failed to populate for reschedule email:", err.message));
 
     return res.json({
       success: true,
       message: "Slot rescheduled successfully",
-      oldSlot:      connectRequest.selectedSlots[idx],
-      newSlot:      connectRequest.selectedSlots[newSlotIndex],
+      oldSlot: connectRequest.selectedSlots[idx],
+      newSlot: connectRequest.selectedSlots[newSlotIndex],
       oldSlotIndex: idx,
       newSlotIndex,
       ...socketPayload,
@@ -744,9 +776,9 @@ const getMentorAvailability = async (req, res) => {
     );
 
     return res.json({
-      success:          true,
-      slots:            grouped,
-      timezone:         availability.timezone || "Asia/Kolkata",
+      success: true,
+      slots: grouped,
+      timezone: availability.timezone || "Asia/Kolkata",
       sessionDurations: availability.sessionDurations || [30, 60],
     });
   } catch (err) {
