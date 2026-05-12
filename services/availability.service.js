@@ -136,3 +136,11 @@ const getAvailableSlots = async (mentorId, duration, userId) => {
   };
 };
 
+module.exports = {
+  getMyAvailability,
+  createAvailability,
+  updateAvailability,
+  getMentorAvailability,
+  deleteAvailability,
+  getAvailableSlots,
+};
