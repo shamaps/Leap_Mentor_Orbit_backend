@@ -137,8 +137,8 @@ const getEarningsChart = async (req, res) => {
 const getPayoutHistory = async (req, res) => {
   try {
     const mentorId = req.user._id;
-    const page     = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit    = Math.min(20, parseInt(req.query.limit) || 10);
+    const page     = Math.max(1, Number.parseInt(req.query.page)  || 1);
+    const limit    = Math.min(20, Number.parseInt(req.query.limit) || 10);
     const search   = req.query.search?.trim() || "";
     const skip     = (page - 1) * limit;
 

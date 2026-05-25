@@ -11,8 +11,8 @@ const getMessages = async (req, res) => {
   try {
     const { connectRequestId } = req.params;
     const userId  = req.user._id.toString();
-    const page    = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit   = Math.min(50, parseInt(req.query.limit) || 30);
+    const page    = Math.max(1, Number.parseInt(req.query.page)  || 1);
+    const limit   = Math.min(50, Number.parseInt(req.query.limit) || 30);
     const skip    = (page - 1) * limit;
 
     // ✅ Validate user is part of this session

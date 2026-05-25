@@ -127,7 +127,7 @@ const deleteAvailability = async (req, res) => {
 const getAvailableSlots = async (req, res) => {
   try {
     const { mentorId } = req.params;
-    const duration = parseInt(req.query.duration) || 60;
+    const duration = Number.parseInt(req.query.duration) || 60;
 
     if (![30, 45, 60].includes(duration)) {
       return res.status(400).json({ message: "Duration must be 30, 45, or 60 minutes" });

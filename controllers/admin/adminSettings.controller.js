@@ -124,9 +124,9 @@ const getCommission = async (req, res) => {
 const updateCommission = async (req, res) => {
   try {
     const { commissionRate } = req.body;
-    const rate = parseFloat(commissionRate);
+    const rate = Number.parseFloat(commissionRate);
 
-    if (isNaN(rate) || rate < 0 || rate > 100) {
+    if (Number.isNaN(rate) || rate < 0 || rate > 100) {
       return res.status(400).json({ message: "Commission rate must be between 0 and 100." });
     }
 

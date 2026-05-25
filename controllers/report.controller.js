@@ -15,7 +15,10 @@ const uploadToCloudinary = (buffer, mimetype) =>
         allowed_formats:  ["jpg", "jpeg", "png", "webp"],
         transformation:   [{ quality: "auto", fetch_format: "auto" }],
       },
-      (error, result) => (error ? reject(error) : resolve(result))
+      (error, result) => {
+        if (error) return reject(new Error(error.message ?? JSON.stringify(error)));
+        resolve(result);
+      }
     );
     stream.end(buffer);
   });

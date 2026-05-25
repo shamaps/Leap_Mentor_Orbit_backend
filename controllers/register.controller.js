@@ -1,29 +1,22 @@
-// controllers/auth/register.controller.js
+// controllers/register.controller.js
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
-const { signToken, sanitizeUser, validateRoles } = require("../utils/auth.utils");
+const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.utils"); // ← swap signToken → issueTokens
 
 const register = async (req, res) => {
   try {
     const { name, email, password, roles, termsAccepted } = req.body;
 
-    if (!roles || roles.length !== 1) {
-      return res.status(400).json({
-        message: "Exactly one role is required.",
-      });
-    }
-
-    if (!name || !email || !password) {
+    if (!roles || roles.length !== 1)
+      return res.status(400).json({ message: "Exactly one role is required." });
+    if (!name || !email || !password)
       return res.status(400).json({ message: "name, email, password are required" });
-    }
-    if (!Array.isArray(roles) || roles.length === 0) {
+    if (!Array.isArray(roles) || roles.length === 0)
       return res.status(400).json({ message: "roles must be an array with at least one role" });
-    }
-    if (termsAccepted !== true) {
+    if (termsAccepted !== true)
       return res.status(400).json({ message: "You must accept terms to continue" });
-    }
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const { valid, message, uniqueRoles } = validateRoles(roles);
@@ -39,90 +32,56 @@ const register = async (req, res) => {
         existing.roles = newRoles;
         await existing.save();
 
-        // ✅ Create wallet for each newly added role
         const addedRoles = uniqueRoles.filter(r => !existing.roles.includes(r));
         for (const role of addedRoles) {
           const existingWallet = await Wallet.findOne({ user: existing._id, role });
           if (!existingWallet) {
             const isMentee = role === "mentee";
-            const startingBalance = isMentee ? 500 : 0;
-
-            const wallet = await Wallet.create({
-              user: existing._id,
-              role,
-              balance: startingBalance,
-              escrow: 0,
-            });
+            const wallet = await Wallet.create({ user: existing._id, role, balance: isMentee ? 500 : 0, escrow: 0 });
             console.log(`Wallet created for existing user — role: ${role}`, wallet);
-
-            // ✅ Log welcome bonus for mentee
             if (isMentee) {
-              const tx = await Transaction.create({
-                user: existing._id,
-                type: "credit",
-                amount: 500,
-                description: "Welcome bonus — 500 points to get started",
-                balanceAfter: 500,
-              });
-              console.log("Transaction created:", tx);
+              await Transaction.create({ user: existing._id, type: "credit", amount: 500, description: "Welcome bonus — 500 points to get started", balanceAfter: 500 });
             }
           }
         }
       }
 
-      const token = signToken(existing._id);
-      return res.status(400).json({
-        message: "This email is already registered. Please login instead.",
-      })
-  }
+      // ← REMOVED stray signToken call that was here doing nothing
+      return res.status(400).json({ message: "This email is already registered. Please login instead." });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
-  const user = await User.create({
-    name: String(name).trim(),
-    email: normalizedEmail,
-    password: hashed,
-    roles: uniqueRoles,
-    isEmailVerified: false,
-    termsAccepted: true,
-    termsAcceptedAt: new Date(),
-  });
-
-  // ✅ Create wallet per role for new user
-  for (const role of uniqueRoles) {
-    const isMentee = role === "mentee";
-    const startingBalance = isMentee ? 500 : 0;
-
-    const wallet = await Wallet.create({
-      user: user._id,
-      role,
-      balance: startingBalance,
-      escrow: 0,
+    const user = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      password: hashed,
+      roles: uniqueRoles,
+      isEmailVerified: false,
+      termsAccepted: true,
+      termsAcceptedAt: new Date(),
     });
-    console.log(`Wallet created — role: ${role}`, wallet);
 
-    if (isMentee) {
-      const tx = await Transaction.create({
-        user: user._id,
-        type: "credit",
-        amount: 500,
-        description: "Welcome bonus — 500 points to get started",
-        balanceAfter: 500,
-      });
-      console.log("Transaction created:", tx);
+    for (const role of uniqueRoles) {
+      const isMentee = role === "mentee";
+      const wallet = await Wallet.create({ user: user._id, role, balance: isMentee ? 500 : 0, escrow: 0 });
+      console.log(`Wallet created — role: ${role}`, wallet);
+      if (isMentee) {
+        await Transaction.create({ user: user._id, type: "credit", amount: 500, description: "Welcome bonus — 500 points to get started", balanceAfter: 500 });
+      }
     }
+
+    // ← was: const token = signToken(user._id); return res.json({ token, ... })
+    const accessToken = await issueTokens(res, user._id);
+    return res.status(201).json({
+      message: "Registered successfully",
+      accessToken,
+      user: sanitizeUser(user),
+      isNewUser: true,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
-
-  const token = signToken(user._id);
-  return res.status(201).json({
-    message: "Registered successfully",
-    token,
-    user: sanitizeUser(user),
-    isNewUser: true,
-  });
-
-} catch (err) {
-  return res.status(500).json({ message: err.message });
-}
 };
 
 module.exports = { register };

@@ -1,50 +1,29 @@
-const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const { signToken, sanitizeUser } = require("../utils/auth.utils");
+// backend/controllers/login.controller.js
+const AppError = require("../utils/AppError");
+const loginService = require("../services/login.service");
+const { issueTokens,sanitizeUser } = require("../utils/auth.utils");
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const result = await loginService.login(req.body.email, req.body.password);
+    // result = { token (old 7d jwt), user }
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
-    }
+    // Replace old token with cookie-based pair
+    const accessToken = await issueTokens(res, result.user._id);
 
-    const normalizedEmail = String(email).toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail })
-      .setOptions({ ignoreIsDeleted: true }); // 👈 bypass middleware so blocked users are found
-
-    if (!user || !user.password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // 👇 NEW: block check — must be after user is found, before password compare
-    if (user.isDeleted) {
-      return res.status(403).json({
-        message: "Your account has been blocked. Please contact support.",
-      });
-    }
-
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        message: "Please verify your email before logging in.",
-        isEmailVerified: false,
-        email: user.email,
-        });
-    } 
-
-    const token = signToken(user._id);
     return res.json({
       message: "Login successful",
-      token,
-      user: sanitizeUser(user),
+      accessToken,           // ← was "token", now "accessToken" (15min)
+      user: sanitizeUser(result.user), 
     });
-
   } catch (err) {
+    if (err instanceof AppError) {
+      const body = { message: err.message };
+      // Pass through extra fields set on the unverified-email error
+      if (err.isEmailVerified !== undefined) body.isEmailVerified = err.isEmailVerified;
+      if (err.email) body.email = err.email;
+      return res.status(err.status).json(body);
+    }
     return res.status(500).json({ message: err.message });
   }
 };

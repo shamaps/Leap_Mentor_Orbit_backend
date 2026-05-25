@@ -8,7 +8,7 @@ const uploadToCloudinary = (buffer, options) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       { ...options },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) return reject(new Error(error.message ?? JSON.stringify(error)));
         resolve(result);
       }
     );

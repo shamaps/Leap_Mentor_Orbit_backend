@@ -8,7 +8,7 @@ const {
   createTestAdmin,   // ✅ added
 } = require("./helpers/createTestData");
 
-describe("Escrow Payment — POST /api/escrow/pay", () => {
+describe("Escrow Payment — POST /api/v1/escrow/pay", () => {
 
   // ── Test 1: Successful payment ──────────────────────────────
   test("✅ deducts tokens from mentee and moves to escrow", async () => {
@@ -38,7 +38,7 @@ describe("Escrow Payment — POST /api/escrow/pay", () => {
 
     // ── ACT ───────────────────────────────────────────────────
     const res = await request(app)
-      .post("/api/escrow/pay")
+      .post("/api/v1/escrow/pay")
       .set("Authorization", `Bearer ${token}`)
       .send({
         connectRequestId: connect._id,
@@ -85,7 +85,7 @@ describe("Escrow Payment — POST /api/escrow/pay", () => {
 
     // ── ACT ───────────────────────────────────────────────────
     const res = await request(app)
-      .post("/api/escrow/pay")
+      .post("/api/v1/escrow/pay")
       .set("Authorization", `Bearer ${token}`)
       .send({
         connectRequestId: connect._id,
@@ -130,7 +130,7 @@ describe("Escrow Payment — POST /api/escrow/pay", () => {
 
     // ── ACT ───────────────────────────────────────────────────
     const res = await request(app)
-      .post("/api/escrow/pay")
+      .post("/api/v1/escrow/pay")
       .set("Authorization", `Bearer ${token}`)
       .send({
         connectRequestId: connect._id,

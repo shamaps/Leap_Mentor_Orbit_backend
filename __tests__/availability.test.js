@@ -38,9 +38,9 @@ const makeAvailabilityPayload = (dateOverride) => ({
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/availability/me
+// GET /api/v1/availability/me
 // ─────────────────────────────────────────────────────────────
-describe("Availability — GET /api/availability/me", () => {
+describe("Availability — GET /api/v1/availability/me", () => {
 
   test("✅ returns default response if no availability set", async () => {
     const { token } = await createTestUser({
@@ -49,7 +49,7 @@ describe("Availability — GET /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .get("/api/availability/me")
+      .get("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
@@ -73,7 +73,7 @@ describe("Availability — GET /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .get("/api/availability/me")
+      .get("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
@@ -83,16 +83,16 @@ describe("Availability — GET /api/availability/me", () => {
   });
 
   test("❌ returns 401 if no token", async () => {
-    const res = await request(app).get("/api/availability/me");
+    const res = await request(app).get("/api/v1/availability/me");
     expect(res.status).toBe(401);
   });
 
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /api/availability
+// POST /api/v1/availability
 // ─────────────────────────────────────────────────────────────
-describe("Availability — POST /api/availability", () => {
+describe("Availability — POST /api/v1/availability", () => {
 
   test("✅ creates availability successfully", async () => {
     const { user, token } = await createTestUser({
@@ -101,7 +101,7 @@ describe("Availability — POST /api/availability", () => {
     });
 
     const res = await request(app)
-      .post("/api/availability")
+      .post("/api/v1/availability")
       .set("Authorization", `Bearer ${token}`)
       .send(makeAvailabilityPayload());
 
@@ -124,13 +124,13 @@ describe("Availability — POST /api/availability", () => {
 
     // Create first time
     await request(app)
-      .post("/api/availability")
+      .post("/api/v1/availability")
       .set("Authorization", `Bearer ${token}`)
       .send(makeAvailabilityPayload());
 
     // Try to create again
     const res = await request(app)
-      .post("/api/availability")
+      .post("/api/v1/availability")
       .set("Authorization", `Bearer ${token}`)
       .send(makeAvailabilityPayload());
 
@@ -140,7 +140,7 @@ describe("Availability — POST /api/availability", () => {
 
   test("❌ returns 401 if no token", async () => {
     const res = await request(app)
-      .post("/api/availability")
+      .post("/api/v1/availability")
       .send(makeAvailabilityPayload());
 
     expect(res.status).toBe(401);
@@ -149,9 +149,9 @@ describe("Availability — POST /api/availability", () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// PATCH /api/availability/me
+// PATCH /api/v1/availability/me
 // ─────────────────────────────────────────────────────────────
-describe("Availability — PATCH /api/availability/me", () => {
+describe("Availability — PATCH /api/v1/availability/me", () => {
 
   test("✅ updates timezone successfully", async () => {
     const { user, token } = await createTestUser({
@@ -167,7 +167,7 @@ describe("Availability — PATCH /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .patch("/api/availability/me")
+      .patch("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`)
       .send({ timezone: "America/New_York" });
 
@@ -189,7 +189,7 @@ describe("Availability — PATCH /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .patch("/api/availability/me")
+      .patch("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`)
       .send({ sessionDurations: [30, 45, 60] });
 
@@ -205,7 +205,7 @@ describe("Availability — PATCH /api/availability/me", () => {
 
     // No availability created yet — PATCH should upsert
     const res = await request(app)
-      .patch("/api/availability/me")
+      .patch("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`)
       .send({ timezone: "Europe/London" });
 
@@ -220,7 +220,7 @@ describe("Availability — PATCH /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .patch("/api/availability/me")
+      .patch("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`)
       .send({ invalidField: "something" }); // ← not in allowedFields
 
@@ -230,7 +230,7 @@ describe("Availability — PATCH /api/availability/me", () => {
 
   test("❌ returns 401 if no token", async () => {
     const res = await request(app)
-      .patch("/api/availability/me")
+      .patch("/api/v1/availability/me")
       .send({ timezone: "UTC" });
 
     expect(res.status).toBe(401);
@@ -239,9 +239,9 @@ describe("Availability — PATCH /api/availability/me", () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// DELETE /api/availability/me
+// DELETE /api/v1/availability/me
 // ─────────────────────────────────────────────────────────────
-describe("Availability — DELETE /api/availability/me", () => {
+describe("Availability — DELETE /api/v1/availability/me", () => {
 
   test("✅ deletes availability successfully", async () => {
     const { user, token } = await createTestUser({
@@ -257,7 +257,7 @@ describe("Availability — DELETE /api/availability/me", () => {
     });
 
     const res = await request(app)
-      .delete("/api/availability/me")
+      .delete("/api/v1/availability/me")
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
@@ -269,16 +269,16 @@ describe("Availability — DELETE /api/availability/me", () => {
   });
 
   test("❌ returns 401 if no token", async () => {
-    const res = await request(app).delete("/api/availability/me");
+    const res = await request(app).delete("/api/v1/availability/me");
     expect(res.status).toBe(401);
   });
 
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/availability/:mentorId  (public)
+// GET /api/v1/availability/:mentorId  (public)
 // ─────────────────────────────────────────────────────────────
-describe("Availability — GET /api/availability/:mentorId (public)", () => {
+describe("Availability — GET /api/v1/availability/:mentorId (public)", () => {
 
   test("✅ returns mentor availability publicly", async () => {
     const { user } = await createTestUser({
@@ -295,7 +295,7 @@ describe("Availability — GET /api/availability/:mentorId (public)", () => {
 
     // No auth header — public endpoint
     const res = await request(app)
-      .get(`/api/availability/${user._id}`);
+      .get(`/api/v1/availability/${user._id}`);
 
     expect(res.status).toBe(200);
     expect(res.body.timezone).toBe("Asia/Kolkata");
@@ -311,7 +311,7 @@ describe("Availability — GET /api/availability/:mentorId (public)", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${user._id}`);
+      .get(`/api/v1/availability/${user._id}`);
 
     expect(res.status).toBe(404);
     expect(res.body.message).toContain("not set");
@@ -320,9 +320,9 @@ describe("Availability — GET /api/availability/:mentorId (public)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/availability/:mentorId/slots?duration=60
+// GET /api/v1/availability/:mentorId/slots?duration=60
 // ─────────────────────────────────────────────────────────────
-describe("Availability — GET /api/availability/:mentorId/slots", () => {
+describe("Availability — GET /api/v1/availability/:mentorId/slots", () => {
 
   test("✅ returns grouped slots for valid duration", async () => {
     const { user: mentor, token: mentorToken } = await createTestUser({
@@ -348,7 +348,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=60`)
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=60`)
       .set("Authorization", `Bearer ${menteeToken}`);
 
     expect(res.status).toBe(200);
@@ -387,7 +387,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=60`)
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=60`)
       .set("Authorization", `Bearer ${menteeToken}`);
 
     expect(res.status).toBe(200);
@@ -427,7 +427,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=60`)
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=60`)
       .set("Authorization", `Bearer ${menteeToken}`);
 
     expect(res.status).toBe(200);
@@ -453,7 +453,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=999`) // ← invalid
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=999`) // ← invalid
       .set("Authorization", `Bearer ${menteeToken}`);
 
     expect(res.status).toBe(400);
@@ -472,7 +472,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
 
     // No availability created
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=60`)
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=60`)
       .set("Authorization", `Bearer ${menteeToken}`);
 
     expect(res.status).toBe(404);
@@ -485,7 +485,7 @@ describe("Availability — GET /api/availability/:mentorId/slots", () => {
     });
 
     const res = await request(app)
-      .get(`/api/availability/${mentor._id}/slots?duration=60`);
+      .get(`/api/v1/availability/${mentor._id}/slots?duration=60`);
 
     expect(res.status).toBe(401);
   });
