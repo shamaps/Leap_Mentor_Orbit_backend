@@ -37,6 +37,7 @@
   "type": "commonjs",
   "dependencies": {
     "@clerk/backend": "^3.0.1",
+    "@sentry/node": "^10.53.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",

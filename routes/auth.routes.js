@@ -1,7 +1,7 @@
 // routes/auth.routes.js
 const express = require("express");
 const router = express.Router();
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const RefreshToken = require("../models/RefreshToken");
 const {
     signToken,

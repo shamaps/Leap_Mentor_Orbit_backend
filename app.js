@@ -30,7 +30,15 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
+// Sentry request tagging — add after cors middleware
 
+app.use((req, res, next) => {
+  Sentry.withScope((scope) => {
+    scope.setTag("route", req.path);
+    scope.setTag("method", req.method);
+    next();
+  });
+});
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -96,4 +104,6 @@ app.use("/api/v1", v1);
 
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
+const Sentry = require("@sentry/node");
+Sentry.setupExpressErrorHandler(app);
 module.exports = app;

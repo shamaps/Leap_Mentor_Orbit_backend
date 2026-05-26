@@ -1,124 +1,50 @@
 // controllers/adminVerification.controller.js
-const MentorProfile = require("../models/MentorProfile.js");
-const User = require("../models/User.js");
-const { sendMentorVerifiedEmail } = require("../utils/sendNotificationEmail");
+const adminVerificationService = require("../services/adminVerification.service");
+
+const handleError = (res, err, context) => {
+  console.error(`[adminVerification] ${context}:`, err);
+  return res.status(err.statusCode || 500).json({ message: err.message });
+};
 
 const getAllMentorVerifications = async (req, res) => {
   try {
-    const mentorProfiles = await MentorProfile.find({})
-      .populate("user", "name email createdAt")
-      .select(
-        "user verificationStatus phoneNumber resumeDocument workExperienceDocuments " +
-        "profilePicture bio skills currentRole company industry yearsOfExperience " +
-        "languages averageRating totalSessions points"
-      )
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const mentors = mentorProfiles.map((profile) => ({
-      user: profile.user,
-      mentorProfile: {
-        ...profile,
-        user: undefined,
-      },
-    }));
-
-    return res.status(200).json({ mentors, total: mentors.length });
+    const data = await adminVerificationService.getAllMentorVerifications();
+    return res.status(200).json(data);
   } catch (err) {
-    console.error("[adminVerification] getAllMentorVerifications:", err);
-    return res.status(500).json({ message: "Failed to fetch mentor verifications" });
+    return handleError(res, err, "getAllMentorVerifications");
   }
 };
 
 const getMentorVerificationById = async (req, res) => {
   try {
-    const { mentorProfileId } = req.params;
-
-    const profile = await MentorProfile.findById(mentorProfileId)
-      .populate("user", "name email createdAt")
-      .lean();
-
-    if (!profile) {
-      return res.status(404).json({ message: "Mentor profile not found" });
-    }
-
-    return res.status(200).json({
-      user: profile.user,
-      mentorProfile: { ...profile, user: undefined },
-    });
+    const data = await adminVerificationService.getMentorVerificationById(
+      req.params.mentorProfileId
+    );
+    return res.status(200).json(data);
   } catch (err) {
-    console.error("[adminVerification] getMentorVerificationById:", err);
-    return res.status(500).json({ message: "Failed to fetch mentor profile" });
+    return handleError(res, err, "getMentorVerificationById");
   }
 };
 
 const verifyMentor = async (req, res) => {
   try {
-    const { mentorProfileId } = req.params;
-
-    const profile = await MentorProfile.findById(mentorProfileId).populate(
-      "user",
-      "name email"
+    const data = await adminVerificationService.verifyMentor(
+      req.params.mentorProfileId
     );
-
-    if (!profile) {
-      return res.status(404).json({ message: "Mentor profile not found" });
-    }
-
-    if (profile.verificationStatus === "verified") {
-      return res.status(400).json({ message: "Mentor is already verified" });
-    }
-
-    profile.verificationStatus = "verified";
-    await profile.save();
-
-    // ── Send mentor verified email (non-blocking) ──
-    sendMentorVerifiedEmail({
-  mentorName:  profile.user.name,
-  mentorEmail: profile.user.email,
-}).catch((emailErr) => {
-  console.error("❌ sendMentorVerifiedEmail failed:", emailErr.message);
-});
-
-    return res.status(200).json({
-      message: `${profile.user?.name || "Mentor"} has been verified successfully`,
-      mentorProfileId: profile._id,
-      verificationStatus: profile.verificationStatus,
-    });
+    return res.status(200).json(data);
   } catch (err) {
-    console.error("[adminVerification] verifyMentor:", err);
-    return res.status(500).json({ message: "Failed to verify mentor" });
+    return handleError(res, err, "verifyMentor");
   }
 };
 
 const revokeMentorVerification = async (req, res) => {
   try {
-    const { mentorProfileId } = req.params;
-
-    const profile = await MentorProfile.findById(mentorProfileId).populate(
-      "user",
-      "name email"
+    const data = await adminVerificationService.revokeMentorVerification(
+      req.params.mentorProfileId
     );
-
-    if (!profile) {
-      return res.status(404).json({ message: "Mentor profile not found" });
-    }
-
-    if (profile.verificationStatus === "unverified") {
-      return res.status(400).json({ message: "Mentor is already unverified" });
-    }
-
-    profile.verificationStatus = "unverified";
-    await profile.save();
-
-    return res.status(200).json({
-      message: `Verification revoked for ${profile.user?.name || "mentor"}`,
-      mentorProfileId: profile._id,
-      verificationStatus: profile.verificationStatus,
-    });
+    return res.status(200).json(data);
   } catch (err) {
-    console.error("[adminVerification] revokeMentorVerification:", err);
-    return res.status(500).json({ message: "Failed to revoke verification" });
+    return handleError(res, err, "revokeMentorVerification");
   }
 };
 

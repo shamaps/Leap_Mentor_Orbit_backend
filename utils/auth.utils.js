@@ -29,7 +29,7 @@ const setRefreshCookie = (res, refreshToken) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: getRefreshMs(),
-    path: "/",
+    path: "/", path: "/api/v1/auth/refresh",
   });
 };
 

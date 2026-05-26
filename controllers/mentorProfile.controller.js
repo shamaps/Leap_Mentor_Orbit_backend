@@ -1,124 +1,58 @@
 // controllers/mentorProfile.controller.js
-const MentorProfile = require("../models/MentorProfile");
+const mentorProfileService = require("../services/mentorProfile.service");
+
+const handleError = (res, err) =>
+  res.status(err.statusCode || 500).json({ message: err.message });
 
 /**
  * POST /api/mentor-profile
- * Create mentor profile (onboarding form submission)
  */
 const createProfile = async (req, res) => {
   try {
-    const existing = await MentorProfile.findOne({ user: req.user._id });
-    if (existing) {
-      return res.status(409).json({ message: "Profile already exists. Use update instead." });
-    }
-
-    const {
-      currentRole,
-      industry,
-      company,
-      bio,
-      profilePicture,
-      yearsOfExperience,
-      hourlyRate,
-      skills,
-      communicationPreferences,
-      languages,
-      linkedInUrl,
-      portfolioUrl,
-    } = req.body;
-
-    const profile = await MentorProfile.create({
-      user: req.user._id,
-      currentRole,
-      industry,
-      company,
-      bio,
-      profilePicture: profilePicture || "",
-      yearsOfExperience: yearsOfExperience || 0,
-      hourlyRate: hourlyRate || 0,
-      skills: skills || [],
-      communicationPreferences: communicationPreferences || [],
-      languages: languages || ["English"],
-      linkedInUrl: linkedInUrl || "",
-      portfolioUrl: portfolioUrl || "",
-      isProfileComplete: true,
-      isProfilePublished: true,
-    });
-
-    return res.status(201).json({
-      message: "Mentor profile created successfully",
-      profile,
-    });
+    const data = await mentorProfileService.createProfile(req.user._id, req.body);
+    return res.status(201).json(data);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err);
   }
 };
 
 /**
  * GET /api/mentor-profile/me
- * Get logged-in mentor's own profile
  */
 const getMyProfile = async (req, res) => {
   try {
-    const profile = await MentorProfile.findOne({ user: req.user._id })
-      .populate("user", "name email isEmailVerified");
-
-    if (!profile) {
-      return res.status(404).json({
-        message: "Profile not found",
-        isProfileComplete: false,
-      });
-    }
-
-    return res.json(profile);
+    const data = await mentorProfileService.getMyProfile(req.user._id);
+    return res.json(data);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    // Preserve the isProfileComplete: false field from the original 404 response
+    if (err.statusCode === 404) {
+      return res.status(404).json({ message: err.message, isProfileComplete: false });
+    }
+    return handleError(res, err);
   }
 };
 
 /**
  * PUT /api/mentor-profile/me
- * Update logged-in mentor's own profile
  */
 const updateProfile = async (req, res) => {
   try {
-    const profile = await MentorProfile.findOneAndUpdate(
-      { user: req.user._id },
-      { $set: req.body },
-      { new: true, runValidators: true }
-    );
-
-    if (!profile) {
-      return res.status(404).json({ message: "Profile not found" });
-    }
-
-    return res.json({
-      message: "Profile updated successfully",
-      profile,
-    });
+    const data = await mentorProfileService.updateProfile(req.user._id, req.body);
+    return res.json(data);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err);
   }
 };
 
 /**
  * GET /api/mentor-profile/:id
- * Get any mentor's public profile by userId
  */
 const getPublicProfile = async (req, res) => {
   try {
-    const profile = await MentorProfile.findOne({
-      user: req.params.id,
-      isProfilePublished: true,   // ✅ updated field name
-    }).populate("user", "name email");
-
-    if (!profile) {
-      return res.status(404).json({ message: "Mentor profile not found" });
-    }
-
-    return res.json(profile);
+    const data = await mentorProfileService.getPublicProfile(req.params.id);
+    return res.json(data);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err);
   }
 };
 

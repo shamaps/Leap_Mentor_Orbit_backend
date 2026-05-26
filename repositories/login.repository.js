@@ -1,8 +1,14 @@
-// backend/repositories/login.repository.js
 const User = require("../models/User");
+const { logger } = require("@sentry/node");
 
-// ignoreIsDeleted bypasses the soft-delete middleware so blocked users are found
-const findUserByEmail = (email) =>
-    User.findOne({ email }).setOptions({ ignoreIsDeleted: true });
+const findUserByEmail = async (email) => {
+    try {
+        return await User.findOne({ email }).setOptions({ ignoreIsDeleted: true });
+    } catch (err) {
+        // ✅ DB-level failure — rare but important to catch
+        logger.error("DB error in findUserByEmail", { email, error: err.message });
+        throw err;
+    }
+};
 
 module.exports = { findUserByEmail };
