@@ -1,56 +1,83 @@
-// src/middleware/authenticate.js
+// middleware/authenticate.js
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Sentry = require("@sentry/node");
+const { logger } = require("@sentry/node");
+const { maskEmail } = require("../utils/mask");
 
-// ✅ Verifies JWT and attaches fresh user from DB to req.user
 const authenticate = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
-    if (!token) return res.status(401).json({ message: "No token provided" });
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+      logger.warn("Request with no token", {
+        route: req.path,
+        method: req.method,
+      });
+      return res.status(401).json({ message: "No token" });
+    }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Fetch fresh from DB (Bypass the isDeleted filter so we can check it manually!)
-    const user = await User.findById(decoded.id)
-      .select("-password")
-      .setOptions({ ignoreIsDeleted: true }); 
-      
-    if (!user) return res.status(401).json({ message: "User not found" });
-
-    // 🛑 👇 ACTIVE SESSION KILLER 👇 🛑
-    // If the admin blocked them while they were logged in, this stops their next request!
-    if (user.isDeleted) {
-      return res.status(403).json({ 
-        message: "Your account has been blocked by an administrator." 
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      logger.warn("Token valid but user not found", {
+        userId: decoded.id,
+        route: req.path,
       });
+      return res.status(401).json({ message: "User not found" });
     }
 
     req.user = user;
 
-    // ✅ Debug log — remove this once roles issue is confirmed fixed
-    console.log(`🔐 authenticate — user: ${user.email} | roles: ${JSON.stringify(user.roles)}`);
+    // ✅ Masked email — ne***@yopmail.com instead of full email
+    Sentry.setUser({
+      id: user._id.toString(),
+      email: maskEmail(user.email),
+      role: user.role,
+    });
+
+    logger.info("Authenticated request", {
+      userId: user._id.toString(),
+      role: user.role,
+      email: maskEmail(user.email), // ✅ masked
+      route: req.path,
+      method: req.method,
+    });
 
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    if (err.name === "TokenExpiredError") {
+      logger.warn("Expired token used", {
+        route: req.path,
+        method: req.method,
+      });
+      return res.status(401).json({ message: "Token expired" });
+    }
+
+    logger.warn("Invalid token attempt", {
+      route: req.path,
+      method: req.method,
+      error: err.message,
+    });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
-// ✅ Role guard — use after authenticate
 const requireRole = (...roles) => {
   return (req, res, next) => {
     const userRoles = req.user?.roles || [];
-
-    // ✅ Debug log — shows exactly what role check is happening
-    console.log(`🛡️  requireRole — required: [${roles}] | user has: [${userRoles}]`);
-
     const hasRole = roles.some((role) => userRoles.includes(role));
     if (!hasRole) {
-      return res.status(403).json({
-        message: "Access denied: insufficient role",
-        required: roles,       
-        userRoles,             
+      logger.warn("Insufficient role access attempt", {
+        userId: req.user?._id?.toString(),
+        email: maskEmail(req.user?.email || ""),  // ✅ masked
+        userRoles,
+        requiredRoles: roles,
+        route: req.path,
+        method: req.method,
       });
+      return res.status(403).json({ message: "Access denied: insufficient role" });
     }
     next();
   };

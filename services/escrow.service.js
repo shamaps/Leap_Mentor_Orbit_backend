@@ -1,129 +1,155 @@
 // backend/services/escrow.service.js
 const mongoose = require("mongoose");
-const repo     = require("../repositories/escrow.repository");
-const sendInvoiceEmail              = require("../utils/sendInvoiceEmail");
-const { sendCalendarInvite }        = require("../utils/sendCalendarInvite");
-const { sendPaymentReceivedEmail }  = require("../utils/sendNotificationEmail");
+const repo = require("../repositories/escrow.repository");
+const AppError = require("../utils/AppError");
+const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
+const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
+const { sendPaymentReceivedEmail } = require("../utils/sendNotificationEmail");
+const { logger } = require("@sentry/node");
 
-// ─────────────────────────────────────────────────────────────
-// pay — lock tokens into escrow
-// ─────────────────────────────────────────────────────────────
-const pay = async ({ connectRequestId, sessionRate, sessionCount, menteeId }) => {
-  // Validate input
-  if (!connectRequestId)                  throw Object.assign(new Error("connectRequestId is required"), { status: 400 });
-  if (!sessionRate  || sessionRate  < 1)  throw Object.assign(new Error("sessionRate must be at least 1"), { status: 400 });
-  if (!sessionCount || sessionCount < 1)  throw Object.assign(new Error("sessionCount must be at least 1"), { status: 400 });
-
-  // Fetch admin outside transaction (read-only)
+const requireAdmin = async () => {
   const admin = await repo.findActiveAdmin();
-  if (!admin) throw Object.assign(new Error("Platform admin not found. Contact support."), { status: 500 });
+  if (!admin) throw new AppError(500, "Platform admin not found. Contact support.");
+  return admin;
+};
 
+const dispatchPaySideEffects = (connectRequest, { sessionRate, sessionCount, totalAmount, mentorAmount, commissionRate }) => {
+  sendInvoiceEmail({
+    connectRequestId: connectRequest._id.toString(),
+    menteeName: connectRequest.mentee.name,
+    menteeEmail: connectRequest.mentee.email,
+    mentorName: connectRequest.mentor.name,
+    mentorEmail: connectRequest.mentor.email,
+    selectedSlots: connectRequest.selectedSlots,
+    confirmedSlot: connectRequest.confirmedSlot,
+    sessionRate,
+    sessionCount,
+    totalAmount,
+    paidAt: connectRequest.paidAt,
+  })
+    .then(() => logger.info("Invoice email sent", { connectRequestId: connectRequest._id.toString() }))
+    .catch((err) => logger.error("Invoice email failed", { error: err.message, connectRequestId: connectRequest._id.toString() }));
+
+  sendPaymentReceivedEmail({
+    mentorName: connectRequest.mentor.name,
+    mentorEmail: connectRequest.mentor.email,
+    menteeName: connectRequest.mentee.name,
+    slots: connectRequest.selectedSlots,
+    sessionRate,
+    sessionCount,
+    mentorPayout: mentorAmount,
+    commissionRate,
+  }).catch((err) => logger.error("Payment received email failed", { error: err.message }));
+
+  repo.findMentorTimezone(connectRequest.mentor._id)
+    .then((availability) =>
+      sendCalendarInvite({
+        requestId: connectRequest._id.toString(),
+        mentorName: connectRequest.mentor.name,
+        mentorEmail: connectRequest.mentor.email,
+        menteeName: connectRequest.mentee.name,
+        menteeEmail: connectRequest.mentee.email,
+        slots: connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({ date, startTime, endTime })),
+        timezone: availability?.timezone || "Asia/Kolkata",
+        message: connectRequest.message || "",
+      })
+    )
+    .then(() => logger.info("Calendar invite sent", { connectRequestId: connectRequest._id.toString() }))
+    .catch((err) => logger.error("Calendar invite failed", { error: err.message }));
+};
+
+// PAY
+const pay = async ({ connectRequestId, sessionRate, sessionCount, menteeId }) => {
+  if (!connectRequestId) throw new AppError(400, "connectRequestId is required");
+  if (!sessionRate || sessionRate < 1) throw new AppError(400, "sessionRate must be at least 1");
+  if (!sessionCount || sessionCount < 1) throw new AppError(400, "sessionCount must be at least 1");
+
+  const admin = await requireAdmin();
   const commissionRate = admin.commissionRate ?? 20;
-  const mentorAmount   = sessionRate * sessionCount;
-  const platformFee    = Math.ceil((mentorAmount * commissionRate) / 100);
-  const totalAmount    = mentorAmount + platformFee;
+  const mentorAmount = sessionRate * sessionCount;
+  const platformFee = Math.ceil((mentorAmount * commissionRate) / 100);
+  const totalAmount = mentorAmount + platformFee;
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // Fetch & validate connect request
     const connectRequest = await repo.findConnectRequestById(connectRequestId, session);
-    if (!connectRequest)
-      throw Object.assign(new Error("Connect request not found"), { status: 404 });
+
+    if (!connectRequest) throw new AppError(404, "Connect request not found");
     if (connectRequest.mentee._id.toString() !== menteeId.toString())
-      throw Object.assign(new Error("Not authorized to pay for this request"), { status: 403 });
+      throw new AppError(403, "Not authorized to pay for this request");
     if (connectRequest.status !== "accepted")
-      throw Object.assign(new Error(`Payment only allowed on accepted requests. Current status: ${connectRequest.status}`), { status: 400 });
+      throw new AppError(400, `Payment only allowed on accepted requests. Current status: ${connectRequest.status}`);
     if (connectRequest.paymentStatus === "paid")
-      throw Object.assign(new Error("Payment already made for this session"), { status: 409 });
+      throw new AppError(409, "Payment already made for this session");
 
-    // Fetch & validate mentee wallet
     const menteeWallet = await repo.findWalletByUser(menteeId, session);
-    if (!menteeWallet)
-      throw Object.assign(new Error("Mentee wallet not found"), { status: 404 });
-    if (menteeWallet.balance < totalAmount)
-      throw Object.assign(
-        new Error(`Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`),
-        { status: 400, balance: menteeWallet.balance, required: totalAmount }
-      );
 
-    // Deduct from balance → escrow
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
+    if (menteeWallet.balance < totalAmount)
+      throw new AppError(400, `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`);
+
     menteeWallet.balance -= totalAmount;
-    menteeWallet.escrow  += totalAmount;
+    menteeWallet.escrow += totalAmount;
     await repo.saveWallet(menteeWallet, session);
 
-    // Snapshot commission on connect request
     Object.assign(connectRequest, {
-      sessionRate,
-      sessionCount,
-      totalAmount,
-      commissionRate,
-      commissionAmount: platformFee,
-      mentorPayout:     mentorAmount,
-      paymentStatus:    "paid",
-      status:           "ongoing",
-      paidAt:           new Date(),
+      sessionRate, sessionCount, totalAmount, commissionRate,
+      commissionAmount: platformFee, mentorPayout: mentorAmount,
+      paymentStatus: "paid", status: "ongoing", paidAt: new Date(),
     });
     await repo.saveConnectRequest(connectRequest, session);
 
-    // Log escrow_hold transaction
-    await repo.createTransactions(
-      [{
-        user:           menteeId,
-        type:           "escrow_hold",
-        amount:         totalAmount,
-        connectRequest: connectRequest._id,
-        description:    `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens + ${commissionRate}% platform fee`,
-        balanceAfter:   menteeWallet.balance,
-      }],
-      session
-    );
+    await repo.createTransactions([{
+      user: menteeId,
+      type: "escrow_hold",
+      amount: totalAmount,
+      connectRequest: connectRequest._id,
+      description: `Escrow hold — ${sessionCount} session(s) × ${sessionRate} tokens + ${commissionRate}% platform fee`,
+      balanceAfter: menteeWallet.balance,
+    }], session);
 
     await session.commitTransaction();
 
-    // Fire-and-forget side effects
-    _sendPayInvoiceEmail(connectRequest, { sessionRate, sessionCount, totalAmount, mentorAmount, commissionRate });
-
-    return {
+    logger.info("Escrow pay committed", {
+      menteeId: menteeId.toString(),
+      connectRequestId,
       mentorAmount,
       platformFee,
-      totalAmount,
       commissionRate,
-      balance:       menteeWallet.balance,
-      escrow:        menteeWallet.escrow,
-      paymentStatus: "paid",
-      status:        "ongoing",
-    };
+      totalAmount,
+      balanceAfter: menteeWallet.balance,
+    });
 
+    dispatchPaySideEffects(connectRequest, { sessionRate, sessionCount, totalAmount, mentorAmount, commissionRate });
+
+    return { mentorAmount, platformFee, totalAmount, commissionRate, balance: menteeWallet.balance, escrow: menteeWallet.escrow, paymentStatus: "paid", status: "ongoing" };
   } catch (err) {
     await session.abortTransaction();
+    logger.error("Escrow pay failed — transaction aborted", { error: err.message, connectRequestId, menteeId: menteeId?.toString() });
     throw err;
   } finally {
     session.endSession();
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// release — settle escrow to mentor + platform
-// ─────────────────────────────────────────────────────────────
+// RELEASE
 const release = async ({ requestId, menteeId }) => {
-  const admin = await repo.findActiveAdmin();
-  if (!admin) throw Object.assign(new Error("Platform admin not found. Contact support."), { status: 500 });
-
+  const admin = await requireAdmin();
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const connectRequest = await repo.findConnectRequestRaw(requestId, session);
-    if (!connectRequest)
-      throw Object.assign(new Error("Connect request not found"), { status: 404 });
+
+    if (!connectRequest) throw new AppError(404, "Connect request not found");
     if (connectRequest.mentee.toString() !== menteeId.toString())
-      throw Object.assign(new Error("Only the mentee can confirm session completion"), { status: 403 });
+      throw new AppError(403, "Only the mentee can confirm session completion");
     if (connectRequest.status !== "ongoing")
-      throw Object.assign(new Error(`Release only allowed on ongoing sessions. Current status: ${connectRequest.status}`), { status: 400 });
+      throw new AppError(400, `Release only allowed on ongoing sessions. Current status: ${connectRequest.status}`);
     if (connectRequest.paymentStatus !== "paid")
-      throw Object.assign(new Error("No escrowed payment found for this session"), { status: 400 });
+      throw new AppError(400, "No escrowed payment found for this session");
 
     const { totalAmount, mentorPayout, commissionAmount, commissionRate, mentor: mentorId } = connectRequest;
 
@@ -132,304 +158,281 @@ const release = async ({ requestId, menteeId }) => {
       repo.findWalletByUser(mentorId, session),
     ]);
 
-    if (!menteeWallet) throw Object.assign(new Error("Mentee wallet not found"), { status: 404 });
-    if (!mentorWallet) throw Object.assign(new Error("Mentor wallet not found"), { status: 404 });
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
+    if (!mentorWallet) throw new AppError(404, "Mentor wallet not found");
     if (menteeWallet.escrow < totalAmount)
-      throw Object.assign(new Error("Escrow balance mismatch. Contact support."), { status: 400 });
+      throw new AppError(400, "Escrow balance mismatch. Contact support.");
 
-    // Settle wallets
-    menteeWallet.escrow  -= totalAmount;
+    menteeWallet.escrow -= totalAmount;
     mentorWallet.balance += mentorPayout;
 
     await repo.saveWallet(menteeWallet, session);
     await repo.saveWallet(mentorWallet, session);
-
     await session.commitTransaction();
 
-    // Credit admin outside session (AdminUser not in replica set)
     await repo.creditAdmin(admin._id, commissionAmount);
-
-    // Mark complete
-    connectRequest.status      = "completed";
+    connectRequest.status = "completed";
     connectRequest.completedAt = new Date();
     await repo.saveConnectRequest(connectRequest);
-
-    // Increment mentor session count
     await repo.incrementMentorSessions(mentorId);
 
-    // Log transactions
     await repo.createTransactions([
-      {
-        user:           menteeId,
-        type:           "escrow_release",
-        amount:         totalAmount,
-        connectRequest: connectRequest._id,
-        description:    "Escrow released on session completion",
-        balanceAfter:   menteeWallet.escrow,
-      },
-      {
-        user:           mentorId,
-        type:           "commission_deduct",
-        amount:         commissionAmount,
-        connectRequest: connectRequest._id,
-        description:    `Platform fee (${commissionRate}%) collected`,
-        balanceAfter:   mentorWallet.balance,
-      },
-      {
-        user:           mentorId,
-        type:           "mentor_payout",
-        amount:         mentorPayout,
-        connectRequest: connectRequest._id,
-        description:    "Session payout — full rate received",
-        balanceAfter:   mentorWallet.balance,
-      },
+      { user: menteeId, type: "escrow_release", amount: totalAmount, connectRequest: connectRequest._id, description: "Escrow released on session completion", balanceAfter: menteeWallet.escrow },
+      { user: mentorId, type: "commission_deduct", amount: commissionAmount, connectRequest: connectRequest._id, description: `Platform fee (${commissionRate}%) collected`, balanceAfter: mentorWallet.balance },
+      { user: mentorId, type: "mentor_payout", amount: mentorPayout, connectRequest: connectRequest._id, description: "Session payout — full rate received", balanceAfter: mentorWallet.balance },
     ]);
 
-    return {
+    logger.info("Escrow release committed", {
+      requestId,
+      menteeId: menteeId.toString(),
+      mentorId: mentorId.toString(),
       totalAmount,
-      commissionRate,
       commissionAmount,
+      commissionRate,
       mentorPayout,
-      menteeEscrow: menteeWallet.escrow,
-      status:       "completed",
-    };
+    });
 
+    return { totalAmount, commissionRate, commissionAmount, mentorPayout, menteeEscrow: menteeWallet.escrow, status: "completed" };
   } catch (err) {
-    try { await session.abortTransaction(); } catch (_) {}
+    try { await session.abortTransaction(); } catch (abortErr) {
+      logger.warn("abortTransaction failed during release", { error: abortErr.message });
+    }
+    logger.error("Escrow release failed", { error: err.message, requestId, menteeId: menteeId?.toString() });
     throw err;
   } finally {
     session.endSession();
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// refund — return ALL escrowed tokens to mentee (full session cancel)
-// ─────────────────────────────────────────────────────────────
+// REFUND
 const refund = async ({ requestId, userId }) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const connectRequest = await repo.findConnectRequestRaw(requestId, session);
-    if (!connectRequest)
-      throw Object.assign(new Error("Connect request not found"), { status: 404 });
+
+    if (!connectRequest) throw new AppError(404, "Connect request not found");
 
     const isMentee = connectRequest.mentee.toString() === userId.toString();
     const isMentor = connectRequest.mentor.toString() === userId.toString();
 
-    if (!isMentee && !isMentor)
-      throw Object.assign(new Error("Not authorized to refund this session"), { status: 403 });
-    if (connectRequest.paymentStatus !== "paid")
-      throw Object.assign(new Error("No paid escrow found to refund"), { status: 400 });
-    if (connectRequest.status === "completed")
-      throw Object.assign(new Error("Cannot refund a completed session"), { status: 400 });
+    if (!isMentee && !isMentor) throw new AppError(403, "Not authorized to refund this session");
+    if (connectRequest.paymentStatus !== "paid") throw new AppError(400, "No paid escrow found to refund");
+    if (connectRequest.status === "completed") throw new AppError(400, "Cannot refund a completed session");
 
     const { totalAmount, mentee: menteeId } = connectRequest;
-
     const menteeWallet = await repo.findWalletByUser(menteeId, session);
-    if (!menteeWallet)
-      throw Object.assign(new Error("Mentee wallet not found"), { status: 404 });
-    if (menteeWallet.escrow < totalAmount)
-      throw Object.assign(new Error("Escrow balance mismatch. Contact support."), { status: 400 });
 
-    menteeWallet.escrow  -= totalAmount;
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
+    if (menteeWallet.escrow < totalAmount) throw new AppError(400, "Escrow balance mismatch. Contact support.");
+
+    menteeWallet.escrow -= totalAmount;
     menteeWallet.balance += totalAmount;
     await repo.saveWallet(menteeWallet, session);
 
     connectRequest.paymentStatus = "refunded";
-    connectRequest.status        = "rejected";
+    connectRequest.status = "rejected";
     await repo.saveConnectRequest(connectRequest, session);
 
-    await repo.createTransactions(
-      [{
-        user:           menteeId,
-        type:           "escrow_refund",
-        amount:         totalAmount,
-        connectRequest: connectRequest._id,
-        description:    "Full refund — session cancelled (incl. platform fee)",
-        balanceAfter:   menteeWallet.balance,
-      }],
-      session
-    );
+    await repo.createTransactions([{
+      user: menteeId,
+      type: "escrow_refund",
+      amount: totalAmount,
+      connectRequest: connectRequest._id,
+      description: "Full refund — session cancelled (incl. platform fee)",
+      balanceAfter: menteeWallet.balance,
+    }], session);
 
     await session.commitTransaction();
 
-    return {
+    logger.info("Escrow refund committed", {
+      requestId,
+      userId: userId.toString(),
       totalAmount,
-      balance:       menteeWallet.balance,
-      escrow:        menteeWallet.escrow,
-      status:        "rejected",
-      paymentStatus: "refunded",
-    };
+      balanceAfter: menteeWallet.balance,
+    });
 
+    return { totalAmount, balance: menteeWallet.balance, escrow: menteeWallet.escrow, status: "rejected", paymentStatus: "refunded" };
   } catch (err) {
     await session.abortTransaction();
+    logger.error("Escrow refund failed", { error: err.message, requestId, userId: userId?.toString() });
     throw err;
   } finally {
     session.endSession();
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// ✅ NEW — refundSlot — partial refund for a single cancelled slot
-// Called automatically from cancelSlot in session.controller.js
-// Does NOT change connectRequest.paymentStatus or status —
-// the session stays "ongoing" with remaining slots intact.
-// ─────────────────────────────────────────────────────────────
+// REFUND SLOT
 const refundSlot = async ({ connectRequestId, slotIndex, cancelledBy }) => {
   const mongoSession = await mongoose.startSession();
   mongoSession.startTransaction();
 
   try {
     const connectRequest = await repo.findConnectRequestRaw(connectRequestId, mongoSession);
-    if (!connectRequest)
-      throw Object.assign(new Error("Connect request not found"), { status: 404 });
 
-    if (connectRequest.paymentStatus !== "paid")
-      throw Object.assign(new Error("No paid escrow found for this session"), { status: 400 });
+    if (!connectRequest) throw new AppError(404, "Connect request not found");
+    if (connectRequest.paymentStatus !== "paid") throw new AppError(400, "No paid escrow found for this session");
 
     const { totalAmount, sessionCount, mentee: menteeId } = connectRequest;
 
-    // Need sessionCount to calculate per-slot value
-    if (!sessionCount || sessionCount < 1)
-      throw Object.assign(new Error("Session count missing on connect request"), { status: 400 });
+    if (!sessionCount || sessionCount < 1) throw new AppError(400, "Session count missing on connect request");
 
-    // Per-slot refund = totalAmount ÷ sessionCount
-    // Math.floor — platform keeps fractional tokens (no over-refund)
     const perSlotRefund = Math.floor(totalAmount / sessionCount);
-
-    if (perSlotRefund < 1)
-      throw Object.assign(new Error("Slot refund amount is too small to process"), { status: 400 });
+    if (perSlotRefund < 1) throw new AppError(400, "Slot refund amount is too small to process");
 
     const menteeWallet = await repo.findWalletByUser(menteeId, mongoSession);
-    if (!menteeWallet)
-      throw Object.assign(new Error("Mentee wallet not found"), { status: 404 });
-    if (menteeWallet.escrow < perSlotRefund)
-      throw Object.assign(new Error("Escrow balance too low for slot refund. Contact support."), { status: 400 });
 
-    // Move tokens: escrow → balance (instant refund)
-    menteeWallet.escrow  -= perSlotRefund;
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
+    if (menteeWallet.escrow < perSlotRefund) throw new AppError(400, "Escrow balance too low for slot refund. Contact support.");
+
+    menteeWallet.escrow -= perSlotRefund;
     menteeWallet.balance += perSlotRefund;
     await repo.saveWallet(menteeWallet, mongoSession);
 
-    // Log the partial refund transaction
-    await repo.createTransactions(
-      [{
-        user:           menteeId,
-        type:           "escrow_refund",
-        amount:         perSlotRefund,
-        connectRequest: connectRequest._id,
-        description:    `Slot #${slotIndex + 1} cancelled by ${cancelledBy} — partial refund of ${perSlotRefund} tokens`,
-        balanceAfter:   menteeWallet.balance,
-      }],
-      mongoSession
-    );
+    await repo.createTransactions([{
+      user: menteeId,
+      type: "escrow_refund",
+      amount: perSlotRefund,
+      connectRequest: connectRequest._id,
+      description: `Slot #${slotIndex + 1} cancelled by ${cancelledBy} — partial refund of ${perSlotRefund} tokens`,
+      balanceAfter: menteeWallet.balance,
+    }], mongoSession);
 
     await mongoSession.commitTransaction();
 
-    return {
-      refundedAmount: perSlotRefund,
-      balance:        menteeWallet.balance,
-      escrow:         menteeWallet.escrow,
-    };
+    logger.info("Slot refund committed", {
+      connectRequestId,
+      slotIndex,
+      cancelledBy,
+      perSlotRefund,
+      balanceAfter: menteeWallet.balance,
+    });
 
+    return { refundedAmount: perSlotRefund, balance: menteeWallet.balance, escrow: menteeWallet.escrow };
   } catch (err) {
     await mongoSession.abortTransaction();
+    logger.error("Slot refund failed", { error: err.message, connectRequestId, slotIndex, cancelledBy });
     throw err;
   } finally {
     mongoSession.endSession();
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// getStatus — fetch escrow state for a connect request
-// ─────────────────────────────────────────────────────────────
+// GET STATUS
 const getStatus = async ({ requestId, userId }) => {
   const connectRequest = await repo.findConnectRequestByIdLean(requestId);
-  if (!connectRequest)
-    throw Object.assign(new Error("Connect request not found"), { status: 404 });
+
+  if (!connectRequest) throw new AppError(404, "Connect request not found");
 
   const isMentee = connectRequest.mentee.toString() === userId.toString();
   const isMentor = connectRequest.mentor.toString() === userId.toString();
-  if (!isMentee && !isMentor)
-    throw Object.assign(new Error("Not authorized to view this session"), { status: 403 });
 
-  const admin        = await repo.findActiveAdmin();
+  if (!isMentee && !isMentor) throw new AppError(403, "Not authorized to view this session");
+
+  const admin = await repo.findActiveAdmin();
   const commissionRate = admin?.commissionRate ?? 20;
-
   const menteeWallet = await repo.findWalletByUserLean(connectRequest.mentee);
 
   return {
-    status:        connectRequest.status,
+    status: connectRequest.status,
     paymentStatus: connectRequest.paymentStatus,
-    sessionRate:   connectRequest.sessionRate,
-    sessionCount:  connectRequest.sessionCount,
-    totalAmount:   connectRequest.totalAmount,
-    paidAt:        connectRequest.paidAt,
-    completedAt:   connectRequest.completedAt,
+    sessionRate: connectRequest.sessionRate,
+    sessionCount: connectRequest.sessionCount,
+    totalAmount: connectRequest.totalAmount,
+    paidAt: connectRequest.paidAt,
+    completedAt: connectRequest.completedAt,
     confirmedSlot: connectRequest.confirmedSlot,
     commissionRate,
-    wallet: menteeWallet
-      ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow }
-      : null,
+    wallet: menteeWallet ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow } : null,
   };
 };
 
-// ─────────────────────────────────────────────────────────────
-// getMyWallet — return caller's wallet balances
-// ─────────────────────────────────────────────────────────────
+// GET MY WALLET
 const getMyWallet = async (userId) => {
   const wallet = await repo.findWalletByUserLean(userId);
-  if (!wallet) throw Object.assign(new Error("Wallet not found"), { status: 404 });
+  if (!wallet) throw new AppError(404, "Wallet not found");
   return { balance: wallet.balance, escrow: wallet.escrow };
 };
 
-// ─────────────────────────────────────────────────────────────
-// Private helpers — fire-and-forget emails / calendar
-// ─────────────────────────────────────────────────────────────
-const _sendPayInvoiceEmail = (connectRequest, { sessionRate, sessionCount, totalAmount, mentorAmount, commissionRate }) => {
-  sendInvoiceEmail({
-    connectRequestId: connectRequest._id.toString(),
-    menteeName:       connectRequest.mentee.name,
-    menteeEmail:      connectRequest.mentee.email,
-    mentorName:       connectRequest.mentor.name,
-    mentorEmail:      connectRequest.mentor.email,
-    selectedSlots:    connectRequest.selectedSlots,
-    confirmedSlot:    connectRequest.confirmedSlot,
-    sessionRate,
-    sessionCount,
-    totalAmount,
-    paidAt:           connectRequest.paidAt,
-  })
-    .then(() => console.log(`✅ Invoice email sent to ${connectRequest.mentee.email}`))
-    .catch((err) => console.error("❌ Invoice email failed:", err.message));
-
-  sendPaymentReceivedEmail({
-    mentorName:    connectRequest.mentor.name,
-    mentorEmail:   connectRequest.mentor.email,
-    menteeName:    connectRequest.mentee.name,
-    slots:         connectRequest.selectedSlots,
-    sessionRate,
-    sessionCount,
-    mentorPayout:  mentorAmount,
-    commissionRate,
-  }).catch((err) => console.error("❌ Payment received email failed:", err.message));
-
-  repo.findMentorTimezone(connectRequest.mentor._id)
-    .then((availability) =>
-      sendCalendarInvite({
-        requestId:   connectRequest._id.toString(),
-        mentorName:  connectRequest.mentor.name,
-        mentorEmail: connectRequest.mentor.email,
-        menteeName:  connectRequest.mentee.name,
-        menteeEmail: connectRequest.mentee.email,
-        slots:       connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({ date, startTime, endTime })),
-        timezone:    availability?.timezone || "Asia/Kolkata",
-        message:     connectRequest.message || "",
-      })
-    )
-    .then(() => console.log(`✅ Calendar invite sent to ${connectRequest.mentee.email}`))
-    .catch((err) => console.error("❌ Calendar invite failed:", err.message));
+// GET COMMISSION RATE
+const getCommissionRate = async () => {
+  const admin = await repo.findActiveAdmin();
+  if (admin?.commissionRate == null) throw new AppError(404, "Commission rate not configured");
+  return { commissionRate: admin.commissionRate };
 };
 
-module.exports = { pay, release, refund, refundSlot, getStatus, getMyWallet };
+// PAY ADDITIONAL
+const payAdditional = async ({ connectRequestId, sessionRate, slotId, menteeId }) => {
+  if (!connectRequestId || !sessionRate || !slotId)
+    throw new AppError(400, "connectRequestId, sessionRate, and slotId are required");
+  if (sessionRate < 1) throw new AppError(400, "sessionRate must be at least 1");
+
+  const admin = await requireAdmin();
+  const commissionRate = admin.commissionRate ?? 20;
+  const platformFee = Math.ceil((sessionRate * commissionRate) / 100);
+  const totalAmount = sessionRate + platformFee;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const connectRequest = await repo.findConnectRequestById(connectRequestId, session);
+
+    if (!connectRequest) throw new AppError(404, "Connect request not found");
+    if (connectRequest.mentee._id.toString() !== menteeId.toString()) throw new AppError(403, "Not authorized");
+    if (connectRequest.status !== "ongoing") throw new AppError(400, "Additional payment only allowed on ongoing sessions");
+
+    const additionalSlot = connectRequest.additionalSlots?.id(slotId);
+    if (!additionalSlot) throw new AppError(404, "Additional slot not found");
+    if (additionalSlot.paymentStatus === "paid") throw new AppError(409, "This slot has already been paid for");
+
+    const menteeWallet = await repo.findWalletByUser(menteeId, session);
+
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
+    if (menteeWallet.balance < totalAmount)
+      throw new AppError(400, `Insufficient balance. You have ${menteeWallet.balance} tokens but need ${totalAmount}`);
+
+    menteeWallet.balance -= totalAmount;
+    menteeWallet.escrow += totalAmount;
+    await repo.saveWallet(menteeWallet, session);
+
+    additionalSlot.paymentStatus = "paid";
+    additionalSlot.paidAt = new Date();
+    additionalSlot.sessionRate = sessionRate;
+    additionalSlot.totalAmount = totalAmount;
+    await repo.saveConnectRequest(connectRequest, session);
+
+    await repo.createTransactions([{
+      user: menteeId,
+      type: "escrow_hold",
+      amount: totalAmount,
+      connectRequest: connectRequest._id,
+      description: `Escrow hold — additional session × ${sessionRate} tokens + ${commissionRate}% platform fee`,
+      balanceAfter: menteeWallet.balance,
+    }], session);
+
+    await session.commitTransaction();
+
+    logger.info("Additional escrow payment committed", {
+      menteeId: menteeId.toString(),
+      connectRequestId,
+      slotId,
+      sessionRate,
+      platformFee,
+      commissionRate,
+      totalAmount,
+      balanceAfter: menteeWallet.balance,
+    });
+
+    return { sessionRate, platformFee, totalAmount, commissionRate, balance: menteeWallet.balance, escrow: menteeWallet.escrow, slotId };
+  } catch (err) {
+    await session.abortTransaction();
+    logger.error("Additional escrow payment failed", { error: err.message, connectRequestId, slotId, menteeId: menteeId?.toString() });
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
+module.exports = { pay, payAdditional, release, refund, refundSlot, getStatus, getMyWallet, getCommissionRate };

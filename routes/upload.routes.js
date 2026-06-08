@@ -5,8 +5,8 @@ const multer     = require("multer");
 const { authenticate }          = require("../middleware/authenticate");
 const { upload } = require("../middleware/upload.middleware");
 const { uploadProfilePicture,uploadVerificationDocuments }  = require("../controllers/upload.controller");
-
-// ✅ Separate multer instance — images only, 5MB limit
+const { uploadLimiter } = require("../middleware/rateLimiter");
+//  Separate multer instance — images only, 5MB limit
 const uploadImage = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
@@ -24,6 +24,7 @@ router.post(
   "/profile-picture",
   authenticate,
   uploadImage.single("profilePicture"),
+  uploadLimiter,
   uploadProfilePicture
 );
 
@@ -35,6 +36,7 @@ router.post(
     { name: "resume",             maxCount: 1 },
     { name: "workExperienceDocs", maxCount: 3 },
   ]),
+  uploadLimiter,
   uploadVerificationDocuments
 );
 

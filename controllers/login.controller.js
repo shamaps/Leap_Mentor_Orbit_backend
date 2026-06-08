@@ -1,50 +1,49 @@
-const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const { signToken, sanitizeUser } = require("../utils/auth.utils");
+const AppError = require("../utils/AppError");
+const loginService = require("../services/login.service");
+const { issueTokens, sanitizeUser } = require("../utils/auth.utils");
+const { logger } = require("@sentry/node");
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const result = await loginService.login(req.body.email, req.body.password);
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
-    }
+    const accessToken = await issueTokens(res, result.user._id);
 
-    const normalizedEmail = String(email).toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail })
-      .setOptions({ ignoreIsDeleted: true }); // 👈 bypass middleware so blocked users are found
-
-    if (!user || !user.password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // 👇 NEW: block check — must be after user is found, before password compare
-    if (user.isDeleted) {
-      return res.status(403).json({
-        message: "Your account has been blocked. Please contact support.",
-      });
-    }
-
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        message: "Please verify your email before logging in.",
-        isEmailVerified: false,
-        email: user.email,
-        });
-    } 
-
-    const token = signToken(user._id);
-    return res.json({
-      message: "Login successful",
-      token,
-      user: sanitizeUser(user),
+    // ✅ Successful login
+    logger.info("User logged in successfully", {
+      userId: result.user._id,
+      role: result.user.role,
+      email: result.user.email,
     });
 
+    logger.info("login completed successfully");
+    return res.json({
+      message: "Login successful",
+      accessToken,
+      user: sanitizeUser(result.user),
+    });
   } catch (err) {
+    if (err instanceof AppError) {
+      // ✅ Known errors — warn level
+      logger.warn("Login rejected", {
+        email: req.body.email,
+        reason: err.message,
+        status: err.status,
+        isEmailVerified: err.isEmailVerified,
+      });
+
+      const body = { message: err.message };
+      if (err.isEmailVerified !== undefined) body.isEmailVerified = err.isEmailVerified;
+      if (err.email) body.email = err.email;
+      return res.status(err.status).json(body);
+    }
+
+    // ✅ Unexpected errors — error level
+    logger.error("Unexpected error during login", {
+      email: req.body.email,
+      error: err.message,
+    });
+
     return res.status(500).json({ message: err.message });
   }
 };

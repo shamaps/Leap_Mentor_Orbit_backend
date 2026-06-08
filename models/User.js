@@ -73,5 +73,5 @@ userSchema.pre(/^find/, function (next) {
   this.where({ isDeleted: { $ne: true } });
   next();
 });
-
+userSchema.index({ roles: 1 });
 module.exports = mongoose.model("User", userSchema);

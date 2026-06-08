@@ -1,13 +1,12 @@
 // backend/repositories/escrow.repository.js
-const mongoose       = require("mongoose");
 const ConnectRequest = require("../models/ConnectRequest");
-const Wallet         = require("../models/Wallet");
-const Transaction    = require("../models/Transaction");
-const AdminUser      = require("../models/AdminUser");
-const Availability   = require("../models/Availability");
-const MentorProfile  = require("../models/MentorProfile");
+const Wallet = require("../models/Wallet");
+const Transaction = require("../models/Transaction");
+const AdminUser = require("../models/AdminUser");
+const Availability = require("../models/Availability");
+const MentorProfile = require("../models/MentorProfile");
 
-// ─── Admin 
+// ─── Admin ────────────────────────────────────────────────────
 const findActiveAdmin = () =>
   AdminUser.findOne({ isActive: true }).select("commissionRate walletBalance");
 
@@ -32,7 +31,7 @@ const findConnectRequestRaw = (id, session) =>
 const saveConnectRequest = (connectRequest, session) =>
   connectRequest.save(session ? { session } : undefined);
 
-// ─── Wallet 
+// ─── Wallet ───────────────────────────────────────────────────
 const findWalletByUser = (userId, session) =>
   Wallet.findOne({ user: userId }).session(session);
 
@@ -42,15 +41,15 @@ const findWalletByUserLean = (userId) =>
 const saveWallet = (wallet, session) =>
   wallet.save(session ? { session } : undefined);
 
-// ─── Transaction 
+// ─── Transaction ──────────────────────────────────────────────
 const createTransactions = (docs, session) =>
   Transaction.create(docs, { session });
 
-// ─── Availability 
+// ─── Availability ─────────────────────────────────────────────
 const findMentorTimezone = (mentorId) =>
   Availability.findOne({ mentor: mentorId }).select("timezone").lean();
 
-// ─── Mentor Profile 
+// ─── Mentor Profile ───────────────────────────────────────────
 const incrementMentorSessions = (mentorId) =>
   MentorProfile.findOneAndUpdate({ user: mentorId }, { $inc: { totalSessions: 1 } });
 

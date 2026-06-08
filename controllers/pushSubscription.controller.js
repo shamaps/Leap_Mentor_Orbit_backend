@@ -1,42 +1,38 @@
-const PushSubscription = require("../models/PushSubscription");
+const pushSubscriptionService = require("../services/PushSubscription.service");
 
+const { logger } = require("@sentry/node");
 // POST /api/push/subscribe
 const subscribe = async (req, res) => {
   try {
-    const { subscription } = req.body;
-    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth)
-      return res.status(400).json({ message: "Invalid subscription object" });
-
-    // Upsert — update if exists, create if not
-    await PushSubscription.findOneAndUpdate(
-      { user: req.user._id, "subscription.endpoint": subscription.endpoint },
-      { user: req.user._id, subscription },
-      { upsert: true, new: true }
-    );
-
-    res.json({ message: "Push subscription saved" });
+    const { status, body } = await pushSubscriptionService.subscribe({
+      userId: req.user._id,
+      subscription: req.body.subscription,
+    });
+    return res.status(status).json(body);
   } catch (err) {
-    res.status(500).json({ message: "Failed to save subscription" });
+    logger.error("Unhandled error in pushSubscription.controller", { error: err.message, stack: err.stack });
+    return res.status(500).json({ message: "Failed to save subscription" });
   }
 };
 
 // DELETE /api/push/unsubscribe
 const unsubscribe = async (req, res) => {
   try {
-    const { endpoint } = req.body;
-    await PushSubscription.findOneAndDelete({
-      user: req.user._id,
-      "subscription.endpoint": endpoint,
+    const { status, body } = await pushSubscriptionService.unsubscribe({
+      userId: req.user._id,
+      endpoint: req.body.endpoint,
     });
-    res.json({ message: "Unsubscribed successfully" });
+    return res.status(status).json(body);
   } catch (err) {
-    res.status(500).json({ message: "Failed to unsubscribe" });
+    logger.error("Unhandled error in pushSubscription.controller", { error: err.message, stack: err.stack });
+    return res.status(500).json({ message: "Failed to unsubscribe" });
   }
 };
 
 // GET /api/push/vapid-public-key
 const getVapidPublicKey = (req, res) => {
-  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+  const { status, body } = pushSubscriptionService.getVapidPublicKey();
+  return res.status(status).json(body);
 };
 
 module.exports = { subscribe, unsubscribe, getVapidPublicKey };

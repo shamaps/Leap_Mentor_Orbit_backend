@@ -1,8 +1,10 @@
 // backend/server.js
 //  Entry point — connects DB, starts HTTP server, Socket.io, cron jobs
 // Jest does NOT import this file — it imports app.js directly
-
+require("./instrument");
 require("dotenv").config();
+
+const express = require("express");
 const http       = require("http");
 const { Server } = require("socket.io");
 const mongoose   = require("mongoose");
