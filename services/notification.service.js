@@ -1,16 +1,17 @@
 // services/notification.service.js
 const notificationRepo = require("../repositories/notification.repository");
 
+const { logger } = require("@sentry/node");
 // GET /api/notifications
 const getNotifications = async (userId) => {
     // Debug logs preserved from original
-    console.log("🔍 Getting notifications for user ID:", userId.toString());
+    logger.info("🔍 Getting notifications for user ID:", userId.toString());
     const all = await notificationRepo.findAllNotifications();
-    console.log("🔍 Total notifications in DB:", all.length);
-    console.log("🔍 All recipient IDs in DB:", all.map((n) => n.recipient.toString()));
+    logger.info("🔍 Total notifications in DB:", all.length);
+    logger.info("🔍 All recipient IDs in DB:", all.map((n) => n.recipient.toString()));
 
     const notifications = await notificationRepo.findNotificationsByUser(userId);
-    console.log("🔍 Matched notifications for this user:", notifications.length);
+    logger.info("🔍 Matched notifications for this user:", notifications.length);
 
     return { notifications };
 };

@@ -1,11 +1,13 @@
+// backend/controllers/upload.controller.js
 const uploadService = require("../services/upload.service");
+const { logger } = require("@sentry/node");
 
 const uploadProfilePicture = async (req, res) => {
   try {
     const { status, body } = await uploadService.uploadProfilePicture({ file: req.file });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ uploadProfilePicture error:", err.message);
+    logger.error("❌ uploadProfilePicture error:", err.message);
     return res.status(500).json({ message: "Failed to upload image." });
   }
 };
@@ -20,7 +22,7 @@ const uploadVerificationDocuments = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ uploadVerificationDocuments error:", err.message);
+    logger.error("❌ uploadVerificationDocuments error:", err.message);
     return res.status(500).json({ message: "Failed to upload documents." });
   }
 };

@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const repo = require("../repositories/forgotPassword.repository");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // MAILER — created once, reused across all calls
 // ─────────────────────────────────────────────────────────────

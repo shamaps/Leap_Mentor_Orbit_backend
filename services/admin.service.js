@@ -3,15 +3,30 @@ const jwt = require("jsonwebtoken");
 const repo = require("../repositories/admin.repository");
 const AppError = require("../utils/AppError");
 
+const { logger } = require("@sentry/node");
 // ── Token helper ──────────────────────────────────────────────
 const signToken = (id) =>
-    jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_ADMIN_EXPIRES_IN || "7d",
+    });
+
+// ── Set admin token as httpOnly cookie ────────────────────────
+// Same pattern as regular user auth — token never goes in response body
+const setAdminCookie = (res, token) => {
+    res.cookie("adminAccessToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,   // 7 days
+        path: "/",
+    });
+};
 
 // ═════════════════════════════════════════════════════════════
 // AUTH
 // ═════════════════════════════════════════════════════════════
 
-const loginAdmin = async (email, password) => {
+const loginAdmin = async (res, email, password) => {   // ← res added to set cookie
     const admin = await repo.findAdminByEmail(email);
     if (!admin) throw new AppError(401, "Invalid credentials.");
     if (!admin.isActive) throw new AppError(403, "Admin account is deactivated.");
@@ -23,8 +38,10 @@ const loginAdmin = async (email, password) => {
     await repo.saveAdmin(admin);
 
     const accessToken = signToken(admin._id);
+    setAdminCookie(res, accessToken);   // ← set as httpOnly cookie, not in response body
+
     return {
-        accessToken,
+        // accessToken intentionally NOT returned — it is in the httpOnly cookie
         admin: {
             _id: admin._id,
             name: admin.name,
@@ -157,7 +174,7 @@ const removeUser = async (userId) => {
 
     await repo.hardDeleteUser(userId);
 
-    console.log(`🗑️  Admin deleted user: ${user.email} (${userId})`);
+    logger.info(`🗑️  Admin deleted user: ${user.email} (${userId})`);
 
     return { message: `User ${user.name} (${user.email}) has been permanently deleted.` };
 };
@@ -166,7 +183,7 @@ const blockUser = async (userId) => {
     const user = await repo.blockUserById(userId);
     if (!user) throw new AppError(404, "User not found.");
 
-    console.log(`🔒 Admin blocked user: ${user.email} (${userId})`);
+    logger.info(`🔒 Admin blocked user: ${user.email} (${userId})`);
     return { message: `User ${user.name} has been blocked.` };
 };
 
@@ -174,7 +191,7 @@ const unblockUser = async (userId) => {
     const user = await repo.unblockUserById(userId);
     if (!user) throw new AppError(404, "User not found.");
 
-    console.log(`🔓 Admin unblocked user: ${user.email} (${userId})`);
+    logger.info(`🔓 Admin unblocked user: ${user.email} (${userId})`);
     return { message: `User ${user.name} has been restored.` };
 };
 

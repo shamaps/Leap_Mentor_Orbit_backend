@@ -16,6 +16,7 @@ const login = async (req, res) => {
       email: result.user.email,
     });
 
+    logger.info("login completed successfully");
     return res.json({
       message: "Login successful",
       accessToken,

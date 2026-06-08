@@ -10,7 +10,7 @@ const {
   getAllReports,
   updateReportStatus,
 } = require("../controllers/report.controller");
-
+const { reportLimiter } = require("../middleware/rateLimiter");
 // ── User routes (mentor / mentee) ─────────────────────────────
 
 // Submit a report (with optional screenshot upload)
@@ -19,6 +19,7 @@ router.post(
   authenticate,
   requireRole("mentor", "mentee"),
   upload.single("screenshot"),
+  reportLimiter,
   submitReport
 );
 

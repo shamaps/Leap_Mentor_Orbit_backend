@@ -1,14 +1,17 @@
 // backend/controllers/admin/adminPayments.controller.js
 const adminPaymentsService = require("../../services/adminPayments.service");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/payments/stats
 // ─────────────────────────────────────────────────────────────
 const getPaymentStats = async (req, res) => {
   try {
     const data = await adminPaymentsService.fetchPaymentStats(req.admin._id);
+    logger.info("getPaymentStats completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -19,8 +22,10 @@ const getPaymentStats = async (req, res) => {
 const getRevenueChart = async (_req, res) => {
   try {
     const data = await adminPaymentsService.fetchRevenueChart();
+    logger.info("getRevenueChart completed successfully");
     return res.json({ success: true, data });
   } catch (err) {
+    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -36,8 +41,10 @@ const getTransactions = async (req, res) => {
     const type = req.query.type?.trim() || "";
 
     const data = await adminPaymentsService.fetchTransactions({ page, limit, search, type });
+    logger.info("getTransactions completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };

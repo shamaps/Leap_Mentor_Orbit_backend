@@ -1,5 +1,6 @@
 const slotLockService = require("../services/slotLock.service");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // POST /api/slot-locks/lock
 // Called when mentee selects a slot in the UI
@@ -16,6 +17,7 @@ const lockSlot = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in slotLock.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -36,6 +38,7 @@ const unlockSlot = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in slotLock.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -53,6 +56,7 @@ const unlockAllByMentee = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in slotLock.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -69,6 +73,7 @@ const getActiveLocks = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in slotLock.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };

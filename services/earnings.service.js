@@ -1,6 +1,7 @@
 // services/earnings.service.js
 const earningsRepo = require("../repositories/earnings.repository");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // GET /api/mentor/earnings
 // ─────────────────────────────────────────────────────────────

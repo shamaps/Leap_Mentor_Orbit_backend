@@ -4,6 +4,7 @@ const { cloudinary } = require("../config/cloudinary");
 const { getFileType } = require("../middleware/upload.middleware");
 const noteRepo = require("../repositories/note.repository");
 
+const { logger } = require("@sentry/node");
 // ── Helper: validate user belongs to this session ─────────────
 const validateSessionAccess = async (connectRequestId, userId) => {
     const request = await noteRepo.findSessionParticipants(connectRequestId);
@@ -145,9 +146,9 @@ const deleteNote = async (noteId, userId) => {
 
     try {
         await cloudinary.uploader.destroy(note.publicId, { resource_type: "raw" });
-        console.log(`Cloudinary file deleted: ${note.publicId}`);
+        logger.info(`Cloudinary file deleted: ${note.publicId}`);
     } catch (cloudErr) {
-        console.warn("Cloudinary delete warning:", cloudErr.message);
+        logger.warn("Cloudinary delete warning:", cloudErr.message);
     }
 
     await noteRepo.deleteNoteById(noteId);

@@ -4,6 +4,7 @@ const repo = require("../repositories/clerkSSO.repository");
 const AppError = require("../utils/AppError");
 const { clerkClient, signToken, sanitizeUser, validateRoles } = require("../utils/auth.utils");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
 // ─────────────────────────────────────────────────────────────
@@ -32,16 +33,16 @@ const resolveClerkUser = async (clerkToken) => {
     if (!clerkToken) throw new AppError(400, "Missing Clerk token");
 
     const decoded = jwt.decode(clerkToken);
-    console.log("🔑 Decoded Clerk token sub:", decoded?.sub);
+    logger.info("🔑 Decoded Clerk token sub:", decoded?.sub);
 
     if (!decoded?.sub) throw new AppError(401, "Invalid Clerk token");
 
     try {
         const clerkUser = await clerkClient.users.getUser(decoded.sub);
-        console.log("✅ Clerk user fetched:", clerkUser.id);
+        logger.info("✅ Clerk user fetched:", clerkUser.id);
         return clerkUser;
     } catch (err) {
-        console.error("❌ Failed to fetch Clerk user:", err.message);
+        logger.error("❌ Failed to fetch Clerk user:", err.message);
         throw new AppError(401, "Could not fetch Clerk user");
     }
 };
@@ -54,11 +55,11 @@ const provisionWallet = async (userId, roles) => {
     const isMentee = roles.includes("mentee");
     const startingBalance = isMentee ? 500 : 0;
 
-    console.log("💰 Creating wallet | isMentee:", isMentee, "| startingBalance:", startingBalance);
+    logger.info("💰 Creating wallet | isMentee:", isMentee, "| startingBalance:", startingBalance);
 
     try {
         const wallet = await repo.createWallet({ user: userId, balance: startingBalance, escrow: 0 });
-        console.log("✅ Wallet created:", wallet._id, "| Balance:", wallet.balance);
+        logger.info("✅ Wallet created:", wallet._id, "| Balance:", wallet.balance);
 
         if (isMentee) {
             const tx = await repo.createTransaction({
@@ -68,10 +69,10 @@ const provisionWallet = async (userId, roles) => {
                 description: "Welcome bonus — 500 points to get started",
                 balanceAfter: 500,
             });
-            console.log("✅ Transaction created:", tx._id);
+            logger.info("✅ Transaction created:", tx._id);
         }
     } catch (walletErr) {
-        console.error("❌ Wallet/Transaction creation failed:", walletErr.message);
+        logger.error("❌ Wallet/Transaction creation failed:", walletErr.message);
     }
 };
 
@@ -87,7 +88,7 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
     const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
     if (!valid) throw new AppError(400, message);
 
-    console.log("🆕 Creating new user with roles:", uniqueRoles);
+    logger.info("🆕 Creating new user with roles:", uniqueRoles);
 
     const user = await repo.createUser({
         name,
@@ -98,7 +99,7 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
         termsAcceptedAt: new Date(),
     });
 
-    console.log("✅ User created:", user._id, "| Roles:", user.roles);
+    logger.info("✅ User created:", user._id, "| Roles:", user.roles);
 
     await provisionWallet(user._id, uniqueRoles);
 
@@ -115,7 +116,7 @@ const mergeRolesIfNeeded = async (user, roles) => {
     if (mergedRoles.length !== user.roles.length) {
         user.roles = mergedRoles;
         await repo.saveUser(user);
-        console.log("🔄 Roles updated:", user.roles);
+        logger.info("🔄 Roles updated:", user.roles);
     }
 };
 
@@ -129,12 +130,12 @@ const linkOAuthAccount = async (userId, provider, providerId) => {
     const existingOAuth = await repo.findOAuthAccount(provider, providerId);
 
     if (existingOAuth) {
-        console.log("ℹ️ OAuthAccount already linked | Provider:", provider);
+        logger.info("ℹ️ OAuthAccount already linked | Provider:", provider);
         return;
     }
 
     await repo.createOAuthAccount({ user: userId, provider, providerId });
-    console.log("🔗 OAuthAccount linked | Provider:", provider);
+    logger.info("🔗 OAuthAccount linked | Provider:", provider);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -148,7 +149,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     const clerkUser = await resolveClerkUser(clerkToken);
     const { email, name, provider, providerId } = extractClerkMeta(clerkUser);
 
-    console.log("📧 Email:", email, "| Provider:", provider, "| Name:", name);
+    logger.info("📧 Email:", email, "| Provider:", provider, "| Name:", name);
 
     if (!email) throw new AppError(400, "No email returned from provider");
 
@@ -157,10 +158,10 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     let user = await repo.findUserByEmail(email);
     let isNewUser = false;
 
-    console.log("🔍 User found in DB:", !!user, "| Email:", email);
+    logger.info("🔍 User found in DB:", !!user, "| Email:", email);
 
     if (user) {
-        console.log("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
+        logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
         await mergeRolesIfNeeded(user, roles);
     } else {
         user = await createNewUser({ name, email, roles, termsAccepted });

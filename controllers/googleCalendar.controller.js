@@ -1,6 +1,7 @@
 // controllers/googleCalendar.controller.js
 const service = require("../services/googleCalendar.service");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // GET /api/google-calendar/auth-url
 // ─────────────────────────────────────────────────────────────
@@ -11,10 +12,13 @@ const service = require("../services/googleCalendar.service");
 const getAuthUrl = async (req, res, next) => {
   try {
     const url = await service.getAuthUrl(req.user._id);
+    logger.info("getAuthUrl completed successfully");
     return res.json({ url });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+}
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -30,7 +34,8 @@ const handleCallback = async (req, res, next) => {
 
   // Google denied access
   if (error) {
-    console.error("❌ Google OAuth denied:", error);
+    logger.error("❌ Google OAuth denied:", error);
+    logger.info("handleCallback completed successfully");
     return res.send(`
       <script>
         window.opener?.postMessage({ type: "GOOGLE_CALENDAR_ERROR", error: "${error}" }, "*");
@@ -42,6 +47,7 @@ const handleCallback = async (req, res, next) => {
   try {
     await service.handleCallback(code, state);
 
+    logger.info("handleCallback completed successfully");
     return res.send(`
       <script>
         window.opener?.postMessage({ type: "GOOGLE_CALENDAR_CONNECTED" }, "*");
@@ -49,8 +55,9 @@ const handleCallback = async (req, res, next) => {
       </script>
     `);
   } catch (err) {
-    console.error("❌ Google Calendar callback error:", err.message, err?.response?.data);
+    logger.error("❌ Google Calendar callback error:", err.message, err?.response?.data);
     const safeError = encodeURIComponent(err.message);
+    logger.info("handleCallback completed successfully");
     return res.send(`
       <script>
         window.opener?.postMessage({ type: "GOOGLE_CALENDAR_ERROR", error: decodeURIComponent("${safeError}") }, "*");
@@ -70,10 +77,13 @@ const handleCallback = async (req, res, next) => {
 const disconnect = async (req, res, next) => {
   try {
     await service.disconnect(req.user._id);
+    logger.info("disconnect completed successfully");
     return res.json({ message: "Google Calendar disconnected" });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+}
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -87,10 +97,13 @@ const getBusySlots = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
     const busy = await service.getBusySlots(req.user._id, startDate, endDate);
+    logger.info("getBusySlots completed successfully");
     return res.json({ busy });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+}
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -104,10 +117,13 @@ const getEvents = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
     const events = await service.getEvents(req.user._id, startDate, endDate);
+    logger.info("getEvents completed successfully");
     return res.json({ events });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+}
 };
 
 module.exports = { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };

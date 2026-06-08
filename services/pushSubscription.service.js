@@ -1,5 +1,6 @@
 const repo = require("../repositories/PushSubscription.repository");
 
+const { logger } = require("@sentry/node");
 const subscribe = async ({ userId, subscription }) => {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         return { status: 400, body: { message: "Invalid subscription object" } };

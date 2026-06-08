@@ -1,5 +1,6 @@
 const repo = require("../repositories/slotLock.repository");
 
+const { logger } = require("@sentry/node");
 const LOCK_DURATION_MINUTES = 10;
 
 // ── Helpers ───────────────────────────────────────────────────

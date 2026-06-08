@@ -4,6 +4,7 @@ const sessionRepo = require("../repositories/session.repository");
 const releaseEscrow = require("../utils/releaseEscrow");
 const escrowService = require("../services/escrow.service");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
+const { logger } = require("@sentry/node");
 const {
     sendSlotCancelledEmail,
     sendSlotRescheduledEmail,
@@ -100,7 +101,7 @@ const emitSlotUpdate = (connectRequest, payload) => {
         emitToUser(connectRequest.mentor.toString(), "session_slots_updated", payload);
         emitToUser(connectRequest.mentee.toString(), "session_slots_updated", payload);
     } catch (e) {
-        console.warn("⚠️  emitSlotUpdate failed:", e.message);
+        logger.warn("⚠️  emitSlotUpdate failed:", e.message);
     }
 };
 
@@ -114,7 +115,7 @@ const emitToOther = (connectRequest, currentUserId, event, payload) => {
                 : connectRequest.mentor.toString();
         emitToUser(otherId, event, payload);
     } catch (e) {
-        console.warn("⚠️  emitToOther failed:", e.message);
+        logger.warn("⚠️  emitToOther failed:", e.message);
     }
 };
 
@@ -349,7 +350,9 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
     } catch (err) {
         await mongoSession.abortTransaction();
         throw err;
-    } finally {
+    
+        logger.error("Unhandled error in session.service", { error: err.message, stack: err.stack });
+} finally {
         mongoSession.endSession();
     }
 };
@@ -437,11 +440,11 @@ const addSlot = async (connectRequestId, body, userId) => {
                 menteeEmail: populated.mentee.email,
                 slot: newSelectedSlot,
             }).catch((err) =>
-                console.error("❌ Additional slot email failed:", err.message)
+                logger.error("❌ Additional slot email failed:", err.message)
             );
         })
         .catch((err) =>
-            console.error("❌ Failed to populate for additional slot email:", err.message)
+            logger.error("❌ Failed to populate for additional slot email:", err.message)
         );
 
     return {
@@ -501,12 +504,12 @@ const cancelSlot = async (connectRequestId, slotIndex, userId, reason = "") => {
                 slotIndex: idx,
                 cancelledBy,
             });
-            console.log(
+            logger.info(
                 `Slot #${idx + 1} refund: ${refundResult.refundedAmount} tokens returned to mentee`
             );
         }
     } catch (refundErr) {
-        console.error(
+        logger.error(
             "❌ Slot refund failed (slot still cancelled):",
             refundErr.message
         );
@@ -548,11 +551,11 @@ const cancelSlot = async (connectRequestId, slotIndex, userId, reason = "") => {
                 cancelledBy,
                 reason: reason.trim(),
             }).catch((err) =>
-                console.error("❌ Slot cancelled email failed:", err.message)
+                logger.error("❌ Slot cancelled email failed:", err.message)
             );
         })
         .catch((err) =>
-            console.error("❌ Failed to populate for cancel email:", err.message)
+            logger.error("❌ Failed to populate for cancel email:", err.message)
         );
 
     return {
@@ -678,11 +681,11 @@ const rescheduleSlot = async (connectRequestId, slotIndex, body, userId) => {
                 oldSlot: connectRequest.selectedSlots[idx],
                 newSlot: connectRequest.selectedSlots[newSlotIndex],
             }).catch((err) =>
-                console.error("❌ Slot rescheduled email failed:", err.message)
+                logger.error("❌ Slot rescheduled email failed:", err.message)
             );
         })
         .catch((err) =>
-            console.error("❌ Failed to populate for reschedule email:", err.message)
+            logger.error("❌ Failed to populate for reschedule email:", err.message)
         );
 
     return {

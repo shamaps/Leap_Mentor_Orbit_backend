@@ -2,6 +2,7 @@
 const adminVerificationRepo = require("../repositories/adminVerification.repository");
 const { sendMentorVerifiedEmail } = require("../utils/sendNotificationEmail");
 
+const { logger } = require("@sentry/node");
 const getAllMentorVerifications = async () => {
     const mentorProfiles = await adminVerificationRepo.findAllMentorProfiles();
 
@@ -51,7 +52,7 @@ const verifyMentor = async (mentorProfileId) => {
         mentorName: profile.user.name,
         mentorEmail: profile.user.email,
     }).catch((emailErr) => {
-        console.error("❌ sendMentorVerifiedEmail failed:", emailErr.message);
+        logger.error("❌ sendMentorVerifiedEmail failed:", emailErr.message);
     });
 
     return {

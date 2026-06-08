@@ -1,6 +1,7 @@
 // services/leapRequest.service.js
 const leapRequestRepo = require("../repositories/leapRequest.repository");
 
+const { logger } = require("@sentry/node");
 // ── MENTEE: Check my latest request ──────────────────────────
 const getMyRequest = async (menteeId) => {
     const request = await leapRequestRepo.findPendingByMentee(menteeId);

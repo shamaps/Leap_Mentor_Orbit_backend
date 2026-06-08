@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const repo = require("../repositories/verification.repository");
 
+const { logger } = require("@sentry/node");
 // ── Mailer ────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,

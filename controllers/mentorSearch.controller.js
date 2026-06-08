@@ -1,26 +1,29 @@
 // backend/controllers/mentorSearch.controller.js
 const mentorSearchService = require("../services/mentorSearch.service");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // GET /api/mentors/search
 // ─────────────────────────────────────────────────────────────
 const searchMentors = async (req, res) => {
   try {
     const result = await mentorSearchService.searchMentors(req.query);
+    logger.info("searchMentors completed successfully");
     return res.status(200).json({ success: true, ...result });
   } catch (err) {
-    console.error("❌ Mentor search error:", err.message);
+    logger.error("❌ Mentor search error:", err.message);
 
     if (err.message?.includes("$search") || err.message?.includes("search index")) {
-      console.warn("⚠️  Atlas Search unavailable — falling back to regex");
+      logger.warn("⚠️  Atlas Search unavailable — falling back to regex");
       // FIX: "Handle this exception or don't catch it at all" —
       // the fallback is now awaited and its result returned, so the
       // original error is handled (not silently swallowed).
       try {
         const result = await mentorSearchService.fallbackSearch(req.query);
+        logger.info("searchMentors completed successfully");
         return res.status(200).json({ success: true, ...result });
       } catch (fallbackErr) {
-        console.error("❌ Fallback search error:", fallbackErr.message);
+        logger.error("❌ Fallback search error:", fallbackErr.message);
         return res.status(500).json({ success: false, message: "Server error" });
       }
     }
@@ -35,9 +38,10 @@ const searchMentors = async (req, res) => {
 const autocompleteMentors = async (req, res) => {
   try {
     const suggestions = await mentorSearchService.autocompleteMentors(req.query);
+    logger.info("autocompleteMentors completed successfully");
     return res.status(200).json({ success: true, suggestions });
   } catch (err) {
-    console.error("❌ Autocomplete error:", err.message);
+    logger.error("❌ Autocomplete error:", err.message);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

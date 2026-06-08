@@ -1,6 +1,7 @@
 // services/privateNote.service.js
 const privateNoteRepo = require("../repositories/privateNote.repository");
 
+const { logger } = require("@sentry/node");
 // ── Helper: confirm user is a session participant ─────────────
 const validateSessionAccess = async (connectRequestId, userId) => {
     const request = await privateNoteRepo.findSessionParticipants(connectRequestId);

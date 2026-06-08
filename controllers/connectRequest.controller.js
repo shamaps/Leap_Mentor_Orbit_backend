@@ -23,6 +23,7 @@ const sendConnectRequest = async (req, res, next) => {
       slotCount: selectedSlots?.length,
     });
 
+    logger.info("sendConnectRequest completed successfully");
     return res.status(201).json({ message: "Connect request sent successfully", request });
   } catch (err) {
     if (err.code === 11000) {
@@ -39,19 +40,25 @@ const sendConnectRequest = async (req, res, next) => {
 const getMyRequests = async (req, res, next) => {
   try {
     const requests = await service.getMyRequests(req.user._id);
+    logger.info("getMyRequests completed successfully");
     return res.json({ success: true, requests });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const getIncomingRequests = async (req, res, next) => {
   try {
     const requests = await service.getIncomingRequests(req.user._id, req.query.status);
+    logger.info("getIncomingRequests completed successfully");
     return res.json({ success: true, requests });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const respondToRequest = async (req, res, next) => {
@@ -72,10 +79,13 @@ const respondToRequest = async (req, res, next) => {
       confirmedSlot: confirmedSlot?.date,
     });
 
+    logger.info("respondToRequest completed successfully");
     return res.json({ message: `Request ${status} successfully`, request });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const cancelRequest = async (req, res, next) => {
@@ -90,7 +100,9 @@ const cancelRequest = async (req, res, next) => {
     return res.json({ message: "Request cancelled successfully" });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const referRequest = async (req, res, next) => {
@@ -108,28 +120,37 @@ const referRequest = async (req, res, next) => {
       newRequestId: newRequest._id.toString(),
     });
 
+    logger.info("referRequest completed successfully");
     return res.json({ message: "Request referred successfully", originalRequest, newRequest });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const getOngoingConnects = async (req, res, next) => {
   try {
     const connects = await service.getOngoingConnects(req.user._id);
+    logger.info("getOngoingConnects completed successfully");
     return res.json({ success: true, connects });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 const getConnectDetail = async (req, res, next) => {
   try {
     const connect = await service.getConnectDetail(req.params.id, req.user._id);
+    logger.info("getConnectDetail completed successfully");
     return res.json({ success: true, connect });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+}
 };
 
 module.exports = {

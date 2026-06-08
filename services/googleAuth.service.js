@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const repo = require("../repositories/googleAuth.repository");
 const { googleClient, sanitizeUser, validateRoles } = require("../utils/auth.utils");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ const verifyGoogleCredential = async (credential) => {
 
     // Log mismatch as a warning — not a hard failure (Google allows multiple client IDs)
     if (payload.aud !== envAudience) {
-        console.warn("⚠️ WARNING: Token was issued for a different Client ID. Check your .env!");
+        logger.warn("⚠️ WARNING: Token was issued for a different Client ID. Check your .env!");
     }
 
     return payload;

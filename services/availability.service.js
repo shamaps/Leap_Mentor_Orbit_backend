@@ -2,6 +2,7 @@
 const availabilityRepository = require("../repositories/availability.repository");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 
+const { logger } = require("@sentry/node");
 const getMyAvailability = async (mentorId) => {
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
 

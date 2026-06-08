@@ -5,6 +5,7 @@ const {
 } = require("../utils/sendNotificationEmail");
 const repo = require("../repositories/report.repository");
 
+const { logger } = require("@sentry/node");
 const VALID_STATUSES = ["open", "under_review", "resolved", "dismissed"];
 
 const uploadToCloudinary = (buffer, mimetype) =>
@@ -80,7 +81,7 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
         complaintType,
         description: description.trim(),
         reporterRole,
-    }).catch((err) => console.error("❌ sendReportSubmittedEmail failed:", err.message));
+    }).catch((err) => logger.error("❌ sendReportSubmittedEmail failed:", err.message));
 
     return {
         status: 201,
@@ -145,7 +146,7 @@ const updateReportStatus = async ({ reportId, status, adminNote, userId }) => {
             complaintType: report.complaintType,
             status,
             adminNote: adminNote?.trim() || "",
-        }).catch((err) => console.error("❌ sendReportResolvedEmail failed:", err.message));
+        }).catch((err) => logger.error("❌ sendReportResolvedEmail failed:", err.message));
     }
 
     return { status: 200, body: { success: true, report } };

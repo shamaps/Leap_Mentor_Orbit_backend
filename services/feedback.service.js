@@ -2,6 +2,7 @@
 const repo = require("../repositories/feedback.repository");
 const AppError = require("../utils/AppError");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
 // ─────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ const assertCompletionEligible = (connectRequest, fromRole, slotIndex) => {
         const slot = connectRequest.selectedSlots?.[slotIndex];
         const myMark = fromRole === "mentee" ? slot?.menteeMarked : slot?.mentorMarked;
 
-        console.log("fromRole:", fromRole, "myMark:", myMark, "slot:", slot);
+        logger.info("fromRole:", fromRole, "myMark:", myMark, "slot:", slot);
 
         if (!slot || !myMark)
             throw new AppError(400, "Feedback can only be submitted for completed sessions");
@@ -60,7 +61,7 @@ const refreshMentorAvgRating = async (mentorUserId) => {
         (totalRatings / allFeedback.length).toFixed(1)
     );
     await repo.updateMentorAvgRating(mentorUserId, newAvgRating);
-    console.log(`⭐ Updated avgRating for mentor: ${newAvgRating}`);
+    logger.info(`⭐ Updated avgRating for mentor: ${newAvgRating}`);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -78,14 +79,14 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
     // FIX: parseSlotIndex() eliminates the negated-condition warning
     const slotIndex = parseSlotIndex(rawSlotIndex);
 
-    console.log("feedback body received:", { connectRequestId, rating, comment, slotIndex });
+    logger.info("feedback body received:", { connectRequestId, rating, comment, slotIndex });
 
     const connectRequest = await repo.findSessionById(connectRequestId);
     if (!connectRequest)
         throw new AppError(404, "Session not found");
 
-    console.log("slot at index", slotIndex, ":", connectRequest.selectedSlots?.[slotIndex]);
-    console.log("all slots:", connectRequest.selectedSlots?.map((s, i) => ({
+    logger.info("slot at index", slotIndex, ":", connectRequest.selectedSlots?.[slotIndex]);
+    logger.info("all slots:", connectRequest.selectedSlots?.map((s, i) => ({
         i,
         menteeMarked: s.menteeMarked,
         mentorMarked: s.mentorMarked,

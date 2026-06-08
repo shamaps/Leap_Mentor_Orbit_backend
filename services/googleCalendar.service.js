@@ -2,6 +2,7 @@
 const { google } = require("googleapis");
 const repo = require("../repositories/googleCalendar.repository");
 
+const { logger } = require("@sentry/node");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 
 // ─────────────────────────────────────────────────────────────
@@ -183,7 +184,7 @@ const fetchEventsFromCalendar = async (calendar, calId, timeMin, timeMax) => {
         return (response.data.items || []).map(normalizeEvent);
     } catch (err) {
         // ✅ Sonar fix: log the skipped calendar instead of silently swallowing
-        console.warn(`⚠️ Could not read calendar ${calId} — skipping. Reason: ${err.message}`);
+        logger.warn(`⚠️ Could not read calendar ${calId} — skipping. Reason: ${err.message}`);
         return [];
     }
 };

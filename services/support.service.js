@@ -1,6 +1,7 @@
 const { sendSupportResolvedEmail } = require("../utils/sendNotificationEmail");
 const repo = require("../repositories/support.repository");
 
+const { logger } = require("@sentry/node");
 const createMessage = async ({ email, subject, message, role }) => {
     if (!email || !subject || !message) {
         return { status: 400, body: { error: "All fields are required" } };
@@ -45,7 +46,7 @@ const resolveMessage = async (id) => {
     try {
         await sendSupportResolvedEmail({ toEmail: msg.email, subject: msg.subject });
     } catch (emailErr) {
-        console.error("⚠️ Support resolved email failed:", emailErr.message);
+        logger.error("⚠️ Support resolved email failed:", emailErr.message);
         // don't block the response if email fails
     }
 

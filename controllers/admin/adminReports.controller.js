@@ -2,11 +2,12 @@
 const AppError = require("../../utils/AppError");
 const adminReportsService = require("../../services/adminReports.service");
 
+const { logger } = require("@sentry/node");
 // ── Centralised error handler ─────────────────────────────────
 const handleError = (res, err, label) => {
   if (err instanceof AppError)
     return res.status(err.status).json({ message: err.message });
-  console.error(`❌ ${label} error:`, err);
+  logger.error(`❌ ${label} error:`, err);
   return res.status(500).json({ message: err.message });
 };
 
@@ -16,8 +17,10 @@ const handleError = (res, err, label) => {
 const getReportStats = async (_req, res) => {
   try {
     const data = await adminReportsService.fetchReportStats();
+    logger.info("getReportStats completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getReportStats");
   }
 };
@@ -33,8 +36,10 @@ const getReports = async (req, res) => {
     const status = req.query.status?.trim() || "";
 
     const data = await adminReportsService.fetchReports({ page, limit, search, status });
+    logger.info("getReports completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getReports");
   }
 };
@@ -56,8 +61,10 @@ const handleReport = async (req, res) => {
       req.admin._id,
     );
 
+    logger.info("handleReport completed successfully");
     return res.json({ success: true, message: `Report ${status}.`, report });
   } catch (err) {
+    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "handleReport");
   }
 };
@@ -73,12 +80,14 @@ const processRefund = async (req, res) => {
       req.admin._id,
     );
 
+    logger.info("processRefund completed successfully");
     return res.json({
       success: true,
       message: `Refund of ${refundAmount} tokens processed successfully.`,
       refundAmount,
     });
   } catch (err) {
+    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "processRefund");
   }
 };
@@ -94,8 +103,10 @@ const deleteSession = async (req, res) => {
       req.admin._id,
     );
 
+    logger.info("deleteSession completed successfully");
     return res.json({ success: true, message: "Session deleted and both parties notified." });
   } catch (err) {
+    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteSession");
   }
 };

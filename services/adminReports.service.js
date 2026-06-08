@@ -4,6 +4,7 @@ const createNotification = require("../utils/createNotification");
 const { sendReportResolvedEmail } = require("../utils/sendNotificationEmail");
 const AppError = require("../utils/AppError");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers — fix nested ternaries + nested template literals
 // ─────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ const handleReport = async (reportId, { status, adminNote }, adminId) => {
             adminNote: adminNote?.trim() || "",
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            console.error("❌ sendReportResolvedEmail failed:", err.message)
+            logger.error("❌ sendReportResolvedEmail failed:", err.message)
         );
     }
 
@@ -239,7 +240,7 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
             adminNote: resolvedAdminNote,
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            console.error("❌ sendReportResolvedEmail (refund) failed:", err.message)
+            logger.error("❌ sendReportResolvedEmail (refund) failed:", err.message)
         );
     }
 
@@ -304,7 +305,7 @@ const deleteSession = async (reportId, { adminNote }, adminId) => {
             adminNote: resolvedAdminNote,
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            console.error("❌ sendReportResolvedEmail (deleteSession) failed:", err.message)
+            logger.error("❌ sendReportResolvedEmail (deleteSession) failed:", err.message)
         );
     }
 };

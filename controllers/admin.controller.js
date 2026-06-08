@@ -2,11 +2,12 @@
 const AppError = require("../utils/AppError");
 const adminService = require("../services/admin.service");
 
+const { logger } = require("@sentry/node");
 // ── Centralised error handler ─────────────────────────────────
 const handleError = (res, err, label) => {
   if (err instanceof AppError)
     return res.status(err.status).json({ message: err.message });
-  console.error(`❌ ${label} error:`, err);
+  logger.error(`❌ ${label} error:`, err);
   return res.status(500).json({ message: "Server error." });
 };
 
@@ -20,11 +21,24 @@ const adminLogin = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: "Email and password are required." });
 
-    const result = await adminService.loginAdmin(email, password);
+    // ← UPDATED: pass res so service can set the httpOnly cookie
+    // accessToken is no longer returned in the response body
+    const result = await adminService.loginAdmin(res, email, password);
+    logger.info("adminLogin completed successfully");
     return res.status(200).json({ success: true, ...result });
+    // result now only contains { admin: {...} } — no accessToken
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminLogin");
   }
+};
+
+// ── Admin Logout ──────────────────────────────────────────────
+// Must clear the httpOnly cookie server-side — JS cannot do it
+const adminLogout = (req, res) => {
+  res.clearCookie("adminAccessToken", { path: "/" });
+  logger.info("adminLogout completed successfully");
+  return res.status(200).json({ message: "Logged out successfully" });
 };
 
 const adminMe = (_req, res) =>
@@ -37,8 +51,10 @@ const adminMe = (_req, res) =>
 const getStats = async (_req, res) => {
   try {
     const data = await adminService.fetchStats();
+    logger.info("getStats completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getStats");
   }
 };
@@ -46,8 +62,10 @@ const getStats = async (_req, res) => {
 const getUserGrowth = async (_req, res) => {
   try {
     const data = await adminService.fetchUserGrowth();
+    logger.info("getUserGrowth completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUserGrowth");
   }
 };
@@ -55,8 +73,10 @@ const getUserGrowth = async (_req, res) => {
 const getMentorIndustryStats = async (_req, res) => {
   try {
     const data = await adminService.fetchMentorIndustryStats();
+    logger.info("getMentorIndustryStats completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getMentorIndustryStats");
   }
 };
@@ -68,8 +88,10 @@ const getMentorIndustryStats = async (_req, res) => {
 const getUsers = async (req, res) => {
   try {
     const data = await adminService.fetchUsers(req.query);
+    logger.info("getUsers completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUsers");
   }
 };
@@ -77,8 +99,10 @@ const getUsers = async (req, res) => {
 const getUserDetail = async (req, res) => {
   try {
     const data = await adminService.fetchUserDetail(req.params.userId);
+    logger.info("getUserDetail completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUserDetail");
   }
 };
@@ -86,8 +110,10 @@ const getUserDetail = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const data = await adminService.removeUser(req.params.userId);
+    logger.info("deleteUser completed successfully");
     return res.status(200).json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteUser");
   }
 };
@@ -95,8 +121,10 @@ const deleteUser = async (req, res) => {
 const blockUser = async (req, res) => {
   try {
     const data = await adminService.blockUser(req.params.userId);
+    logger.info("blockUser completed successfully");
     return res.status(200).json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "blockUser");
   }
 };
@@ -104,8 +132,10 @@ const blockUser = async (req, res) => {
 const unblockUser = async (req, res) => {
   try {
     const data = await adminService.unblockUser(req.params.userId);
+    logger.info("unblockUser completed successfully");
     return res.status(200).json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "unblockUser");
   }
 };
@@ -117,8 +147,10 @@ const unblockUser = async (req, res) => {
 const getEngagementStats = async (_req, res) => {
   try {
     const data = await adminService.fetchEngagementStats();
+    logger.info("getEngagementStats completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getEngagementStats");
   }
 };
@@ -126,8 +158,10 @@ const getEngagementStats = async (_req, res) => {
 const getEngagements = async (req, res) => {
   try {
     const data = await adminService.fetchEngagements(req.query);
+    logger.info("getEngagements completed successfully");
     return res.status(200).json(data);
   } catch (err) {
+    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getEngagements");
   }
 };
@@ -135,6 +169,7 @@ const getEngagements = async (req, res) => {
 module.exports = {
   // auth
   adminLogin,
+  adminLogout, 
   adminMe,
   // stats
   getStats,

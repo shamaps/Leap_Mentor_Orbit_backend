@@ -1,6 +1,7 @@
 // controllers/invoice.controller.js
 const service = require("../services/invoice.service");
 
+const { logger } = require("@sentry/node");
 /**
  * GET /api/invoices/:connectRequestId
  * Downloads a PDF invoice for a paid session.
@@ -21,10 +22,13 @@ const downloadInvoice = async (req, res, next) => {
       "Content-Length": pdfBuffer.length,
     });
 
+    logger.info("downloadInvoice completed successfully");
     return res.send(pdfBuffer);
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in invoice.controller", { error: err.message, stack: err.stack });
+}
 };
 
 module.exports = { downloadInvoice };

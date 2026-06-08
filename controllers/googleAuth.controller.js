@@ -1,5 +1,6 @@
 // controllers/googleAuth.controller.js
 const service = require("../services/googleAuth.service");
+const { logger } = require("@sentry/node");
 const { issueTokens } = require("../utils/auth.utils");   // ← ADD
 
 const googleAuth = async (req, res, next) => {
@@ -11,6 +12,7 @@ const googleAuth = async (req, res, next) => {
 
     const accessToken = await issueTokens(res, user._id);  // ← ADD
 
+    logger.info("googleAuth completed successfully");
     return res.json({
       message: "Google login successful",
       accessToken,    // ← was "token"
@@ -19,7 +21,9 @@ const googleAuth = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
-  }
+  
+    logger.error("Unhandled error in googleAuth.controller", { error: err.message, stack: err.stack });
+}
 };
 
 module.exports = { googleAuth };

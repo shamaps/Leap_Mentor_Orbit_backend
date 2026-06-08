@@ -1,5 +1,6 @@
 const reportService = require("../services/report.service");
 
+const { logger } = require("@sentry/node");
 const submitReport = async (req, res) => {
   try {
     const { connectRequestId, complaintType, description } = req.body;
@@ -13,7 +14,7 @@ const submitReport = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ submitReport error:", err);
+    logger.error("❌ submitReport error:", err);
     return res.status(500).json({ message: "Server error. Please try again." });
   }
 };
@@ -27,7 +28,7 @@ const getMyReport = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ getMyReport error:", err);
+    logger.error("❌ getMyReport error:", err);
     return res.status(500).json({ message: "Server error." });
   }
 };
@@ -42,7 +43,7 @@ const getAllReports = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ getAllReports error:", err);
+    logger.error("❌ getAllReports error:", err);
     return res.status(500).json({ message: "Server error." });
   }
 };
@@ -59,7 +60,7 @@ const updateReportStatus = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
-    console.error("❌ updateReportStatus error:", err);
+    logger.error("❌ updateReportStatus error:", err);
     return res.status(500).json({ message: "Server error." });
   }
 };

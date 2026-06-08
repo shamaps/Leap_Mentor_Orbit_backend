@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const registerRepo = require("../repositories/register.repository");
 const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.utils");
 
+const { logger } = require("@sentry/node");
 // ── Helper: create wallet + welcome transaction for a role ────
 const provisionWallet = async (userId, role) => {
     const isMentee = role === "mentee";
@@ -12,7 +13,7 @@ const provisionWallet = async (userId, role) => {
         balance: isMentee ? 500 : 0,
         escrow: 0,
     });
-    console.log(`Wallet created — role: ${role}`, wallet);
+    logger.info(`Wallet created — role: ${role}`, wallet);
 
     if (isMentee) {
         await registerRepo.createTransaction({

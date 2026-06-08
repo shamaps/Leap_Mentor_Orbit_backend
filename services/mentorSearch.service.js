@@ -1,6 +1,7 @@
 // backend/services/mentorSearch.service.js
 const repo = require("../repositories/mentorSearch.repository");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers — extracted to reduce cognitive complexity
 // ─────────────────────────────────────────────────────────────

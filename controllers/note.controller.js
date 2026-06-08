@@ -1,6 +1,7 @@
 // controllers/note.controller.js
 const noteService = require("../services/note.service");
 
+const { logger } = require("@sentry/node");
 const handleError = (res, err) =>
   res.status(err.statusCode || 500).json({ message: err.message });
 
@@ -10,9 +11,10 @@ const handleError = (res, err) =>
 const uploadNote = async (req, res) => {
   try {
     const data = await noteService.uploadNote(req.user._id, req.body, req.file);
+    logger.info("uploadNote completed successfully");
     return res.status(201).json({ success: true, ...data });
   } catch (err) {
-    console.error("❌ uploadNote error:", err.message);
+    logger.error("❌ uploadNote error:", err.message);
     if (err.message?.includes("File type not allowed")) {
       return res.status(400).json({ message: err.message });
     }
@@ -29,8 +31,10 @@ const uploadNote = async (req, res) => {
 const getNotes = async (req, res) => {
   try {
     const data = await noteService.getNotes(req.params.connectRequestId, req.user._id);
+    logger.info("getNotes completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err);
   }
 };
@@ -41,8 +45,10 @@ const getNotes = async (req, res) => {
 const getPrivateNotes = async (req, res) => {
   try {
     const data = await noteService.getPrivateNotes(req.params.connectRequestId, req.user._id);
+    logger.info("getPrivateNotes completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err);
   }
 };
@@ -53,8 +59,10 @@ const getPrivateNotes = async (req, res) => {
 const deleteNote = async (req, res) => {
   try {
     const data = await noteService.deleteNote(req.params.id, req.user._id);
+    logger.info("deleteNote completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
+    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err);
   }
 };

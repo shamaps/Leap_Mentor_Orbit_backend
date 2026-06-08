@@ -3,6 +3,7 @@ const ConnectRequest = require("../models/ConnectRequest");
 const MentorProfile  = require("../models/MentorProfile");
 const Wallet         = require("../models/Wallet");
 
+const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // GET /api/mentor/earnings
 // Stat cards — totalEarnings, sessionsThisMonth, avgRating, pendingPayout
@@ -48,6 +49,7 @@ const pendingPayout = ongoingSessions.reduce(
 
 const wallet = await Wallet.findOne({ user: mentorId }).lean();
 
+    logger.info("earnings.controller completed successfully");
     return res.json({
       success: true,
       totalEarnings,
@@ -57,6 +59,7 @@ const wallet = await Wallet.findOne({ user: mentorId }).lean();
       walletBalance: wallet?.balance || 0,
     });
   } catch (err) {
+    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -124,8 +127,10 @@ const getEarningsChart = async (req, res) => {
       }
     }
 
+    logger.info("earnings.controller completed successfully");
     return res.json({ success: true, period, data });
   } catch (err) {
+    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -190,6 +195,7 @@ const getPayoutHistory = async (req, res) => {
       status:      r.paymentStatus || "paid",
     }));
 
+    logger.info("earnings.controller completed successfully");
     return res.json({
       success: true,
       payouts: rows,
@@ -201,6 +207,7 @@ const getPayoutHistory = async (req, res) => {
       },
     });
   } catch (err) {
+    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -234,6 +241,7 @@ const withdrawEarnings = async (req, res) => {
       balanceAfter: 0,
     });
 
+    logger.info("withdrawEarnings completed successfully");
     return res.json({
       success:    true,
       message:    "Withdrawal request submitted successfully",
@@ -241,6 +249,7 @@ const withdrawEarnings = async (req, res) => {
       newBalance: 0,
     });
   } catch (err) {
+    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };

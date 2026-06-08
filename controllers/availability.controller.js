@@ -4,12 +4,14 @@ const ConnectRequest = require("../models/ConnectRequest");
 const SlotLock       = require("../models/SlotLock");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 
+const { logger } = require("@sentry/node");
 // GET /api/availability/me
 const getMyAvailability = async (req, res) => {
   try {
     let availability = await Availability.findOne({ mentor: req.user._id });
 
     if (!availability) {
+      logger.info("getMyAvailability completed successfully");
       return res.status(200).json({
         mentor: req.user._id,
         timezone: "Asia/Kolkata",
@@ -20,8 +22,10 @@ const getMyAvailability = async (req, res) => {
       });
     }
 
+    logger.info("getMyAvailability completed successfully");
     return res.json(availability);
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -47,8 +51,10 @@ const createAvailability = async (req, res) => {
       specificDates:    specificDates    || [],
     });
 
+    logger.info("createAvailability completed successfully");
     return res.status(201).json({ message: "Availability created successfully", availability });
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -82,8 +88,10 @@ const updateAvailability = async (req, res) => {
       { new: true, runValidators: true, upsert: true }
     );
 
+    logger.info("updateAvailability completed successfully");
     return res.json({ message: "Availability updated successfully", availability });
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -99,12 +107,14 @@ const getMentorAvailability = async (req, res) => {
       return res.status(404).json({ message: "Availability not set by this mentor" });
     }
 
+    logger.info("getMentorAvailability completed successfully");
     return res.json({
       timezone:         availability.timezone,
       sessionDurations: availability.sessionDurations,
       specificDates:    availability.specificDates,
     });
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -115,8 +125,10 @@ const getMentorAvailability = async (req, res) => {
 const deleteAvailability = async (req, res) => {
   try {
     await Availability.findOneAndDelete({ mentor: req.user._id });
+    logger.info("deleteAvailability completed successfully");
     return res.json({ message: "Availability cleared successfully" });
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -167,6 +179,7 @@ const getAvailableSlots = async (req, res) => {
     const allBlockedSlots = [...bookedSlots, ...lockedSlots];
 
     if (!availability.specificDates?.length) {
+      logger.info("availability.controller completed successfully");
       return res.json({
         timezone:         availability.timezone,
         sessionDurations: availability.sessionDurations,
@@ -179,12 +192,14 @@ const getAvailableSlots = async (req, res) => {
       duration,
       allBlockedSlots 
     );
+    logger.info("availability.controller completed successfully");
     return res.json({
       timezone:         availability.timezone,
       sessionDurations: availability.sessionDurations,
       slots:            grouped,
     });
   } catch (err) {
+    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: err.message });
   }
 };

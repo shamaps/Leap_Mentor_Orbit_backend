@@ -2,6 +2,7 @@
 const goalRepo = require("../repositories/goal.repository");
 const socketHandler = require("../socket/socketHandler");
 
+const { logger } = require("@sentry/node");
 // ── Socket helper ─────────────────────────────────────────────
 const emitToRoom = (connectRequestId, event, data) => {
     try {
@@ -9,7 +10,7 @@ const emitToRoom = (connectRequestId, event, data) => {
             socketHandler.io.to(connectRequestId.toString()).emit(event, data);
         }
     } catch (err) {
-        console.error("❌ Socket emit error:", err.message);
+        logger.error("❌ Socket emit error:", err.message);
     }
 };
 

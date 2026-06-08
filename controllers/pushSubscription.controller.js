@@ -1,5 +1,6 @@
 const pushSubscriptionService = require("../services/PushSubscription.service");
 
+const { logger } = require("@sentry/node");
 // POST /api/push/subscribe
 const subscribe = async (req, res) => {
   try {
@@ -9,6 +10,7 @@ const subscribe = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in pushSubscription.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: "Failed to save subscription" });
   }
 };
@@ -22,6 +24,7 @@ const unsubscribe = async (req, res) => {
     });
     return res.status(status).json(body);
   } catch (err) {
+    logger.error("Unhandled error in pushSubscription.controller", { error: err.message, stack: err.stack });
     return res.status(500).json({ message: "Failed to unsubscribe" });
   }
 };

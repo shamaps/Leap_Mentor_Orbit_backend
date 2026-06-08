@@ -7,10 +7,16 @@ const {
     signToken,
     setRefreshCookie,
     sanitizeUser,
-    getRefreshMs,          // ← imported now
+    getRefreshMs,         
 } = require("../utils/auth.utils");
 const User = require("../models/User");
-
+const {
+    loginLimiter,
+    registerLimiter,
+    oauthLimiter,
+    forgotPasswordLimiter,
+    otpLimiter,
+} = require("../middleware/rateLimiter");
 const { register } = require("../controllers/register.controller");
 const { login } = require("../controllers/login.controller");
 const { googleAuth } = require("../controllers/googleAuth.controller");
@@ -20,11 +26,11 @@ const { changePassword } = require("../controllers/changePassword.controller");
 const { authenticate } = require("../middleware/authenticate");
 
 // Existing routes
-router.post("/register", register);
-router.post("/login", login);
-router.post("/google", googleAuth);
-router.post("/social", socialAuth);
-router.post("/clerk-sso", clerkSSO);
+router.post("/register",registerLimiter, register);
+router.post("/login", loginLimiter,login);
+router.post("/google", oauthLimiter, googleAuth);
+router.post("/social", oauthLimiter, socialAuth);
+router.post("/clerk-sso", oauthLimiter, clerkSSO);
 router.put("/change-password", authenticate, changePassword);
 
 // ── Silent refresh ────────────────────────────────────────────
@@ -72,7 +78,8 @@ router.post("/logout", async (req, res) => {
             const hashed = crypto.createHash("sha256").update(raw).digest("hex");
             await RefreshToken.deleteOne({ tokenHash: hashed });
         }
-        res.clearCookie("refreshToken", { path: "/" });  // ✅ only clear refreshToken cookie
+        res.clearCookie("refreshToken", { path: "/" });  // only clear refreshToken cookie
+        res.clearCookie("refreshToken", { path: "/api/v1/auth/refresh" }); // old cookie with path has to be cleared
         return res.json({ message: "Logged out successfully" });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -86,8 +93,8 @@ const {
     resetPassword,
 } = require("../controllers/forgotPassword.controller");
 
-router.post("/forgot-password", sendForgotPasswordOTP);
-router.post("/verify-reset-otp", verifyResetOTP);
-router.post("/reset-password", resetPassword);
+router.post("/forgot-password", forgotPasswordLimiter, sendForgotPasswordOTP);
+router.post("/verify-reset-otp", otpLimiter, verifyResetOTP);
+router.post("/reset-password", forgotPasswordLimiter, resetPassword);
 
 module.exports = router;
