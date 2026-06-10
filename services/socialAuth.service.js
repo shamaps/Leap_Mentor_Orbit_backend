@@ -2,10 +2,10 @@ const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.util
 const repo = require("../repositories/socialAuth.repository");
 
 const { logger } = require("@sentry/node");
-const ALLOWED_PROVIDERS = ["linkedin", "apple"];
+const ALLOWED_PROVIDERS = new Set(["linkedin", "apple"]);
 
 const socialAuth = async ({ provider, providerId, email, name, roles, termsAccepted, res }) => {
-    if (!ALLOWED_PROVIDERS.includes(provider)) {
+    if (!ALLOWED_PROVIDERS.has(provider)) {
         return { status: 400, body: { message: "Invalid provider" } };
     }
 

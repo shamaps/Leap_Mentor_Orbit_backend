@@ -3,13 +3,7 @@ const AppError = require("../../utils/AppError");
 const adminReportsService = require("../../services/adminReports.service");
 
 const { logger } = require("@sentry/node");
-// ── Centralised error handler ─────────────────────────────────
-const handleError = (res, err, label) => {
-  if (err instanceof AppError)
-    return res.status(err.status).json({ message: err.message });
-  logger.error(`❌ ${label} error:`, err);
-  return res.status(500).json({ message: err.message });
-};
+const { handleError } = require("../../utils/AppError");
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/reports/stats
@@ -52,7 +46,7 @@ const handleReport = async (req, res) => {
     const { status, adminNote } = req.body;
 
     if (!["resolved", "dismissed"].includes(status)) {
-      return res.status(400).json({ message: "Status must be resolved or dismissed." });
+      return res.status(422).json({ message: "Status must be resolved or dismissed." });
     }
 
     const report = await adminReportsService.handleReport(
@@ -104,7 +98,7 @@ const deleteSession = async (req, res) => {
     );
 
     logger.info("deleteSession completed successfully");
-    return res.json({ success: true, message: "Session deleted and both parties notified." });
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteSession");

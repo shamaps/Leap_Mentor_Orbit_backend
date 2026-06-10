@@ -97,7 +97,7 @@ const cancelRequest = async (req, res, next) => {
       requestId: req.params.id,
     });
 
-    return res.json({ message: "Request cancelled successfully" });
+    return res.status(204).send();
   } catch (err) {
     next(err);
   

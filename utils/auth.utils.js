@@ -1,6 +1,6 @@
 // utils/auth.utils.js
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { createClerkClient } = require("@clerk/backend");
 
@@ -9,7 +9,7 @@ const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY 
 
 // ── helpers ──────────────────────────────────────────────────
 const getRefreshMs = () => {
-  const days = parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || "7", 10);
+  const days = Number.parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || "7", 10);
   return days * 24 * 60 * 60 * 1000;
 };
 
@@ -17,6 +17,24 @@ const signToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
   });
+};
+
+/**
+ * Merge incoming roles into an existing user's roles.
+ * Saves only if the role set actually changed.
+ * Extracted here because googleAuth and clerkSSO both had identical copies.
+ *
+ * @param {Document} user
+ * @param {Array}    roles      - incoming roles from request
+ * @param {Function} saveUser   - repo.saveUser for the calling context
+ */
+const mergeRoles = async (user, roles, saveUser) => {
+    if (!Array.isArray(roles) || !roles.length) return;
+    const mergedRoles = [...new Set([...user.roles, ...roles])];
+    if (mergedRoles.length !== user.roles.length) {
+        user.roles = mergedRoles;
+        await saveUser(user);
+    }
 };
 
 const signAccessToken = signToken;
@@ -77,5 +95,6 @@ module.exports = {
   issueTokens,
   sanitizeUser,
   validateRoles,
-  getRefreshMs,          
+  getRefreshMs,     
+  mergeRoles,     
 };

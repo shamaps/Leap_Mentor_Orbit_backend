@@ -1,23 +1,10 @@
 // services/forgotPassword.service.js
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
+const transporter = require("../utils/mailer");
 const repo = require("../repositories/forgotPassword.repository");
-
+const AppError = require("../utils/AppError");
 const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
-// MAILER — created once, reused across all calls
-// ─────────────────────────────────────────────────────────────
-
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -72,7 +59,7 @@ const buildOtpEmailHtml = (otpPlain) => `
  */
 const sendForgotPasswordOTP = async (email) => {
     if (!email)
-        throw Object.assign(new Error("email is required"), { status: 400 });
+        throw new AppError(400, "email is required");
 
     const normalizedEmail = normalizeEmail(email);
     const user = await repo.findUserByEmail(normalizedEmail);
@@ -111,27 +98,27 @@ const sendForgotPasswordOTP = async (email) => {
  */
 const verifyResetOTP = async (email, otp) => {
     if (!email || !otp)
-        throw Object.assign(new Error("email and otp are required"), { status: 400 });
+        throw new AppError(400, "email and otp are required");
 
     const normalizedEmail = normalizeEmail(email);
     const user = await repo.findUserByEmail(normalizedEmail);
     if (!user)
-        throw Object.assign(new Error("Invalid OTP"), { status: 400 });
+        throw new AppError(400, "Invalid OTP");
 
     const record = await repo.findTokenByUser(user._id);
 
     // ✅ Sonar fix: optional chain replaces (!record || !record.otp)
     if (!record?.otp)
-        throw Object.assign(new Error("No reset request found. Please request a new OTP."), { status: 400 });
+        throw new AppError(400, "No reset request found. Please request a new OTP.");
 
     if (record.expiresAt < new Date()) {
         await repo.deleteTokensByUser(user._id);
-        throw Object.assign(new Error("OTP expired. Please request a new one."), { status: 400 });
+        throw new AppError(400, "OTP expired. Please request a new one.");
     }
 
     const ok = await bcrypt.compare(String(otp).trim(), record.otp);
     if (!ok)
-        throw Object.assign(new Error("Invalid OTP"), { status: 400 });
+        throw new AppError(400, "Invalid OTP");
 
     // ✅ OTP valid — extend expiry for password reset step (5 more minutes)
     record.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -155,31 +142,31 @@ const verifyResetOTP = async (email, otp) => {
  */
 const resetPassword = async (email, otp, newPassword) => {
     if (!email || !otp || !newPassword)
-        throw Object.assign(new Error("email, otp and newPassword are required"), { status: 400 });
+        throw new AppError(400, "email, otp and newPassword are required");
 
     if (newPassword.length < 6)
-        throw Object.assign(new Error("Password must be at least 6 characters"), { status: 400 });
+        throw new AppError(400, "Password must be at least 6 characters");
 
     const normalizedEmail = normalizeEmail(email);
     const user = await repo.findUserByEmail(normalizedEmail);
     if (!user)
-        throw Object.assign(new Error("Invalid request"), { status: 400 });
+        throw new AppError(400, "Invalid request");
 
     const record = await repo.findTokenByUser(user._id);
 
     // ✅ Sonar fix: optional chain replaces (!record || !record.otp)
     if (!record?.otp)
-        throw Object.assign(new Error("Session expired. Please start over."), { status: 400 });
+        throw new AppError(400, "Session expired. Please start over.");
 
     if (record.expiresAt < new Date()) {
         await repo.deleteTokensByUser(user._id);
-        throw Object.assign(new Error("Session expired. Please start over."), { status: 400 });
+        throw new AppError(400, "Session expired. Please start over.");
     }
 
     // ✅ Re-verify OTP on final step — prevents skipping step 2
     const ok = await bcrypt.compare(String(otp).trim(), record.otp);
     if (!ok)
-        throw Object.assign(new Error("Invalid session. Please start over."), { status: 400 });
+        throw new AppError(400, "Invalid session. Please start over.");
 
     // ✅ Hash and save new password
     user.password = await bcrypt.hash(newPassword, 10);

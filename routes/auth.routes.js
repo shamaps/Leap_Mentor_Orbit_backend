@@ -31,7 +31,7 @@ router.post("/login", loginLimiter,login);
 router.post("/google", oauthLimiter, googleAuth);
 router.post("/social", oauthLimiter, socialAuth);
 router.post("/clerk-sso", oauthLimiter, clerkSSO);
-router.put("/change-password", authenticate, changePassword);
+router.patch("/password", authenticate, changePassword)
 
 // ── Silent refresh ────────────────────────────────────────────
 router.post("/refresh", async (req, res) => {

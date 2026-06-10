@@ -1,6 +1,7 @@
 // services/goal.service.js
 const goalRepo = require("../repositories/goal.repository");
 const socketHandler = require("../socket/socketHandler");
+const { VALID_GOAL_STATUSES } = require("../config/constants");
 
 const { logger } = require("@sentry/node");
 // ── Socket helper ─────────────────────────────────────────────
@@ -138,7 +139,7 @@ const updateGoal = async (goalId, body, userId) => {
     if (startDate !== undefined) goal.startDate = startDate || null;
     if (endDate !== undefined) goal.endDate = endDate || null;
     if (status !== undefined) {
-        if (!["active", "completed", "abandoned"].includes(status)) {
+        if (!VALID_GOAL_STATUSES.includes(status)) {
             const err = new Error("Invalid status");
             err.statusCode = 400;
             throw err;
@@ -257,11 +258,11 @@ const deleteMilestone = async (milestoneId, userId) => {
     }
 
     const connectRequestId = milestone.connectRequest;
-    const milestoneId_str = milestone._id.toString();
+    const milestoneIdStr = milestone._id.toString();
 
     await goalRepo.deleteMilestoneById(milestoneId);
 
-    emitToRoom(connectRequestId, "milestone_deleted", { milestoneId: milestoneId_str });
+    emitToRoom(connectRequestId, "milestone_deleted", { milestoneId: milestoneIdStr });
 
     return { message: "Milestone deleted" };
 };

@@ -2,7 +2,7 @@
 const Availability   = require("../models/Availability");
 const ConnectRequest = require("../models/ConnectRequest");
 const SlotLock       = require("../models/SlotLock");
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 const findAvailabilityByMentor = async (mentorId) => {
   return await Availability.findOne({ mentor: mentorId });
 };
@@ -10,7 +10,7 @@ const findAvailabilityByMentor = async (mentorId) => {
 const createAvailability = async ({ mentorId, timezone, sessionDurations, specificDates }) => {
   return await Availability.create({
     mentor:           mentorId,
-    timezone:         timezone         || "Asia/Kolkata",
+    timezone:         timezone         || PLATFORM_TIMEZONE,
     sessionDurations: sessionDurations || [30, 60],
     specificDates:    specificDates    || [],
   });

@@ -15,9 +15,10 @@ const getAuthUrl = async (req, res, next) => {
     logger.info("getAuthUrl completed successfully");
     return res.json({ url });
   } catch (err) {
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
     next(err);
   
-    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+    
 }
 };
 
@@ -78,11 +79,10 @@ const disconnect = async (req, res, next) => {
   try {
     await service.disconnect(req.user._id);
     logger.info("disconnect completed successfully");
-    return res.json({ message: "Google Calendar disconnected" });
+    return res.status(204).send();
   } catch (err) {
+     logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
     next(err);
-  
-    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
 }
 };
 
@@ -100,9 +100,8 @@ const getBusySlots = async (req, res, next) => {
     logger.info("getBusySlots completed successfully");
     return res.json({ busy });
   } catch (err) {
-    next(err);
-  
     logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+    next(err);
 }
 };
 
@@ -120,9 +119,10 @@ const getEvents = async (req, res, next) => {
     logger.info("getEvents completed successfully");
     return res.json({ events });
   } catch (err) {
+    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
     next(err);
   
-    logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
+    
 }
 };
 

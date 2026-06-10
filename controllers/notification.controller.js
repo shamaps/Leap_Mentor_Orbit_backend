@@ -2,8 +2,8 @@
 const notificationService = require("../services/notification.service");
 
 const { logger } = require("@sentry/node");
-const handleError = (res, message) =>
-  res.status(500).json({ message });
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 
 // GET /api/notifications
 const getNotifications = async (req, res) => {
@@ -13,7 +13,7 @@ const getNotifications = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, "Failed to fetch notifications");
+    return handleError(res, err, "notification.getNotifications");
   }
 };
 
@@ -25,7 +25,7 @@ const markAllRead = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, "Failed to mark notifications as read");
+    return handleError(res, err, "notification.markAllRead");
   }
 };
 
@@ -37,31 +37,31 @@ const markOneRead = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, "Failed to mark notification as read");
+    return handleError(res, err, "notification.markOneRead");
   }
 };
 
 // DELETE /api/notifications/:id
 const deleteNotification = async (req, res) => {
   try {
-    const data = await notificationService.deleteNotification(req.params.id, req.user._id);
+    await notificationService.deleteNotification(req.params.id, req.user._id);
     logger.info("deleteNotification completed successfully");
-    return res.json(data);
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, "Failed to delete notification");
+    return handleError(res, err, "notification.deleteNotification");
   }
 };
 
 // DELETE /api/notifications/clear-all
 const clearAll = async (req, res) => {
   try {
-    const data = await notificationService.clearAll(req.user._id);
+    await notificationService.clearAll(req.user._id);
     logger.info("clearAll completed successfully");
-    return res.json(data);
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, "Failed to clear notifications");
+    return handleError(res, err, "notification.clearAll");
   }
 };
 

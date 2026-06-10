@@ -2,6 +2,7 @@
 const cron          = require("node-cron");
 const Availability  = require("../models/Availability");
 const MentorProfile = require("../models/MentorProfile");
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 
 // ── Helper ────────────────────────────────────────────────────
 const getTodayStr = () => {
@@ -67,7 +68,7 @@ const cleanupAvailability = async () => {
 const startCleanupCron = () => {
   // Runs every day at midnight IST
   cron.schedule("0 0 * * *", cleanupAvailability, {
-    timezone: "Asia/Kolkata",
+    timezone: PLATFORM_TIMEZONE,
   });
 
   console.log("[Cron]  Availability cleanup scheduled — runs daily at midnight IST");

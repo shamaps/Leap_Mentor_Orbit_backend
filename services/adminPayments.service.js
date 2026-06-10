@@ -1,6 +1,6 @@
 // backend/services/adminPayments.service.js
 const repo = require("../repositories/adminPayments.repository");
-
+const { DEFAULT_COMMISSION_RATE } = require("../config/constants");
 const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helper — resolves transaction status without nested ternaries
@@ -18,7 +18,7 @@ const resolveTransactionStatus = (type) => {
 
 const fetchPaymentStats = async (adminId) => {
     const adminUser = await repo.findAdminCommissionRate(adminId);
-    const commissionRate = adminUser?.commissionRate ?? 20;
+    const commissionRate = adminUser?.commissionRate ?? DEFAULT_COMMISSION_RATE;
 
     const completedSessions = await repo.findCompletedPaidSessions();
 
@@ -50,21 +50,28 @@ const fetchPaymentStats = async (adminId) => {
 // CHART
 // ─────────────────────────────────────────────────────────────
 
+// AFTER — 1 DB query
 const fetchRevenueChart = async () => {
     const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    // Single query for all 6 months
+    const completed = await repo.findCompletedSessionsSince(startDate);
+
+    // Group into monthly buckets with a Map — O(n) single pass
+    const monthlyTotals = new Map();
+    for (const r of completed) {
+        const c = new Date(r.completedAt);
+        const key = `${c.getFullYear()}-${c.getMonth()}`;
+        monthlyTotals.set(key, (monthlyTotals.get(key) || 0) + (r.totalAmount || 0));
+    }
+
     const data = [];
-
     for (let i = 5; i >= 0; i--) {
-        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-        const label = monthStart
-            .toLocaleString("en-US", { month: "short" })
-            .toUpperCase();
-
-        const sessions = await repo.findCompletedSessionsInRange(monthStart, monthEnd);
-        const amount = sessions.reduce((s, r) => s + (r.totalAmount || 0), 0);
-
-        data.push({ label, amount });
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const label = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        data.push({ label, amount: monthlyTotals.get(key) || 0 });
     }
 
     return data;

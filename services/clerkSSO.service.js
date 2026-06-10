@@ -2,8 +2,8 @@
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/clerkSSO.repository");
 const AppError = require("../utils/AppError");
-const { clerkClient, signToken, sanitizeUser, validateRoles } = require("../utils/auth.utils");
-
+const { clerkClient, signToken, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
+const { WELCOME_BONUS_LP } = require("../config/constants");
 const { logger } = require("@sentry/node");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
@@ -14,8 +14,6 @@ const extractClerkMeta = (clerkUser) => {
     const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
     const externalAccount = clerkUser.externalAccounts?.[0];
     const provider = externalAccount?.provider?.replace("oauth_", "").replace("_oidc", "");
-
-    // FIX: externalId is deprecated — use providerUserId
     const providerId = externalAccount?.providerUserId;
 
     return { email, name, provider, providerId };
@@ -53,7 +51,7 @@ const resolveClerkUser = async (clerkToken) => {
  */
 const provisionWallet = async (userId, roles) => {
     const isMentee = roles.includes("mentee");
-    const startingBalance = isMentee ? 500 : 0;
+    const startingBalance = isMentee ? WELCOME_BONUS_LP : 0;
 
     logger.info("💰 Creating wallet | isMentee:", isMentee, "| startingBalance:", startingBalance);
 
@@ -65,9 +63,9 @@ const provisionWallet = async (userId, roles) => {
             const tx = await repo.createTransaction({
                 user: userId,
                 type: "credit",
-                amount: 500,
-                description: "Welcome bonus — 500 points to get started",
-                balanceAfter: 500,
+                amount: WELCOME_BONUS_LP,
+                description: `Welcome bonus —  ${WELCOME_BONUS_LP} points to get started`,
+                balanceAfter: WELCOME_BONUS_LP,
             });
             logger.info("✅ Transaction created:", tx._id);
         }
@@ -104,20 +102,6 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
     await provisionWallet(user._id, uniqueRoles);
 
     return user;
-};
-
-/**
- * Merges new roles onto an existing user if the set has changed.
- */
-const mergeRolesIfNeeded = async (user, roles) => {
-    if (!Array.isArray(roles) || !roles.length) return;
-
-    const mergedRoles = [...new Set([...user.roles, ...roles])];
-    if (mergedRoles.length !== user.roles.length) {
-        user.roles = mergedRoles;
-        await repo.saveUser(user);
-        logger.info("🔄 Roles updated:", user.roles);
-    }
 };
 
 /**
@@ -162,7 +146,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
 
     if (user) {
         logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
-        await mergeRolesIfNeeded(user, roles);
+        await mergeRoles(user, roles, repo.saveUser);
     } else {
         user = await createNewUser({ name, email, roles, termsAccepted });
         isNewUser = true;

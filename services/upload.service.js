@@ -103,7 +103,7 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
 
     // ── Send documents submitted email (non-blocking) ──
     sendDocumentsSubmittedEmail({ mentorName: user.name, mentorEmail: user.email }).catch((emailErr) => {
-        console.error(":x: sendDocumentsSubmittedEmail failed:", emailErr.message);
+        logger.error(" sendDocumentsSubmittedEmail failed", {error:emailErr.message});
     });
 
     return {

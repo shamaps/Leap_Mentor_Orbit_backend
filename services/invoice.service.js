@@ -1,7 +1,7 @@
 // services/invoice.service.js
 const repo = require("../repositories/invoice.repository");
 const generateInvoice = require("../utils/generateInvoice");
-
+const AppError = require("../utils/AppError");
 const { logger } = require("@sentry/node");
 /**
  * Generate and return a PDF invoice buffer for a paid session.
@@ -15,23 +15,23 @@ const downloadInvoice = async (connectRequestId, userId) => {
     // 1 — find the session
     const connectRequest = await repo.findConnectRequestById(connectRequestId);
     if (!connectRequest)
-        throw Object.assign(new Error("Session not found"), { status: 404 });
+        throw new AppError(404, "Session not found");
 
     // 2 — authorization: only the mentee can download
     if (connectRequest.mentee._id.toString() !== userId.toString())
-        throw Object.assign(new Error("Not authorized to download this invoice"), { status: 403 });
+        throw new AppError(403, "Not authorized to download this invoice");
 
     // 3 — must be a paid session
     const isPaid = ["paid", "released"].includes(connectRequest.paymentStatus);
     if (!isPaid)
-        throw Object.assign(new Error("No paid invoice found for this session"), { status: 400 });
+        throw new AppError(400, "No paid invoice found for this session");
 
     // 4 — get platform commission rate
     const adminUser = await repo.findActiveAdminCommissionRate();
 
-    // ✅ Sonar fix: optional chain replaces (!adminUser || adminUser.commissionRate == null)
+    // Sonar fix: optional chain replaces (!adminUser || adminUser.commissionRate == null)
     if (adminUser?.commissionRate == null)
-        throw Object.assign(new Error("Platform commission rate not configured"), { status: 400 });
+        throw new AppError(400, "Platform commission rate not configured");
 
     // 5 — generate invoice number and PDF
     const invoiceNumber = `INV-${connectRequestId.toString().slice(-6).toUpperCase()}`;

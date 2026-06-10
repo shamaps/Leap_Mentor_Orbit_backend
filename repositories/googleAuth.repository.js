@@ -3,7 +3,7 @@ const User = require("../models/User");
 const OAuthAccount = require("../models/OAuthAccount");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
-
+const { WELCOME_BONUS_LP } = require("../config/constants");
 /**
  * Find a user by email.
  * @param {string} email - already normalized (lowercase + trimmed)
@@ -45,9 +45,9 @@ const createWelcomeTransaction = async (userId) => {
     return await Transaction.create({
         user: userId,
         type: "credit",
-        amount: 500,
-        description: "Welcome bonus — 500 points to get started",
-        balanceAfter: 500,
+        amount: WELCOME_BONUS_LP,
+        description: `Welcome bonus —  ${WELCOME_BONUS_LP} points to get started`,
+        balanceAfter: WELCOME_BONUS_LP,
     });
 };
 

@@ -1,6 +1,6 @@
 // utils/generateToken.js
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 
 // Short-lived — sent in response body / memory only
 const generateAccessToken = (userId) => {

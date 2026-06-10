@@ -6,6 +6,7 @@ const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
 const { sendPaymentReceivedEmail } = require("../utils/sendNotificationEmail");
 const { logger } = require("@sentry/node");
+const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("../config/constants");
 
 const requireAdmin = async () => {
   const admin = await repo.findActiveAdmin();
@@ -50,12 +51,13 @@ const dispatchPaySideEffects = (connectRequest, { sessionRate, sessionCount, tot
         menteeName: connectRequest.mentee.name,
         menteeEmail: connectRequest.mentee.email,
         slots: connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({ date, startTime, endTime })),
-        timezone: availability?.timezone || "Asia/Kolkata",
+        timezone: availability?.timezone || PLATFORM_TIMEZONE,
         message: connectRequest.message || "",
       })
     )
     .then(() => logger.info("Calendar invite sent", { connectRequestId: connectRequest._id.toString() }))
-    .catch((err) => logger.error("Calendar invite failed", { error: err.message }));
+    .catch((err) => logger.error("Calendar invite send failed", { error: err.message }))
+    .catch((err) => logger.error("Timezone fetch failed — calendar invite skipped", { error: err.message }));;
 };
 
 // PAY
@@ -65,7 +67,7 @@ const pay = async ({ connectRequestId, sessionRate, sessionCount, menteeId }) =>
   if (!sessionCount || sessionCount < 1) throw new AppError(400, "sessionCount must be at least 1");
 
   const admin = await requireAdmin();
-  const commissionRate = admin.commissionRate ?? 20;
+  const commissionRate = admin.commissionRate ?? DEFAULT_COMMISSION_RATE;
   const mentorAmount = sessionRate * sessionCount;
   const platformFee = Math.ceil((mentorAmount * commissionRate) / 100);
   const totalAmount = mentorAmount + platformFee;
@@ -225,7 +227,7 @@ const refund = async ({ requestId, userId }) => {
     const menteeWallet = await repo.findWalletByUser(menteeId, session);
 
     if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
-    if (menteeWallet.escrow < totalAmount) throw new AppError(400, "Escrow balance mismatch. Contact support.");
+    if (menteeWallet.escrow < totalAmount) throw new AppError(400, "Escrow balance mismatch. Contact support");
 
     menteeWallet.escrow -= totalAmount;
     menteeWallet.balance += totalAmount;
@@ -284,7 +286,7 @@ const refundSlot = async ({ connectRequestId, slotIndex, cancelledBy }) => {
     const menteeWallet = await repo.findWalletByUser(menteeId, mongoSession);
 
     if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
-    if (menteeWallet.escrow < perSlotRefund) throw new AppError(400, "Escrow balance too low for slot refund. Contact support.");
+    if (menteeWallet.escrow < perSlotRefund) throw new AppError(400, "Escrow balance too low for slot refund. Contact support");
 
     menteeWallet.escrow -= perSlotRefund;
     menteeWallet.balance += perSlotRefund;
@@ -331,7 +333,7 @@ const getStatus = async ({ requestId, userId }) => {
   if (!isMentee && !isMentor) throw new AppError(403, "Not authorized to view this session");
 
   const admin = await repo.findActiveAdmin();
-  const commissionRate = admin?.commissionRate ?? 20;
+  const commissionRate = admin?.commissionRate ?? DEFAULT_COMMISSION_RATE;
   const menteeWallet = await repo.findWalletByUserLean(connectRequest.mentee);
 
   return {
@@ -369,7 +371,7 @@ const payAdditional = async ({ connectRequestId, sessionRate, slotId, menteeId }
   if (sessionRate < 1) throw new AppError(400, "sessionRate must be at least 1");
 
   const admin = await requireAdmin();
-  const commissionRate = admin.commissionRate ?? 20;
+  const commissionRate = admin.commissionRate ?? DEFAULT_COMMISSION_RATE;
   const platformFee = Math.ceil((sessionRate * commissionRate) / 100);
   const totalAmount = sessionRate + platformFee;
 

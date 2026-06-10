@@ -1,12 +1,12 @@
 // backend/middleware/upload.middleware.js
 const multer = require("multer");
 
-// ✅ Memory storage — file never touches disk
+// Memory storage — file never touches disk
 // Buffer is streamed directly to Cloudinary
 const storage = multer.memoryStorage();
 
-// ✅ Allowed MIME types
-const ALLOWED_MIME_TYPES = [
+//  Allowed MIME types
+const ALLOWED_MIME_TYPES = new Set([
   // PDF
   "application/pdf",
   // Images
@@ -26,9 +26,9 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   // Text
   "text/plain",
-];
+]);
 
-// ✅ Readable file type label for UI
+//  Readable file type label for UI
 const getFileType = (mimetype) => {
   if (mimetype === "application/pdf")                    return "pdf";
   if (mimetype.startsWith("image/"))                     return "image";
@@ -39,9 +39,9 @@ const getFileType = (mimetype) => {
   return "other";
 };
 
-// ✅ File filter — reject unsupported types immediately
+// File filter — reject unsupported types immediately
 const fileFilter = (req, file, cb) => {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
@@ -53,7 +53,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// ✅ Multer instance — 10MB limit
+// Multer instance — 10MB limit
 const upload = multer({
   storage,
   fileFilter,

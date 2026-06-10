@@ -1,5 +1,6 @@
 // services/leapRequest.service.js
 const leapRequestRepo = require("../repositories/leapRequest.repository");
+const { LEAP_REFILL_THRESHOLD, LEAP_REFILL_AMOUNT } = require("../config/constants");
 
 const { logger } = require("@sentry/node");
 // ── MENTEE: Check my latest request ──────────────────────────
@@ -28,8 +29,8 @@ const createRequest = async (menteeId) => {
     const wallet = await leapRequestRepo.findWalletByUser(menteeId);
     const currentBalance = wallet?.balance ?? 0;
 
-    // Only allow if balance is below 500
-    if (currentBalance >= 500) {
+    // Only allow if balance is below threshold
+    if (currentBalance >= LEAP_REFILL_THRESHOLD) {
         const err = new Error("You still have Leap Points remaining.");
         err.statusCode = 400;
         throw err;
@@ -56,18 +57,18 @@ const getPendingCount = async () => {
 const approveRequest = async (id, adminId) => {
     const request = await leapRequestRepo.findRequestById(id);
     if (!request) {
-        const err = new Error("Request not found.");
+        const err = new Error("Request not found");
         err.statusCode = 404;
         throw err;
     }
     if (request.status !== "pending") {
-        const err = new Error("Request already processed.");
+        const err = new Error("Request already processed");
         err.statusCode = 400;
         throw err;
     }
 
-    // Add 500 LP to the mentee's wallet
-    const wallet = await leapRequestRepo.incrementWalletBalance(request.mentee, 500);
+    // Add refill amount LP to the mentee's wallet
+    const wallet = await leapRequestRepo.incrementWalletBalance(request.mentee, LEAP_REFILL_AMOUNT);
 
     request.status = "approved";
     request.reviewedAt = new Date();
@@ -75,7 +76,7 @@ const approveRequest = async (id, adminId) => {
     await request.save();
 
     return {
-        message: "500 LP added successfully.",
+        message: `${LEAP_REFILL_AMOUNT} LP added successfully`,
         newBalance: wallet.balance,
         request,
     };
@@ -85,12 +86,12 @@ const approveRequest = async (id, adminId) => {
 const rejectRequest = async (id, adminId) => {
     const request = await leapRequestRepo.findRequestById(id);
     if (!request) {
-        const err = new Error("Request not found.");
+        const err = new Error("Request not found");
         err.statusCode = 404;
         throw err;
     }
     if (request.status !== "pending") {
-        const err = new Error("Request already processed.");
+        const err = new Error("Request already processed");
         err.statusCode = 400;
         throw err;
     }

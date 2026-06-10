@@ -1,10 +1,8 @@
 // controllers/note.controller.js
 const noteService = require("../services/note.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // POST /api/notes/upload
 // ─────────────────────────────────────────────────────────────
@@ -21,7 +19,7 @@ const uploadNote = async (req, res) => {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({ message: "File too large. Maximum size is 10MB." });
     }
-    return handleError(res, err);
+    return handleError(res, err, "note.uploadNote");
   }
 };
 
@@ -35,7 +33,7 @@ const getNotes = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "note.getNotes");
   }
 };
 
@@ -49,7 +47,7 @@ const getPrivateNotes = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "note.getPrivateNotes");
   }
 };
 
@@ -58,12 +56,12 @@ const getPrivateNotes = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const deleteNote = async (req, res) => {
   try {
-    const data = await noteService.deleteNote(req.params.id, req.user._id);
+    await noteService.deleteNote(req.params.id, req.user._id);
     logger.info("deleteNote completed successfully");
-    return res.json({ success: true, ...data });
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "note.deleteNote");
   }
 };
 

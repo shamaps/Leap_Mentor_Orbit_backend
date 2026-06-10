@@ -1,12 +1,8 @@
 // controllers/adminVerification.controller.js
 const adminVerificationService = require("../services/adminVerification.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err, context) => {
-  logger.error(`[adminVerification] ${context}:`, err);
-  return res.status(err.statusCode || 500).json({ message: err.message });
-};
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 const getAllMentorVerifications = async (req, res) => {
   try {
     const data = await adminVerificationService.getAllMentorVerifications();

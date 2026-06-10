@@ -10,7 +10,7 @@ const {
     sendSlotRescheduledEmail,
     sendAdditionalSlotEmail,
 } = require("../utils/sendNotificationEmail");
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers (no I/O — easy to unit-test in isolation)
 // ─────────────────────────────────────────────────────────────
@@ -20,7 +20,6 @@ const ALLOWED_MEETING_DOMAINS = [
     "zoom.us",
     "teams.microsoft.com",
     "whereby.com",
-    "around.co",
     "meet.jit.si",
     "webex.com",
 ];
@@ -711,7 +710,7 @@ const getMentorAvailability = async (connectRequestId, userId, duration = 60) =>
 
     // FIX: optional chain instead of || for length check
     if (!availability?.specificDates?.length) {
-        return { slots: [], timezone: "Asia/Kolkata" };
+        return { slots: [], timezone: PLATFORM_TIMEZONE };
     }
 
     // All non-cancelled slots are blocked in the picker
@@ -728,7 +727,7 @@ const getMentorAvailability = async (connectRequestId, userId, duration = 60) =>
 
     return {
         slots: grouped,
-        timezone: availability.timezone || "Asia/Kolkata",
+        timezone: availability.timezone || PLATFORM_TIMEZONE,
         sessionDurations: availability.sessionDurations || [30, 60],
     };
 };

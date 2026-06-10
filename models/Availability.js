@@ -1,5 +1,6 @@
 // models/Availability.js
 const mongoose = require("mongoose");
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 
 // ─── Time Slot ────────────────────────────────────────────────
 const timeSlotSchema = new mongoose.Schema(
@@ -46,7 +47,7 @@ const availabilitySchema = new mongoose.Schema(
 
     timezone: {
       type: String,
-      default: "Asia/Kolkata",
+      default: PLATFORM_TIMEZONE,
       trim: true,
     },
 
@@ -59,7 +60,7 @@ const availabilitySchema = new mongoose.Schema(
       },
     },
 
-    // ✅ EXISTING — weekly recurring schedule
+    // EXISTING — weekly recurring schedule
     weeklyHours: {
       type: [dayScheduleSchema],
       default: () => [
@@ -73,7 +74,7 @@ const availabilitySchema = new mongoose.Schema(
       ],
     },
 
-    // ✅ NEW — specific date availability (calendar picker)
+    // NEW — specific date availability (calendar picker)
     // Takes priority over weeklyHours for the same date
     specificDates: {
       type: [specificDateSchema],

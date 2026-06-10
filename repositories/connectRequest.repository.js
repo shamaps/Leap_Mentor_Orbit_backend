@@ -2,6 +2,7 @@
 const ConnectRequest = require("../models/ConnectRequest");
 const MentorProfile = require("../models/MentorProfile");
 const MenteeProfile = require("../models/MenteeProfile");
+const { ACTIVE_SESSION_STATUSES, VALID_REQUEST_STATUSES } = require("../config/constants");
 
 // ─────────────────────────────────────────────────────────────
 // READ
@@ -74,8 +75,7 @@ const findMyRequests = async (menteeId) => {
  */
 const findIncomingRequests = async (mentorId, status) => {
   const filter = { mentor: mentorId };
-  const validStatuses = ["pending", "accepted", "rejected", "referred"];
-  if (status && validStatuses.includes(status)) {
+  if (status && VALID_REQUEST_STATUSES.includes(status)) {
     filter.status = status;
   }
   return await ConnectRequest.find(filter)
@@ -90,7 +90,7 @@ const findIncomingRequests = async (mentorId, status) => {
  */
 const findOngoingConnects = async (userId) => {
   return await ConnectRequest.find({
-    status: { $in: ["ongoing", "completed"] },
+    status: { $in: ACTIVE_SESSION_STATUSES },
     $or: [{ mentee: userId }, { mentor: userId }],
   })
     .populate("mentee", "name email")

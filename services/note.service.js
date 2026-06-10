@@ -3,6 +3,7 @@ const streamifier = require("streamifier");
 const { cloudinary } = require("../config/cloudinary");
 const { getFileType } = require("../middleware/upload.middleware");
 const noteRepo = require("../repositories/note.repository");
+const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 
 const { logger } = require("@sentry/node");
 // ── Helper: validate user belongs to this session ─────────────
@@ -11,7 +12,7 @@ const validateSessionAccess = async (connectRequestId, userId) => {
     if (!request) {
         return { valid: false, reason: "Session not found", status: 404 };
     }
-    if (!["ongoing", "completed"].includes(request.status)) {
+    if (!ACTIVE_SESSION_STATUSES.includes(request.status)) {
         return { valid: false, reason: "Session is not active", status: 400 };
     }
     const uid = userId.toString();
@@ -67,7 +68,7 @@ const uploadNote = async (userId, body, file) => {
     }
 
     if (access.sessionStatus === "completed") {
-        const err = new Error("Cannot upload notes to a completed session.");
+        const err = new Error("Cannot upload notes to a completed session");
         err.statusCode = 400;
         throw err;
     }

@@ -1,7 +1,7 @@
 // backend/middleware/noteAccess.js
 const ConnectRequest = require("../models/ConnectRequest");
 const Note           = require("../models/Note");
-
+const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 /**
  * MIDDLEWARE 1 — validateSessionMembership
  * Confirms the requesting user is a participant of the session.
@@ -30,7 +30,7 @@ const validateSessionMembership = async (req, res, next) => {
       });
     }
 
-    if (!["ongoing", "completed"].includes(session.status)) {
+    if (!ACTIVE_SESSION_STATUSES.includes(session.status)) {
       return res.status(403).json({
         message: "Session is not active",
         code: "SESSION_INACTIVE",

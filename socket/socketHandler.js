@@ -96,8 +96,7 @@ const socketHandler = (io) => {
         const otherId = await getOtherUserId(connectRequestId, userId);
         if (otherId && onlineUsers.get(connectRequestId)?.has(otherId)) {
           socket.emit("user_online", { userId: otherId });
-        }//changed here on 2nd april socket problem
-
+        }
         await Message.updateMany(
           {
             connectRequest: connectRequestId,
@@ -115,7 +114,7 @@ const socketHandler = (io) => {
 
         console.log(`🏠 ${socket.user.email} joined room: ${connectRequestId}`);
       } catch (err) {
-        console.error("❌ join_room error:", err.message);
+        logger.error("join_room error", { error: err.message, stack: err.stack, userId, connectRequestId });
         socket.emit("error", { message: "Failed to join room" });
       }
     });
@@ -154,7 +153,7 @@ const socketHandler = (io) => {
 
         console.log(`💬 Message in ${connectRequestId} from ${socket.user.email}`);
       } catch (err) {
-        console.error("❌ send_message error:", err.message);
+        logger.error("send_message error", { error: err.message, stack: err.stack, userId, connectRequestId });
         socket.emit("error", { message: "Failed to send message" });
       }
     });
@@ -187,7 +186,7 @@ const socketHandler = (io) => {
           readAt: new Date(),
         });
       } catch (err) {
-        console.error("❌ mark_read error:", err.message);
+        logger.error("mark_read error", { error: err.message, stack: err.stack, userId, connectRequestId });
       }
     });
 

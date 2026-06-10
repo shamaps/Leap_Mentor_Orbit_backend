@@ -18,8 +18,7 @@ app.use(cookieParser());
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
+      ...(process.env.CORS_ORIGINS?.split(",").map(s => s.trim()) ?? []),
       process.env.FRONTEND_URL,
     ].filter(Boolean);
 

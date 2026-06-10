@@ -183,7 +183,7 @@ const fetchEventsFromCalendar = async (calendar, calId, timeMin, timeMax) => {
         });
         return (response.data.items || []).map(normalizeEvent);
     } catch (err) {
-        // ✅ Sonar fix: log the skipped calendar instead of silently swallowing
+        // Sonar fix: log the skipped calendar instead of silently swallowing
         logger.warn(`⚠️ Could not read calendar ${calId} — skipping. Reason: ${err.message}`);
         return [];
     }

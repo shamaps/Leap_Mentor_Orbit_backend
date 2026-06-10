@@ -1,16 +1,8 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
 const repo = require("../repositories/verification.repository");
-
+const transporter = require("../utils/mailer");
 const { logger } = require("@sentry/node");
-// ── Mailer ────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
 
 // ── Helpers ───────────────────────────────────────────────────
 const makeOtp = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -33,7 +25,8 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
 
     await repo.createVerificationToken({ user: user._id, otp: otpHash, token: tokenHash, expiresAt });
 
-    const base = process.env.APP_BASE_URL || "http://localhost:5173";
+    const base = process.env.APP_BASE_URL;
+if (!base) throw new Error("APP_BASE_URL is not set");
     const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
     await transporter.sendMail({
@@ -127,7 +120,7 @@ const verifyLink = async ({ token, email }) => {
 
     if (record.expiresAt < new Date()) {
         await repo.deleteTokensByUser(user._id);
-        return { status: 400, body: { message: "Link expired. Please resend." } };
+        return { status: 400, body: { message: "Link expired. Please resend" } };
     }
 
     const ok = await bcrypt.compare(String(token).trim(), record.token);

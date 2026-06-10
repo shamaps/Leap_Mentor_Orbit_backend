@@ -1,10 +1,8 @@
 // controllers/admin/adminSettings.controller.js
 const adminSettingsService = require("../../services/adminSettings.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../../utils/AppError");
+const { handleError } = require("../../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/settings/overview
 // ─────────────────────────────────────────────────────────────
@@ -15,7 +13,7 @@ const getOverview = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "adminSettings.getOverview");
   }
 };
 
@@ -35,7 +33,7 @@ const changePassword = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "adminSettings.changePassword");
   }
 };
 
@@ -50,7 +48,7 @@ const addAdmin = async (req, res) => {
     return res.status(201).json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "adminSettings.addAdmin");
   }
 };
 
@@ -64,7 +62,7 @@ const getCommission = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "adminSettings.getCommission");
   }
 };
 
@@ -81,7 +79,7 @@ const updateCommission = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "adminSettings.updateCommission");
   }
 };
 

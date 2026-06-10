@@ -1,7 +1,7 @@
 // services/availability.service.js
 const availabilityRepository = require("../repositories/availability.repository");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 const { logger } = require("@sentry/node");
 const getMyAvailability = async (mentorId) => {
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
@@ -9,7 +9,7 @@ const getMyAvailability = async (mentorId) => {
   if (!availability) {
     return {
       mentor:                  mentorId,
-      timezone:                "Asia/Kolkata",
+      timezone:                PLATFORM_TIMEZONE,
       sessionDurations:        [30, 60],
       googleCalendarConnected: false,
       specificDates:           [],
@@ -23,7 +23,7 @@ const getMyAvailability = async (mentorId) => {
 const createAvailability = async (mentorId, body) => {
   const existing = await availabilityRepository.findAvailabilityByMentor(mentorId);
   if (existing) {
-    const error = new Error("Availability already exists. Use PATCH /api/availability/me to update.");
+    const error = new Error("Availability already exists. Use PATCH /api/availability/me to update");
     error.statusCode = 409;
     throw error;
   }

@@ -1,10 +1,8 @@
 // controllers/goal.controller.js
 const goalService = require("../services/goal.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // POST /api/goals
 // ─────────────────────────────────────────────────────────────
@@ -15,7 +13,7 @@ const createGoal = async (req, res) => {
     return res.status(201).json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.createGoal");
   }
 };
 
@@ -29,7 +27,7 @@ const getGoal = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.getGoal");
   }
 };
 
@@ -43,7 +41,7 @@ const updateGoal = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.updateGoal");
   }
 };
 
@@ -57,7 +55,7 @@ const addMilestone = async (req, res) => {
     return res.status(201).json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.addMilestone");
   }
 };
 
@@ -71,7 +69,7 @@ const updateMilestone = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.updateMilestone");
   }
 };
 
@@ -80,12 +78,12 @@ const updateMilestone = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const deleteMilestone = async (req, res) => {
   try {
-    const data = await goalService.deleteMilestone(req.params.milestoneId, req.user._id);
+    await goalService.deleteMilestone(req.params.milestoneId, req.user._id);
     logger.info("deleteMilestone completed successfully");
-    return res.json({ success: true, ...data });
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "goal.deleteMilestone");
   }
 };
 

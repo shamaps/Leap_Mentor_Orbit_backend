@@ -7,26 +7,27 @@ const {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
 } = require("../utils/sendNotificationEmail");
-
+const { VALID_RESPOND_STATUSES } = require("../config/constants");
+const AppError = require("../utils/AppError");
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
 
 const validateSendRequestPayload = ({ mentorId, menteeId, selectedSlots, sessionRate, sessionCount }) => {
   if (!mentorId)
-    throw Object.assign(new Error("mentorId is required"), { status: 400 });
+    throw new AppError(400, "mentorId is required");
   if (!Array.isArray(selectedSlots) || selectedSlots.length === 0)
-    throw Object.assign(new Error("At least one slot must be selected"), { status: 400 });
+    throw new AppError(400, "At least one slot must be selected");
   if (selectedSlots.length > 5)
-    throw Object.assign(new Error("Maximum 5 slots can be proposed"), { status: 400 });
+    throw new AppError(400, "Maximum 5 slots can be proposed");
   for (const slot of selectedSlots) {
     if (!slot.day || !slot.date || !slot.startTime || !slot.endTime)
-      throw Object.assign(new Error("Each slot must have day, date, startTime and endTime"), { status: 400 });
+      throw new AppError(400, "Each slot must have day, date, startTime and endTime");
   }
   if (menteeId.toString() === mentorId)
-    throw Object.assign(new Error("You cannot send a request to yourself"), { status: 400 });
+    throw new AppError(400, "You cannot send a request to yourself");
   if (sessionRate && Number(sessionRate) < 1)
-    throw Object.assign(new Error("sessionRate must be at least 1"), { status: 400 });
+    throw new AppError(400, "sessionRate must be at least 1");
   if (sessionCount && Number(sessionCount) < 1)
-    throw Object.assign(new Error("sessionCount must be at least 1"), { status: 400 });
+    throw new AppError(400, "sessionCount must be at least 1");
 };
 
 const checkRequestConflicts = async (menteeId, mentorId, selectedSlots) => {
@@ -36,7 +37,7 @@ const checkRequestConflicts = async (menteeId, mentorId, selectedSlots) => {
       menteeId: menteeId.toString(),
       mentorId,
     });
-    throw Object.assign(new Error("You already have a pending request with this mentor"), { status: 409 });
+    throw new AppError(409, "You already have a pending request with this mentor");
   }
 
   for (const slot of selectedSlots) {
@@ -46,10 +47,7 @@ const checkRequestConflicts = async (menteeId, mentorId, selectedSlots) => {
         mentorId,
         slot: `${slot.date} ${slot.startTime}–${slot.endTime}`,
       });
-      throw Object.assign(
-        new Error(`Slot ${slot.date} ${slot.startTime}–${slot.endTime} is already taken. Please choose another.`),
-        { status: 409 }
-      );
+      throw new AppError(409, `Slot ${slot.date} ${slot.startTime}–${slot.endTime} is already taken. Please choose another.`)
     }
   }
 };
@@ -85,7 +83,7 @@ const sendRequest = async ({ mentorId, menteeId, menteeName, message, selectedSl
     recipient: new mongoose.Types.ObjectId(mentorId),
     type: "connect_request_received",
     title: "New Connect Request",
-    message: "You have a new connect request from a mentee.",
+    message: "You have a new connect request from a mentee",
     metadata: { requestId: request._id, menteeId },
   });
 
@@ -93,7 +91,7 @@ const sendRequest = async ({ mentorId, menteeId, menteeName, message, selectedSl
   if (emitToUser) {
     emitToUser(mentorId, "new_connect_request", {
       title: "New Connect Request 🔔",
-      message: `${menteeName} sent you a connect request.`,
+      message: `${menteeName} sent you a connect request`,
       type: "info",
     });
     emitStatusChange(emitToUser, [mentorId], request._id, "pending");
@@ -150,7 +148,7 @@ const handleAccepted = async (request, confirmedSlot, emitToUser) => {
   if (emitToUser) {
     emitToUser(request.mentee._id.toString(), "request_accepted", {
       title: "Request Accepted! 🎉",
-      message: `${request.mentor.name} accepted your connect request.`,
+      message: `${request.mentor.name} accepted your connect request`,
       type: "success",
     });
   }
@@ -185,19 +183,19 @@ const handleRejected = async (request, emitToUser) => {
 };
 
 const respondToRequest = async (requestId, mentorUserId, status, confirmedSlot) => {
-  if (!["accepted", "rejected"].includes(status))
-    throw Object.assign(new Error("Status must be 'accepted' or 'rejected'"), { status: 400 });
+  if (!VALID_RESPOND_STATUSES.includes(status))
+    throw new AppError(400, "Status must be 'accepted' or 'rejected'");
   if (status === "accepted") {
     if (!confirmedSlot?.date || !confirmedSlot?.startTime || !confirmedSlot?.endTime)
-      throw Object.assign(new Error("confirmedSlot is required when accepting"), { status: 400 });
+      throw new AppError(400, "confirmedSlot is required when accepting");
   }
 
   const request = await repo.findRequestByIdWithUsers(requestId);
-  if (!request) throw Object.assign(new Error("Request not found"), { status: 404 });
+  if (!request) throw new AppError(404, "Request not found");
   if (request.mentor._id.toString() !== mentorUserId.toString())
-    throw Object.assign(new Error("Not authorized to respond to this request"), { status: 403 });
+    throw new AppError(403, "Not authorized to respond to this request");
   if (request.status !== "pending")
-    throw Object.assign(new Error(`Request already ${request.status}`), { status: 400 });
+    throw new AppError(400, `Request already ${request.status}`);
 
   request.status = status;
   request.respondedAt = new Date();
@@ -223,11 +221,11 @@ const respondToRequest = async (requestId, mentorUserId, status, confirmedSlot) 
 
 const cancelRequest = async (requestId, menteeUserId) => {
   const request = await repo.findRequestById(requestId);
-  if (!request) throw Object.assign(new Error("Request not found"), { status: 404 });
+  if (!request) throw new AppError(404, "Request not found");
   if (request.mentee.toString() !== menteeUserId.toString())
-    throw Object.assign(new Error("Not authorized to cancel this request"), { status: 403 });
+    throw new AppError(403, "Not authorized to cancel this request");
   if (request.status === "ongoing")
-    throw Object.assign(new Error("Cannot delete an ongoing session"), { status: 400 });
+    throw new AppError(400, "Cannot delete an ongoing session");
 
   await repo.deleteRequestById(requestId);
 
@@ -239,20 +237,20 @@ const cancelRequest = async (requestId, menteeUserId) => {
 
 const referRequest = async (requestId, mentorUserId, referToMentorId) => {
   if (!referToMentorId)
-    throw Object.assign(new Error("referToMentorId is required"), { status: 400 });
+    throw new AppError(400, "referToMentorId is required");
 
   const request = await repo.findRequestByIdWithUsers(requestId);
-  if (!request) throw Object.assign(new Error("Request not found"), { status: 404 });
+  if (!request) throw new AppError(404, "Request not found");
   if (request.mentor._id.toString() !== mentorUserId.toString())
-    throw Object.assign(new Error("Not authorized to refer this request"), { status: 403 });
+    throw new AppError(403, "Not authorized to refer this request");
   if (request.status !== "pending")
-    throw Object.assign(new Error(`Cannot refer a request that is already ${request.status}`), { status: 400 });
+    throw new AppError(400, `Cannot refer a request that is already ${request.status}`);
   if (referToMentorId === mentorUserId.toString())
-    throw Object.assign(new Error("Cannot refer request to yourself"), { status: 400 });
+    throw new AppError(400, "Cannot refer request to yourself");
 
   const existingRequest = await repo.findExistingReferral(request.mentee._id, referToMentorId);
   if (existingRequest)
-    throw Object.assign(new Error("Mentee already has a pending request with this mentor"), { status: 409 });
+    throw new AppError(409, "Mentee already has a pending request with this mentor");
 
   const newRequest = await repo.createConnectRequest({
     mentee: request.mentee._id,
@@ -325,13 +323,13 @@ const getOngoingConnects = async (userId) => {
 
 const getConnectDetail = async (requestId, userId) => {
   const request = await repo.findRequestByIdLean(requestId);
-  if (!request) throw Object.assign(new Error("Session not found"), { status: 404 });
+  if (!request) throw new AppError(404, "Session not found");
 
   const isMentee = request.mentee._id.toString() === userId.toString();
   const isMentor = request.mentor._id.toString() === userId.toString();
 
   if (!isMentee && !isMentor)
-    throw Object.assign(new Error("Not authorized to view this session"), { status: 403 });
+    throw new AppError(403, "Not authorized to view this session");
 
   const [mentorProfile, menteeProfile] = await Promise.all([
     repo.findMentorProfile(request.mentor._id),

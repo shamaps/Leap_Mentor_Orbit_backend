@@ -118,7 +118,7 @@ const fetchReports = async ({ page, limit, search, status }) => {
 
 const handleReport = async (reportId, { status, adminNote }, adminId) => {
     const report = await repo.findReportById(reportId);
-    if (!report) throw new AppError(404, "Report not found.");
+    if (!report) throw new AppError(404, "Report not found");
 
     report.status = status;
     report.adminNote = adminNote?.trim() || report.adminNote;
@@ -173,26 +173,26 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
     if (!report) throw new AppError(404, "Report not found.");
 
     if (report.reporterRole !== "mentee") {
-        throw new AppError(403, "Only mentees can request refunds. Mentors do not make payments.");
+        throw new AppError(403, "Only mentees can request refunds. Mentors do not make payments");
     }
     if (report.complaintType !== "refund") {
-        throw new AppError(400, "This report is not a refund request.");
+        throw new AppError(400, "This report is not a refund request");
     }
     if (report.refundProcessed) {
-        throw new AppError(400, "Refund already processed.");
+        throw new AppError(400, "Refund already processed");
     }
 
     const connectRequest = report.connectRequest;
-    if (!connectRequest) throw new AppError(404, "Session not found.");
+    if (!connectRequest) throw new AppError(404, "Session not found");
     if (connectRequest.paymentStatus !== "paid") {
-        throw new AppError(400, "Session has not been paid — nothing to refund.");
+        throw new AppError(400, "Session has not been paid — nothing to refund");
     }
 
     const menteeId = connectRequest.mentee;
     const totalAmount = connectRequest.totalAmount || 0;
 
     const menteeWallet = await repo.findMenteeWallet(menteeId);
-    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found.");
+    if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
 
     const refundAmount = Math.min(totalAmount, menteeWallet.escrow);
     menteeWallet.escrow = Math.max(0, menteeWallet.escrow - refundAmount);
@@ -212,7 +212,7 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
     connectRequest.status = "rejected";
     await repo.saveConnectRequest(connectRequest);
 
-    const resolvedAdminNote = adminNote?.trim() || "Refund processed by admin.";
+    const resolvedAdminNote = adminNote?.trim() || "Refund processed by admin";
 
     report.refundProcessed = true;
     report.refundedAt = new Date();
@@ -253,11 +253,11 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
 
 const deleteSession = async (reportId, { adminNote }, adminId) => {
     const report = await repo.findReportByIdWithSessionAndParticipants(reportId);
-    if (!report) throw new AppError(404, "Report not found.");
+    if (!report) throw new AppError(404, "Report not found");
 
     const connectRequest = report.connectRequest;
     if (!connectRequest) {
-        throw new AppError(404, "Session not found or already deleted.");
+        throw new AppError(404, "Session not found or already deleted");
     }
 
     const menteeId = connectRequest.mentee?._id || connectRequest.mentee;

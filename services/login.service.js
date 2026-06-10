@@ -13,13 +13,13 @@ const login = async (email, password) => {
     const user = await repo.findUserByEmail(normalizedEmail);
 
     if (!user?.password) {
-        // ✅ Someone tried a non-existent email
+        // Someone tried a non-existent email
         logger.warn("Login attempt with unregistered email", { email: normalizedEmail });
         throw new AppError(401, "Invalid credentials");
     }
 
     if (user.isDeleted) {
-        // ✅ Blocked account access attempt
+        // Blocked account access attempt
         logger.warn("Blocked account login attempt", {
             userId: user._id,
             email: normalizedEmail,
@@ -29,7 +29,7 @@ const login = async (email, password) => {
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
-        // ✅ Wrong password
+        //  Wrong password
         logger.warn("Invalid password attempt", {
             userId: user._id,
             email: normalizedEmail,
@@ -38,7 +38,7 @@ const login = async (email, password) => {
     }
 
     if (!user.isEmailVerified) {
-        // ✅ Unverified email login attempt
+        // Unverified email login attempt
         logger.warn("Login attempt before email verification", {
             userId: user._id,
             email: normalizedEmail,

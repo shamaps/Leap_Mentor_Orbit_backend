@@ -1,10 +1,8 @@
 // controllers/privateNote.controller.js
 const privateNoteService = require("../services/privateNote.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // POST /api/private-notes
 // ─────────────────────────────────────────────────────────────
@@ -15,7 +13,7 @@ const createNote = async (req, res) => {
     return res.status(201).json({ success: true, ...data });
   } catch (err) {
     logger.error("❌ createNote error:", err.message);
-    return handleError(res, err);
+    return handleError(res, err, "privateNote.createNote");
   }
 };
 
@@ -29,7 +27,7 @@ const getNotes = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "privateNote.getNotes");
   }
 };
 
@@ -43,7 +41,7 @@ const updateNote = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "privateNote.updateNote");
   }
 };
 
@@ -52,12 +50,12 @@ const updateNote = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const deleteNote = async (req, res) => {
   try {
-    const data = await privateNoteService.deleteNote(req.params.id, req.user._id);
+    await privateNoteService.deleteNote(req.params.id, req.user._id);
     logger.info("deleteNote completed successfully");
-    return res.json({ success: true, ...data });
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "privateNote.deleteNote");
   }
 };
 

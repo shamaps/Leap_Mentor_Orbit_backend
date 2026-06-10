@@ -20,8 +20,7 @@ const getParticipantRole = (connectRequest, userId) => {
  * or undefined when absent — no negation needed.
  */
 const parseSlotIndex = (raw) =>
-    raw !== undefined ? Number(raw) : undefined;
-
+    raw === undefined ? undefined : Number(raw);
 /**
  * Returns true when slotIndex is a meaningful value (not undefined/null).
  * Centralises the repeated `slotIndex !== undefined && slotIndex !== null`

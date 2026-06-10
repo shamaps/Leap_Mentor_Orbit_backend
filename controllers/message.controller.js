@@ -1,10 +1,8 @@
 // controllers/message.controller.js
 const messageService = require("../services/message.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // GET /api/messages/:connectRequestId
 // ─────────────────────────────────────────────────────────────
@@ -19,7 +17,7 @@ const getMessages = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in message.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "message.getMessages");
   }
 };
 
@@ -36,7 +34,7 @@ const getUnreadCount = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in message.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "message.getUnreadCount");
   }
 };
 

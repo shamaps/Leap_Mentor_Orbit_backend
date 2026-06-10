@@ -1,9 +1,10 @@
 // services/googleAuth.service.js
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/googleAuth.repository");
-const { googleClient, sanitizeUser, validateRoles } = require("../utils/auth.utils");
-
+const { googleClient, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
+const { WELCOME_BONUS_LP } = require("../config/constants");
 const { logger } = require("@sentry/node");
+const AppError = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
@@ -21,7 +22,7 @@ const verifyGoogleCredential = async (credential) => {
     const envAudience = process.env.GOOGLE_CLIENT_ID?.trim();
 
     if (!envAudience)
-        throw Object.assign(new Error("GOOGLE_CLIENT_ID is undefined in .env"), { status: 500 });
+        throw new AppError(500, "GOOGLE_CLIENT_ID is undefined in .env");
 
     const ticket = await googleClient.verifyIdToken({
         idToken: credential,
@@ -51,15 +52,15 @@ const verifyGoogleCredential = async (credential) => {
  * @returns {Promise<Document>} newly created user
  */
 const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerified }) => {
-    // ✅ Sonar fix 1: guard moved here — eliminates negated condition on `!user` in main fn
+    // guard moved here — eliminates negated condition on `!user` in main fn
     if (termsAccepted !== true)
-        throw Object.assign(new Error("You must accept terms to continue"), { status: 400 });
+        throw new AppError(400, "You must accept terms to continue");
 
     const incomingRoles = Array.isArray(roles) && roles.length ? roles : ["mentee"];
     const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
     if (!valid)
-        throw Object.assign(new Error(message), { status: 400 });
-
+        throw new AppError(400, message);
+    
     const user = await repo.createUser({
         name,
         email,
@@ -69,9 +70,9 @@ const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerifie
         termsAcceptedAt: new Date(),
     });
 
-    // ✅ Create wallet — 500 points for mentee, 0 for mentor
+    //  Create wallet — WELCOME_BONUS_LP points for mentee, 0 for mentor
     const isMentee = uniqueRoles.includes("mentee");
-    const startingBalance = isMentee ? 500 : 0;
+    const startingBalance = isMentee ? WELCOME_BONUS_LP : 0;
 
     await repo.createWallet(user._id, startingBalance);
 
@@ -82,24 +83,7 @@ const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerifie
     return user;
 };
 
-/**
- * Merge any newly requested roles into an existing user's roles.
- * Only saves if roles actually changed.
- *
- * @param {Document} user
- * @param {Array}    roles - roles from req.body (may be empty)
- * @returns {Promise<void>}
- */
-const mergeRolesIfChanged = async (user, roles) => {
-    // ✅ Sonar fix 2: 'if' as only statement in else block — extracted into its own function
-    if (!Array.isArray(roles) || !roles.length) return;
 
-    const mergedRoles = [...new Set([...user.roles, ...roles])];
-    if (mergedRoles.length !== user.roles.length) {
-        user.roles = mergedRoles;
-        await repo.saveUser(user);
-    }
-};
 
 /**
  * Ensure an OAuthAccount link exists for this Google sub.
@@ -132,7 +116,7 @@ const ensureOAuthAccount = async (userId, googleSub) => {
  */
 const googleAuth = async ({ credential, roles, termsAccepted }) => {
     if (!credential)
-        throw Object.assign(new Error("Missing Google credential"), { status: 400 });
+        throw new AppError(400, "Missing Google credential");
 
     // 1 — verify Google token
     const payload = await verifyGoogleCredential(credential);
@@ -143,16 +127,16 @@ const googleAuth = async ({ credential, roles, termsAccepted }) => {
     const emailVerified = payload?.email_verified;
 
     if (!email || !googleSub)
-        throw Object.assign(new Error("Invalid Google payload (missing email/sub)"), { status: 400 });
+        throw new AppError(400, "Invalid Google payload (missing email/sub)");
 
-    // 2 — find or create user
-    // ✅ Sonar fix 3: flipped to positive condition (user exists) — eliminates negated condition
+    //  2-find or create user
+    // flipped to positive condition (user exists) — eliminates negated condition
     let user = await repo.findUserByEmail(email);
     let isNewUser = false;
 
     if (user) {
         // existing user — merge roles if needed
-        await mergeRolesIfChanged(user, roles);
+        await mergeRoles(user, roles, repo.saveUser);
     } else {
         // new user — register, create wallet
         user = await registerNewUser({ name, email, roles, termsAccepted, emailVerified });

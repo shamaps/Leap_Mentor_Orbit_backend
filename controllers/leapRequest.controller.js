@@ -1,10 +1,8 @@
 // controllers/leapRequest.controller.js
 const leapRequestService = require("../services/leapRequest.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ── MENTEE: Check my latest request ──────────────────────────
 const getMyRequest = async (req, res) => {
   try {
@@ -13,7 +11,7 @@ const getMyRequest = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.getMyRequest");
   }
 };
 
@@ -25,7 +23,7 @@ const createRequest = async (req, res) => {
     return res.status(201).json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.createRequest");
   }
 };
 
@@ -37,7 +35,7 @@ const getAllRequests = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.getAllRequests");
   }
 };
 
@@ -49,7 +47,7 @@ const getPendingCount = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.getPendingCount");
   }
 };
 
@@ -61,7 +59,7 @@ const approveRequest = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.approveRequest");
   }
 };
 
@@ -73,7 +71,7 @@ const rejectRequest = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "leapRequest.rejectRequest");
   }
 };
 

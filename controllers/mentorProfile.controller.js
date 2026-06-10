@@ -1,10 +1,8 @@
 // controllers/mentorProfile.controller.js
 const mentorProfileService = require("../services/mentorProfile.service");
-
 const { logger } = require("@sentry/node");
-const handleError = (res, err) =>
-  res.status(err.statusCode || 500).json({ message: err.message });
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 /**
  * POST /api/mentor-profile
  */
@@ -15,7 +13,7 @@ const createProfile = async (req, res) => {
     return res.status(201).json(data);
   } catch (err) {
     logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err,"mentorProfile.createProfile");
   }
 };
 
@@ -33,7 +31,7 @@ const getMyProfile = async (req, res) => {
       return res.status(404).json({ message: err.message, isProfileComplete: false });
     }
     logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err,"mentorProfile.getMyProfile");
   }
 };
 
@@ -47,7 +45,7 @@ const updateProfile = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err,"mentorProfile.updateProfile");
   }
 };
 
@@ -61,7 +59,7 @@ const getPublicProfile = async (req, res) => {
     return res.json(data);
   } catch (err) {
     logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err,"mentorProfile.getPublicProfile");
   }
 };
 

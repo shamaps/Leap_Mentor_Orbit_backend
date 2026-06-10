@@ -11,14 +11,19 @@ router.use(authenticate);
 // Mentee locks tokens into escrow after request is accepted
 router.post("/pay", pay);
 
-// POST /api/escrow/release/:requestId
-// Mentee confirms session complete — tokens released to mentor
-router.post("/release/:requestId", release);
+
 // GET /api/escrow/commission-rate
 router.get("/commission-rate", getCommissionRate);
-// POST /api/escrow/refund/:requestId
-// Either party cancels — tokens returned to mentee
-router.post("/refund/:requestId", refund);
+
+// PATCH /api/escrow/:requestId
+// Mentee confirms session complete { action: "release" } — tokens released to mentor
+// Either party cancels { action: "refund" } — tokens returned to mentee
+router.patch("/:requestId", (req, res, next) => {
+    const { action } = req.body;
+    if (action === "release") return release(req, res, next);
+    if (action === "refund") return refund(req, res, next);
+    return res.status(400).json({ message: 'Invalid action. Use "release" or "refund".' });
+});
 
 // GET /api/escrow/status/:requestId
 // Get payment + escrow status for a connect request

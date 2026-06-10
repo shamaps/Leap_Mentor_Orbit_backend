@@ -20,7 +20,7 @@ const getOverview = async () => {
 
 const changePassword = async (adminId, currentPassword, newPassword) => {
     if (!currentPassword || !newPassword) {
-        const err = new Error("All fields are required.");
+        const err = new Error("All fields are required");
         err.statusCode = 400;
         throw err;
     }

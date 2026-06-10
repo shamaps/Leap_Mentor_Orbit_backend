@@ -1,15 +1,8 @@
 // controllers/session.controller.js
 const sessionService = require("../services/session.service");
-
 const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
-// Shared error handler — reads statusCode thrown by the service
-// ─────────────────────────────────────────────────────────────
-const handleError = (res, err) => {
-  logger.error("❌ session error:", err.message);
-  return res.status(err.statusCode || 500).json({ message: err.message });
-};
-
+const AppError = require("../utils/AppError");
+const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // GET /api/sessions/:connectRequestId/slots
 // ─────────────────────────────────────────────────────────────
@@ -23,7 +16,7 @@ const getSlots = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.getSlots");
   }
 };
 
@@ -42,7 +35,7 @@ const setMeetingLink = async (req, res) => {
     return res.json({ success: true, message: "Meeting link updated", ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.setMeetingLink");
   }
 };
 
@@ -60,7 +53,7 @@ const markSlotComplete = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.markSlotComplete");
   }
 };
 
@@ -82,7 +75,7 @@ const addSlot = async (req, res) => {
     });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.addSlot");
   }
 };
 
@@ -101,7 +94,7 @@ const cancelSlot = async (req, res) => {
     return res.json({ success: true, message: "Slot cancelled successfully", ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.cancelSlot");
   }
 };
 
@@ -120,7 +113,7 @@ const rescheduleSlot = async (req, res) => {
     return res.json({ success: true, message: "Slot rescheduled successfully", ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.rescheduleSlot");
   }
 };
 
@@ -139,7 +132,7 @@ const getMentorAvailability = async (req, res) => {
     return res.json({ success: true, ...data });
   } catch (err) {
     logger.error("Unhandled error in session.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err);
+    return handleError(res, err, "session.getMentorAvailability");
   }
 };
 

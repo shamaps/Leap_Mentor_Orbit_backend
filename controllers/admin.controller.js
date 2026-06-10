@@ -1,15 +1,9 @@
 // backend/controllers/admin.controller.js
 const AppError = require("../utils/AppError");
 const adminService = require("../services/admin.service");
-
+const { handleError } = require("../utils/AppError");
 const { logger } = require("@sentry/node");
-// ── Centralised error handler ─────────────────────────────────
-const handleError = (res, err, label) => {
-  if (err instanceof AppError)
-    return res.status(err.status).json({ message: err.message });
-  logger.error(`❌ ${label} error:`, err);
-  return res.status(500).json({ message: "Server error." });
-};
+
 
 // ═════════════════════════════════════════════════════════════
 // AUTH
@@ -109,9 +103,9 @@ const getUserDetail = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   try {
-    const data = await adminService.removeUser(req.params.userId);
+    await adminService.removeUser(req.params.userId);
     logger.info("deleteUser completed successfully");
-    return res.status(200).json({ success: true, ...data });
+    return res.status(204).send();
   } catch (err) {
     logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteUser");

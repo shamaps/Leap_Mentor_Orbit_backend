@@ -38,7 +38,14 @@ const findCompletedSessionsInRange = (monthStart, monthEnd) =>
     })
         .select("totalAmount")
         .lean();
-
+// ADD this — fetches all 6 months in a single query
+const findCompletedSessionsSince = (startDate) =>
+    ConnectRequest.find({
+        status: "completed",
+        completedAt: { $gte: startDate },
+    })
+        .select("totalAmount completedAt")
+        .lean();
 // ─────────────────────────────────────────────────────────────
 // TRANSACTIONS
 // ─────────────────────────────────────────────────────────────
@@ -71,7 +78,7 @@ module.exports = {
     countRefundedRequests,
     // chart
     findCompletedSessionsInRange,
-    // transactions
+    findCompletedSessionsSince,
     findUserIdsByName,
     countTransactions,
     findTransactions,

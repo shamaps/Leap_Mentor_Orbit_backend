@@ -1,5 +1,5 @@
 // backend/utils/generateICS.js
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 const toICSDate = (date, time) => {
   const datePart = date.replaceAll("-", "");
   const timePart = time.replaceAll(":", "") + "00";
@@ -85,7 +85,7 @@ const generateICS = ({
   date,
   startTime,
   endTime,
-  timezone = "Asia/Kolkata",
+  timezone = PLATFORM_TIMEZONE,
   message = "",
 }) => {
   // ── Normalise: support both slots[] and legacy single slot ─

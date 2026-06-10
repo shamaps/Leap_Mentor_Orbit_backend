@@ -2,16 +2,7 @@
 const AppError = require("../utils/AppError");
 const escrowService = require("../services/escrow.service");
 const { logger } = require("@sentry/node");
-
-// ── Centralised error handler ─────────────────────────────────
-const handleError = (res, err, label) => {
-  if (err instanceof AppError) {
-    logger.warn(`${label} rejected`, { reason: err.message, status: err.status });
-    return res.status(err.status).json({ message: err.message });
-  }
-  logger.error(`${label} unexpected error`, { error: err.message });
-  return res.status(500).json({ message: err.message });
-};
+const { handleError } = require("../utils/AppError");
 
 // POST /api/escrow/pay
 const pay = async (req, res) => {

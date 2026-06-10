@@ -29,10 +29,10 @@ const setAdminCookie = (res, token) => {
 const loginAdmin = async (res, email, password) => {   // ← res added to set cookie
     const admin = await repo.findAdminByEmail(email);
     if (!admin) throw new AppError(401, "Invalid credentials.");
-    if (!admin.isActive) throw new AppError(403, "Admin account is deactivated.");
+    if (!admin.isActive) throw new AppError(403, "Admin account is deactivated");
 
     const isMatch = await admin.comparePassword(password);
-    if (!isMatch) throw new AppError(401, "Invalid credentials.");
+    if (!isMatch) throw new AppError(401, "Invalid credentials");
 
     admin.lastLoginAt = new Date();
     await repo.saveAdmin(admin);

@@ -2,15 +2,20 @@
 const cron            = require("node-cron");
 const ConnectRequest  = require("../models/ConnectRequest");
 const createNotification = require("../utils/createNotification");
+const { PLATFORM_TIMEZONE } = require("../config/constants");
 
 // ── Helper: convert "YYYY-MM-DD" + "HH:MM" to a JS Date in IST ──
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const REMINDER_WINDOW_MINS = 10;       // ±10 min tolerance on each reminder check
+const REMINDER_24H_CENTER = 24 * 60;  // 1440 mins
+const REMINDER_1H_CENTER = 60;       // 60 mins
 const toISTDate = (dateStr, timeStr) => {
   const [year, month, day]   = dateStr.split("-").map(Number);
   const [hours, minutes]     = timeStr.split(":").map(Number);
 
   // IST = UTC+5:30, so subtract 5h30m to get UTC
   const utcMs =
-    Date.UTC(year, month - 1, day, hours, minutes) - 5.5 * 60 * 60 * 1000;
+    Date.UTC(year, month - 1, day, hours, minutes) - IST_OFFSET_MS;
 
   return new Date(utcMs);
 };
@@ -43,7 +48,8 @@ const sendSessionReminders = async () => {
       const diffMins    = diffMs / (1000 * 60);
 
       // ── 24-hour reminder window: between 23h50m and 24h10m ──
-      if (diffMins >= 1430 && diffMins <= 1450) {
+      if (diffMins >= REMINDER_24H_CENTER - REMINDER_WINDOW_MINS &&
+        diffMins <= REMINDER_24H_CENTER + REMINDER_WINDOW_MINS) {
         // Notify mentee
         await createNotification({
           recipient: mentee._id,
@@ -67,7 +73,8 @@ const sendSessionReminders = async () => {
       }
 
       // ── 1-hour reminder window: between 50m and 70m ──
-      if (diffMins >= 50 && diffMins <= 70) {
+      if (diffMins >= REMINDER_1H_CENTER - REMINDER_WINDOW_MINS &&
+        diffMins <= REMINDER_1H_CENTER + REMINDER_WINDOW_MINS) {
         // Notify mentee
         await createNotification({
           recipient: mentee._id,
@@ -104,7 +111,7 @@ const sendSessionReminders = async () => {
 const startSessionReminderCron = () => {
   // Runs every 10 minutes to catch both 24h and 1h windows
   cron.schedule("*/10 * * * *", sendSessionReminders, {
-    timezone: "Asia/Kolkata",
+    timezone: PLATFORM_TIMEZONE,
   });
 
   console.log("[Cron] Session reminders scheduled — runs every 10 minutes IST");

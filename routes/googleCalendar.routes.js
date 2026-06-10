@@ -17,7 +17,7 @@ router.get("/auth-url",   protect, getAuthUrl);
 router.get("/callback",   handleCallback);
 
 // Disconnect Google Calendar
-router.post("/disconnect", protect, disconnect);
+router.delete("/connection", protect, disconnect);
 
 // Fetch busy windows for a date range (used by slot busy badge)
 router.get("/busy",       protect, getBusySlots);

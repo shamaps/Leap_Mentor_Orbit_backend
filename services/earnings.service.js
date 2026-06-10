@@ -47,37 +47,42 @@ const getEarningsChart = async (mentorId, periodParam) => {
         const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
         const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
 
+        const monthlyTotals = new Map();
+        for (const r of completed) {
+            const c = new Date(r.completedAt);
+            const key = `${c.getFullYear()}-${c.getMonth()}`;
+            monthlyTotals.set(key, (monthlyTotals.get(key) || 0) + (r.totalAmount || 0));
+        }
+
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const label = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
-            const amount = completed
-                .filter((r) => {
-                    const c = new Date(r.completedAt);
-                    return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth();
-                })
-                .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-            data.push({ label, amount });
+            const key = `${d.getFullYear()}-${d.getMonth()}`;
+            data.push({ label, amount: monthlyTotals.get(key) || 0 });
         }
     } else {
         const startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 55);
         const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
 
+        // AFTER — O(n) single pass, then O(1) per bucket
+        // Build week boundaries first, then map each session to its bucket index
+        const weekBoundaries = [];
         for (let i = 7; i >= 0; i--) {
             const weekStart = new Date(now);
             weekStart.setDate(weekStart.getDate() - i * 7);
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekEnd.getDate() + 7);
-
-            const label = `W${8 - i}`;
-            const amount = completed
-                .filter((r) => {
-                    const c = new Date(r.completedAt);
-                    return c >= weekStart && c < weekEnd;
-                })
-                .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-            data.push({ label, amount });
+            weekBoundaries.push({ label: `W${8 - i}`, weekStart, weekEnd, amount: 0 });
         }
+
+        for (const r of completed) {
+            const c = new Date(r.completedAt);
+            const bucket = weekBoundaries.find((b) => c >= b.weekStart && c < b.weekEnd);
+            if (bucket) bucket.amount += r.totalAmount || 0;
+        }
+
+        data = weekBoundaries.map(({ label, amount }) => ({ label, amount }));
     }
 
     return { period, data };
