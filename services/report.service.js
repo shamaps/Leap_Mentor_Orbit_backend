@@ -1,29 +1,13 @@
-const { cloudinary } = require("../config/cloudinary");
+
 const {
     sendReportSubmittedEmail,
     sendReportResolvedEmail,
 } = require("../utils/sendNotificationEmail");
 const repo = require("../repositories/report.repository");
+const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const VALID_STATUSES = new Set(["open", "under_review", "resolved", "dismissed"]);
-
-const uploadToCloudinary = (buffer, mimetype) =>
-    new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            {
-                folder: "leapmentor/reports",
-                resource_type: "image",
-                allowed_formats: ["jpg", "jpeg", "png", "webp"],
-                transformation: [{ quality: "auto", fetch_format: "auto" }],
-            },
-            (error, result) => {
-                if (error) return reject(new Error(error.message ?? JSON.stringify(error)));
-                resolve(result);
-            }
-        );
-        stream.end(buffer);
-    });
 
 const submitReport = async ({ connectRequestId, complaintType, description, reportedById, file, user }) => {
     if (!connectRequestId || !complaintType || !description) {

@@ -1,6 +1,6 @@
 // controllers/message.controller.js
 const messageService = require("../services/message.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────

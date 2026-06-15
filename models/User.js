@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
     },
 
     password: {
@@ -74,4 +76,12 @@ userSchema.pre(/^find/, function (next) {
   next();
 });
 userSchema.index({ roles: 1 });
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password;
+    delete ret.passwordChangedAt;
+    delete ret.__v;
+    return ret;
+  }
+});
 module.exports = mongoose.model("User", userSchema);

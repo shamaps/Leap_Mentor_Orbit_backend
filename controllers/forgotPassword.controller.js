@@ -1,7 +1,7 @@
 // controllers/forgotPassword.controller.js
 const service = require("../services/forgotPassword.service");
-
-const { logger } = require("@sentry/node");
+const { handleError } = require("../utils/AppError");
+const logger = require("../utils/logger");
 /**
  * POST /api/auth/forgot-password
  * Body: { email }
@@ -16,10 +16,8 @@ const sendForgotPasswordOTP = async (req, res, next) => {
     logger.info("sendForgotPasswordOTP completed successfully");
     return res.json({ message: "If this email exists, an OTP has been sent." });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in forgotPassword.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "forgotPassword.sendForgotPasswordOTP");
+  }
 };
 
 /**
@@ -36,9 +34,7 @@ const verifyResetOTP = async (req, res, next) => {
     logger.info("verifyResetOTP completed successfully");
     return res.json({ message: "OTP verified", email: normalizedEmail });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in forgotPassword.controller", { error: err.message, stack: err.stack });
+    return handleError(res, err, "forgotPassword.verifyResetOTP");
 }
 };
 
@@ -56,10 +52,8 @@ const resetPassword = async (req, res, next) => {
     logger.info("resetPassword completed successfully");
     return res.json({ message: "Password reset successfully. You can now login." });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in forgotPassword.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "forgotPassword.resetPassword");
+  }
 };
 
 module.exports = { sendForgotPasswordOTP, verifyResetOTP, resetPassword };

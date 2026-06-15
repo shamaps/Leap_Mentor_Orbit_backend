@@ -6,10 +6,17 @@ require("dotenv").config();
 const mongoose  = require("mongoose");
 const AdminUser = require("../models/AdminUser");
 
+const { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_ADMIN_NAME = "Super Admin" } = process.env;
+
+if (!SEED_ADMIN_EMAIL || !SEED_ADMIN_PASSWORD) {
+  console.error("❌ SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set in .env");
+  process.exit(1);
+}
+
 const ADMIN = {
-  name:         "Super Admin",
-  email:        "leapmentor2026@gmail.com",   // ← change this
-  password:     "leapAdminMentor",             // ← change this
+  name: SEED_ADMIN_NAME,
+  email: SEED_ADMIN_EMAIL,
+  password: SEED_ADMIN_PASSWORD,
   isSuperAdmin: true,
 };
 

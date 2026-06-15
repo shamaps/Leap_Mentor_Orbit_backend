@@ -26,8 +26,8 @@ router.get(
   getMyProfile
 );
 
-// ✅ PUT /api/mentee-profile/me — update own profile
-router.put(
+// ✅ PATCH /api/mentee-profile/me — update own profile
+router.patch(
   "/me",
   authenticate,
   requireRole("mentee"),

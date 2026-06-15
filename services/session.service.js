@@ -4,13 +4,14 @@ const sessionRepo = require("../repositories/session.repository");
 const releaseEscrow = require("../utils/releaseEscrow");
 const escrowService = require("../services/escrow.service");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const {
     sendSlotCancelledEmail,
     sendSlotRescheduledEmail,
     sendAdditionalSlotEmail,
 } = require("../utils/sendNotificationEmail");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+
 // ─────────────────────────────────────────────────────────────
 // Pure helpers (no I/O — easy to unit-test in isolation)
 // ─────────────────────────────────────────────────────────────
@@ -90,6 +91,27 @@ const dayFromDate = (dateStr) =>
     DAYS[new Date(`${dateStr}T00:00:00`).getDay()];
 
 // ─────────────────────────────────────────────────────────────
+// Notification helper (lazy-populate then send email, fire-and-forget)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Fire-and-forget: populate the session, then send a notification email.
+ * Extracted to remove duplication across addSlot/cancelSlot/rescheduleSlot.
+ */
+const sendNotificationAfterPopulate = (connectRequestId, emailFn, buildPayload) => {
+    sessionRepo.findSessionPopulated(connectRequestId)
+        .then((populated) => {
+            const payload = buildPayload(populated);
+            emailFn(payload).catch((err) =>
+                logger.error("❌ Notification email failed:", err.message)
+            );
+        })
+        .catch((err) =>
+            logger.error("❌ Failed to populate for notification email:", err.message)
+        );
+};
+
+// ─────────────────────────────────────────────────────────────
 // Socket helpers (lazy-require avoids circular-dep issues)
 // ─────────────────────────────────────────────────────────────
 
@@ -99,12 +121,12 @@ const emitSlotUpdate = (connectRequest, payload) => {
         if (!emitToUser) return;
         emitToUser(connectRequest.mentor.toString(), "session_slots_updated", payload);
         emitToUser(connectRequest.mentee.toString(), "session_slots_updated", payload);
-    } catch (e) {
-        logger.warn("⚠️  emitSlotUpdate failed:", e.message);
+    } catch (emitErr) {
+        logger.warn("⚠️  emitSlotUpdate failed:", emitErr.message);
     }
 };
 
-const emitToOther = (connectRequest, currentUserId, event, payload) => {
+const emitToOther = ({ connectRequest, currentUserId, event, payload }) => {
     try {
         const { emitToUser } = require("../socket/socketHandler");
         if (!emitToUser) return;
@@ -113,13 +135,13 @@ const emitToOther = (connectRequest, currentUserId, event, payload) => {
                 ? connectRequest.mentee.toString()
                 : connectRequest.mentor.toString();
         emitToUser(otherId, event, payload);
-    } catch (e) {
-        logger.warn("⚠️  emitToOther failed:", e.message);
+    } catch (emitErr) {
+        logger.warn("⚠️  emitToOther failed:", emitErr.message);
     }
 };
 
 // ─────────────────────────────────────────────────────────────
-// Shared guard — throws if session is missing or user is not a participant
+// Shared guards
 // ─────────────────────────────────────────────────────────────
 
 const assertSessionAccess = (connectRequest, userId, connectRequestId) => {
@@ -143,10 +165,68 @@ const assertOngoing = (connectRequest) => {
     }
 };
 
+/**
+ * Shared setup for slot-mutating endpoints: loads the session (optionally
+ * within a mongo transaction), checks access/ongoing status, and validates
+ * the slot index. Throws on any failure.
+ * Extracted to remove duplication across setMeetingLink/markSlotComplete/cancelSlot/rescheduleSlot.
+ */
+const loadAndValidateSlot = async (connectRequestId, slotIndex, userId, mongoSession = null) => {
+    const connectRequest = mongoSession
+        ? await sessionRepo.findSessionDocumentWithSession(connectRequestId, mongoSession)
+        : await sessionRepo.findSessionDocument(connectRequestId);
+
+    assertSessionAccess(connectRequest, userId, connectRequestId);
+    assertOngoing(connectRequest);
+
+    const validated = parseSlotIndex(connectRequest, slotIndex);
+    if (!validated) {
+        const err = new Error("Invalid slot index");
+        err.statusCode = 400;
+        throw err;
+    }
+
+    return { connectRequest, ...validated };
+};
+
+// ─────────────────────────────────────────────────────────────
+// Shared helper for cancelSlot/rescheduleSlot — computes progress,
+// broadcasts the update over sockets, and fires the notification email.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Computes progress, broadcasts the slot update over sockets to both
+ * parties, and fires a non-blocking notification email.
+ * @param {Object} connectRequest
+ * @param {string} connectRequestId
+ * @param {string} userId - current user (excluded from emitToOther broadcast)
+ * @param {string} event - "slot_cancelled" | "slot_rescheduled"
+ * @param {Object} otherPayload - event-specific fields merged into emitToOther's payload
+ * @param {Function} emailFn - e.g. sendSlotCancelledEmail / sendSlotRescheduledEmail
+ * @param {Function} buildEmailPayload - (populated) => {...}
+ * @returns {{connectRequestId: string, slots: Array, totalSlots: number, completedSlots: number, progress: number}}
+ */
+const finalizeSlotMutation = (connectRequest, connectRequestId, userId, event, otherPayload, emailFn, buildEmailPayload) => {
+    const { totalSlots, completedSlots, progress } = computeProgress(connectRequest.selectedSlots);
+
+    const socketPayload = {
+        connectRequestId,
+        slots: connectRequest.selectedSlots,
+        totalSlots,
+        completedSlots,
+        progress,
+    };
+
+    emitSlotUpdate(connectRequest, socketPayload);
+    emitToOther({ connectRequest, currentUserId: userId, event, payload: { connectRequestId, ...otherPayload } });
+    sendNotificationAfterPopulate(connectRequestId, emailFn, buildEmailPayload);
+
+    return socketPayload;
+};
+
 // ─────────────────────────────────────────────────────────────
 // Pure helper — builds the completion message (fixes nested ternary lint)
 // ─────────────────────────────────────────────────────────────
-
 const buildCompleteMessage = (allComplete, bothMarked, isMentee) => {
     if (allComplete) return "All sessions complete! Tokens released to mentor.";
     if (bothMarked) return "Session marked complete by both parties.";
@@ -159,7 +239,7 @@ const buildCompleteMessage = (allComplete, bothMarked, isMentee) => {
 // Extracted to reduce cognitive complexity of markSlotComplete
 // ─────────────────────────────────────────────────────────────
 
-const applyMark = (slot, slotRef, isMentee, isMentor) => {
+const applyMark = ({ slot, slotRef, isMentee, isMentor }) => {
     if (isMentee) {
         if (slot.menteeMarked) {
             const err = new Error("You have already marked this session complete");
@@ -204,7 +284,7 @@ const getSlots = async (connectRequestId, userId) => {
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
 // ─────────────────────────────────────────────────────────────
 
-const setMeetingLink = async (connectRequestId, slotIndex, meetingLink, userId) => {
+const setMeetingLink = async ({ connectRequestId, slotIndex, meetingLink, userId }) => {
     if (!meetingLink?.trim()) {
         const err = new Error("meetingLink is required");
         err.statusCode = 400;
@@ -218,18 +298,9 @@ const setMeetingLink = async (connectRequestId, slotIndex, meetingLink, userId) 
         throw err;
     }
 
-    const connectRequest = await sessionRepo.findSessionDocument(connectRequestId);
-    assertSessionAccess(connectRequest, userId, connectRequestId);
-    assertOngoing(connectRequest);
+    const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
 
-    const validated = parseSlotIndex(connectRequest, slotIndex);
-    if (!validated) {
-        const err = new Error("Invalid slot index");
-        err.statusCode = 400;
-        throw err;
-    }
-
-    connectRequest.selectedSlots[validated.idx].meetingLink = meetingLink.trim();
+    connectRequest.selectedSlots[idx].meetingLink = meetingLink.trim();
     connectRequest.markModified("selectedSlots");
     await connectRequest.save();
 
@@ -246,8 +317,8 @@ const setMeetingLink = async (connectRequestId, slotIndex, meetingLink, userId) 
     });
 
     return {
-        slot: connectRequest.selectedSlots[validated.idx],
-        slotIndex: validated.idx,
+        slot: connectRequest.selectedSlots[idx],
+        slotIndex: idx,
     };
 };
 
@@ -260,21 +331,9 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
     mongoSession.startTransaction();
 
     try {
-        const connectRequest = await sessionRepo.findSessionDocumentWithSession(
-            connectRequestId,
-            mongoSession
+        const { connectRequest, idx } = await loadAndValidateSlot(
+            connectRequestId, slotIndex, userId, mongoSession
         );
-        assertSessionAccess(connectRequest, userId, connectRequestId);
-        assertOngoing(connectRequest);
-
-        const validated = parseSlotIndex(connectRequest, slotIndex);
-        if (!validated) {
-            const err = new Error("Invalid slot index");
-            err.statusCode = 400;
-            throw err;
-        }
-
-        const { idx } = validated;
         const slot = connectRequest.selectedSlots[idx];
 
         if (slot.status === "cancelled") {
@@ -295,7 +354,7 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
         const isMentee = connectRequest.mentee.toString() === userId.toString();
 
         // FIX: extracted role-marking into applyMark() to reduce cognitive complexity
-        applyMark(slot, connectRequest.selectedSlots[idx], isMentee, isMentor);
+        applyMark({ slot, slotRef: connectRequest.selectedSlots[idx], isMentee, isMentor });
 
         const bothMarked =
             connectRequest.selectedSlots[idx].menteeMarked &&
@@ -348,10 +407,12 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
         };
     } catch (err) {
         await mongoSession.abortTransaction();
+        logger.error("Unhandled error in session.service", {
+            error: err.message,
+            stack: err.stack
+        });
         throw err;
-    
-        logger.error("Unhandled error in session.service", { error: err.message, stack: err.stack });
-} finally {
+    } finally {
         mongoSession.endSession();
     }
 };
@@ -429,22 +490,14 @@ const addSlot = async (connectRequestId, body, userId) => {
     emitSlotUpdate(connectRequest, socketPayload);
 
     // Non-blocking email — populate then send
-    sessionRepo.findSessionPopulated(connectRequestId)
-        .then((populated) => {
-            sendAdditionalSlotEmail({
-                connectRequestId,
-                mentorName: populated.mentor.name,
-                mentorEmail: populated.mentor.email,
-                menteeName: populated.mentee.name,
-                menteeEmail: populated.mentee.email,
-                slot: newSelectedSlot,
-            }).catch((err) =>
-                logger.error("❌ Additional slot email failed:", err.message)
-            );
-        })
-        .catch((err) =>
-            logger.error("❌ Failed to populate for additional slot email:", err.message)
-        );
+    sendNotificationAfterPopulate(connectRequestId, sendAdditionalSlotEmail, (populated) => ({
+        connectRequestId,
+        mentorName: populated.mentor.name,
+        mentorEmail: populated.mentor.email,
+        menteeName: populated.mentee.name,
+        menteeEmail: populated.mentee.email,
+        slot: newSelectedSlot,
+    }));
 
     return {
         slot: newAdditionalSlot,
@@ -458,19 +511,8 @@ const addSlot = async (connectRequestId, body, userId) => {
 // ─────────────────────────────────────────────────────────────
 
 // FIX: moved `reason` default param to last position
-const cancelSlot = async (connectRequestId, slotIndex, userId, reason = "") => {
-    const connectRequest = await sessionRepo.findSessionDocument(connectRequestId);
-    assertSessionAccess(connectRequest, userId, connectRequestId);
-    assertOngoing(connectRequest);
-
-    const validated = parseSlotIndex(connectRequest, slotIndex);
-    if (!validated) {
-        const err = new Error("Invalid slot index");
-        err.statusCode = 400;
-        throw err;
-    }
-
-    const { idx } = validated;
+const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) => {
+    const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
     const slot = connectRequest.selectedSlots[idx];
 
     if (slot.status === "cancelled") {
@@ -514,48 +556,29 @@ const cancelSlot = async (connectRequestId, slotIndex, userId, reason = "") => {
         );
     }
 
-    const { totalSlots, completedSlots, progress } = computeProgress(
-        connectRequest.selectedSlots
-    );
+    const trimmedReason = reason.trim();
 
-    const socketPayload = {
-        connectRequestId,
-        slots: connectRequest.selectedSlots,
-        totalSlots,
-        completedSlots,
-        progress,
-    };
-
-    emitSlotUpdate(connectRequest, socketPayload);
-
-    emitToOther(connectRequest, userId, "slot_cancelled", {
-        connectRequestId,
-        slotIndex: idx,
-        slot: connectRequest.selectedSlots[idx],
-        cancelledBy,
-        reason: reason.trim(),
-        refund: refundResult ? { amount: refundResult.refundedAmount } : null,
-    });
-
-    // Non-blocking email
-    sessionRepo.findSessionPopulated(connectRequestId)
-        .then((populated) => {
-            sendSlotCancelledEmail({
-                connectRequestId,
-                mentorName: populated.mentor.name,
-                mentorEmail: populated.mentor.email,
-                menteeName: populated.mentee.name,
-                menteeEmail: populated.mentee.email,
-                slot: connectRequest.selectedSlots[idx],
-                cancelledBy,
-                reason: reason.trim(),
-            }).catch((err) =>
-                logger.error("❌ Slot cancelled email failed:", err.message)
-            );
+    const socketPayload = finalizeSlotMutation(
+        connectRequest, connectRequestId, userId, "slot_cancelled",
+        {
+            slotIndex: idx,
+            slot: connectRequest.selectedSlots[idx],
+            cancelledBy,
+            reason: trimmedReason,
+            refund: refundResult ? { amount: refundResult.refundedAmount } : null,
+        },
+        sendSlotCancelledEmail,
+        (populated) => ({
+            connectRequestId,
+            mentorName: populated.mentor.name,
+            mentorEmail: populated.mentor.email,
+            menteeName: populated.mentee.name,
+            menteeEmail: populated.mentee.email,
+            slot: connectRequest.selectedSlots[idx],
+            cancelledBy,
+            reason: trimmedReason,
         })
-        .catch((err) =>
-            logger.error("❌ Failed to populate for cancel email:", err.message)
-        );
+    );
 
     return {
         slot: connectRequest.selectedSlots[idx],
@@ -575,7 +598,7 @@ const cancelSlot = async (connectRequestId, slotIndex, userId, reason = "") => {
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
 // ─────────────────────────────────────────────────────────────
 
-const rescheduleSlot = async (connectRequestId, slotIndex, body, userId) => {
+const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => {
     const { date, startTime, endTime } = body;
 
     if (!date || !startTime || !endTime) {
@@ -586,18 +609,7 @@ const rescheduleSlot = async (connectRequestId, slotIndex, body, userId) => {
         throw err;
     }
 
-    const connectRequest = await sessionRepo.findSessionDocument(connectRequestId);
-    assertSessionAccess(connectRequest, userId, connectRequestId);
-    assertOngoing(connectRequest);
-
-    const validated = parseSlotIndex(connectRequest, slotIndex);
-    if (!validated) {
-        const err = new Error("Invalid slot index");
-        err.statusCode = 400;
-        throw err;
-    }
-
-    const { idx } = validated;
+    const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
     const oldSlot = connectRequest.selectedSlots[idx];
 
     if (oldSlot.status === "cancelled") {
@@ -646,46 +658,25 @@ const rescheduleSlot = async (connectRequestId, slotIndex, body, userId) => {
     await connectRequest.save({ validateBeforeSave: false });
 
     const newSlotIndex = connectRequest.selectedSlots.length - 1;
-    const { totalSlots, completedSlots, progress } = computeProgress(
-        connectRequest.selectedSlots
-    );
-
-    const socketPayload = {
-        connectRequestId,
-        slots: connectRequest.selectedSlots,
-        totalSlots,
-        completedSlots,
-        progress,
-    };
-
-    emitSlotUpdate(connectRequest, socketPayload);
-
-    emitToOther(connectRequest, userId, "slot_rescheduled", {
-        connectRequestId,
-        oldSlotIndex: idx,
-        newSlotIndex,
-        oldSlot: connectRequest.selectedSlots[idx],
-        newSlot: connectRequest.selectedSlots[newSlotIndex],
-    });
-
-    // Non-blocking email
-    sessionRepo.findSessionPopulated(connectRequestId)
-        .then((populated) => {
-            sendSlotRescheduledEmail({
-                connectRequestId,
-                mentorName: populated.mentor.name,
-                mentorEmail: populated.mentor.email,
-                menteeName: populated.mentee.name,
-                menteeEmail: populated.mentee.email,
-                oldSlot: connectRequest.selectedSlots[idx],
-                newSlot: connectRequest.selectedSlots[newSlotIndex],
-            }).catch((err) =>
-                logger.error("❌ Slot rescheduled email failed:", err.message)
-            );
+    const socketPayload = finalizeSlotMutation(
+        connectRequest, connectRequestId, userId, "slot_rescheduled",
+        {
+            oldSlotIndex: idx,
+            newSlotIndex,
+            oldSlot: connectRequest.selectedSlots[idx],
+            newSlot: connectRequest.selectedSlots[newSlotIndex],
+        },
+        sendSlotRescheduledEmail,
+        (populated) => ({
+            connectRequestId,
+            mentorName: populated.mentor.name,
+            mentorEmail: populated.mentor.email,
+            menteeName: populated.mentee.name,
+            menteeEmail: populated.mentee.email,
+            oldSlot: connectRequest.selectedSlots[idx],
+            newSlot: connectRequest.selectedSlots[newSlotIndex],
         })
-        .catch((err) =>
-            logger.error("❌ Failed to populate for reschedule email:", err.message)
-        );
+    );
 
     return {
         oldSlot: connectRequest.selectedSlots[idx],

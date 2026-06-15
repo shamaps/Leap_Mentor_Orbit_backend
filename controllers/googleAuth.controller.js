@@ -1,6 +1,6 @@
 // controllers/googleAuth.controller.js
 const service = require("../services/googleAuth.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const { issueTokens } = require("../utils/auth.utils");   // ← ADD
 
 const googleAuth = async (req, res, next) => {

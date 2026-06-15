@@ -3,8 +3,8 @@ const jwt = require("jsonwebtoken");
 const repo = require("../repositories/clerkSSO.repository");
 const AppError = require("../utils/AppError");
 const { clerkClient, signToken, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
-const { WELCOME_BONUS_LP } = require("../config/constants");
-const { logger } = require("@sentry/node");
+const { provisionWallet } = require("../utils/wallet");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
 // ─────────────────────────────────────────────────────────────
@@ -45,34 +45,7 @@ const resolveClerkUser = async (clerkToken) => {
     }
 };
 
-/**
- * Creates wallet + optional welcome-bonus transaction.
- * Non-fatal — errors are logged, not re-thrown.
- */
-const provisionWallet = async (userId, roles) => {
-    const isMentee = roles.includes("mentee");
-    const startingBalance = isMentee ? WELCOME_BONUS_LP : 0;
 
-    logger.info("💰 Creating wallet | isMentee:", isMentee, "| startingBalance:", startingBalance);
-
-    try {
-        const wallet = await repo.createWallet({ user: userId, balance: startingBalance, escrow: 0 });
-        logger.info("✅ Wallet created:", wallet._id, "| Balance:", wallet.balance);
-
-        if (isMentee) {
-            const tx = await repo.createTransaction({
-                user: userId,
-                type: "credit",
-                amount: WELCOME_BONUS_LP,
-                description: `Welcome bonus —  ${WELCOME_BONUS_LP} points to get started`,
-                balanceAfter: WELCOME_BONUS_LP,
-            });
-            logger.info("✅ Transaction created:", tx._id);
-        }
-    } catch (walletErr) {
-        logger.error("❌ Wallet/Transaction creation failed:", walletErr.message);
-    }
-};
 
 /**
  * Validates terms + roles, creates user + wallet.
@@ -99,7 +72,11 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
 
     logger.info("✅ User created:", user._id, "| Roles:", user.roles);
 
-    await provisionWallet(user._id, uniqueRoles);
+    try {
+        await provisionWallet(user._id, uniqueRoles);
+    } catch (walletErr) {
+        logger.error("Wallet provisioning failed during Clerk SSO", { error: walletErr.message, userId: user._id.toString() });
+    }
 
     return user;
 };

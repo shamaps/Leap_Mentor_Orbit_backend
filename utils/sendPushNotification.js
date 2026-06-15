@@ -1,5 +1,6 @@
 const webpush = require("web-push");
 const PushSubscription = require("../models/PushSubscription");
+const logger = require("../utils/logger");
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO,
@@ -31,7 +32,7 @@ const sendPushNotification = async (userId, { title, message, type = "info", url
       })
     );
   } catch (err) {
-    console.error("❌ Push notification failed:", err.message);
+    logger.error("Push notification failed", { error: err.message, stack: err.stack });
   }
 };
 

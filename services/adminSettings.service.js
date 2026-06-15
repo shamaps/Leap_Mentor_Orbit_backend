@@ -1,7 +1,7 @@
 // services/adminSettings.service.js
 const adminSettingsRepo = require("../repositories/adminSettings.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/settings/overview
 // ─────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ const addAdmin = async (name, email) => {
     }
 
     // pre-save hook on AdminUser will hash this automatically
-    const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
+    const tempPassword = crypto.randomBytes(12).toString("base64url").slice(0, 12) + "A1!";
 
     const newAdmin = await adminSettingsRepo.createAdmin({
         name: name.trim(),

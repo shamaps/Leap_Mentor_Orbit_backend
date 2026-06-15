@@ -1,6 +1,5 @@
 const repo = require("../repositories/PushSubscription.repository");
 
-const { logger } = require("@sentry/node");
 const subscribe = async ({ userId, subscription }) => {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         return { status: 400, body: { message: "Invalid subscription object" } };
@@ -12,7 +11,7 @@ const subscribe = async ({ userId, subscription }) => {
 
 const unsubscribe = async ({ userId, endpoint }) => {
     await repo.deleteSubscription(userId, endpoint);
-    return { status: 200, body: { message: "Unsubscribed successfully" } };
+    return { status: 204, body: null };
 };
 
 const getVapidPublicKey = () => ({

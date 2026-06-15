@@ -1,6 +1,6 @@
 // controllers/leapRequest.controller.js
 const leapRequestService = require("../services/leapRequest.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 // ── MENTEE: Check my latest request ──────────────────────────

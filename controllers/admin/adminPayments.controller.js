@@ -1,7 +1,7 @@
 // backend/controllers/admin/adminPayments.controller.js
 const adminPaymentsService = require("../../services/adminPayments.service");
-
-const { logger } = require("@sentry/node");
+const { handleError } = require("../../utils/AppError");
+const logger = require("../../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/payments/stats
 // ─────────────────────────────────────────────────────────────
@@ -11,8 +11,7 @@ const getPaymentStats = async (req, res) => {
     logger.info("getPaymentStats completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "adminPayments.getPaymentStats");
   }
 };
 
@@ -25,8 +24,7 @@ const getRevenueChart = async (_req, res) => {
     logger.info("getRevenueChart completed successfully");
     return res.json({ success: true, data });
   } catch (err) {
-    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "adminPayments.getRevenueChart");
   }
 };
 
@@ -44,8 +42,7 @@ const getTransactions = async (req, res) => {
     logger.info("getTransactions completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    logger.error("Unhandled error in adminPayments.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "adminPayments.getTransactions");
   }
 };
 

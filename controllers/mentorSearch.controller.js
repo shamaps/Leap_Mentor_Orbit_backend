@@ -1,7 +1,7 @@
 // backend/controllers/mentorSearch.controller.js
 const mentorSearchService = require("../services/mentorSearch.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/mentors/search
 // ─────────────────────────────────────────────────────────────

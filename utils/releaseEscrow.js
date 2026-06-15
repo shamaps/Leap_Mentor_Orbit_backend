@@ -3,6 +3,8 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const ConnectRequest = require("../models/ConnectRequest");
 const AdminUser = require("../models/AdminUser");
+const logger = require("../utils/logger");
+
 const r = (n) => Math.round(n * 100) / 100;
 const releaseEscrow = async (connectRequestId, mongoSession) => {
   const connectRequest = await ConnectRequest.findById(connectRequestId)
@@ -101,16 +103,13 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
         { isActive: true },
         { $inc: { walletBalance: adjustedCommission } }
       );
-      console.log(`✅ Admin wallet credited: +${adjustedCommission} tokens`);
+      logger.info("Admin wallet credited", { amount: adjustedCommission });
     } catch (err) {
-      console.error("❌ Admin wallet credit failed:", err.message);
+      logger.error("Admin wallet credit failed", { error: err.message, stack: err.stack });
     }
   });
 
-  console.log(
-    `✅ Escrow released — active slots: ${activeSlots}/${totalSlots} | ` +
-    `escrow drained: ${expectedEscrow} | platform: ${adjustedCommission} (${commissionRate}%) | mentor: ${adjustedPayout}`
-  );
+  logger.info("Escrow released", { activeSlots, totalSlots, expectedEscrow, adjustedCommission, commissionRate, adjustedPayout });
 
   return {
     totalAmount: expectedEscrow,

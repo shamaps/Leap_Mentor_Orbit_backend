@@ -1,6 +1,6 @@
 const reportService = require("../services/report.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const submitReport = async (req, res) => {
   try {
     const { connectRequestId, complaintType, description } = req.body;

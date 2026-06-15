@@ -1,6 +1,6 @@
 // controllers/privateNote.controller.js
 const privateNoteService = require("../services/privateNote.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────

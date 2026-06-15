@@ -1,6 +1,6 @@
 const supportService = require("../services/support.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 exports.createMessage = async (req, res) => {
   try {
     const { email, subject, message, role } = req.body;

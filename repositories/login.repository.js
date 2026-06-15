@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 const findUserByEmail = async (email) => {
     try {

@@ -1,7 +1,7 @@
 // utils/emailHelpers.js
 
 const LOGO_URL = "https://res.cloudinary.com/dturqwsyo/image/upload/v1775526481/logo_rkj2ta.png";
-
+const BRAND_GRADIENT = "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)";
 const formatTime = (time) => {
     const [h, m] = time.split(":").map(Number);
     const ampm = h >= 12 ? "PM" : "AM";
@@ -13,6 +13,19 @@ const formatDate = (date) =>
     new Date(date + "T00:00:00").toLocaleDateString("en-US", {
         weekday: "long", year: "numeric", month: "long", day: "numeric",
     });
+
+
+/**
+ * Formats a date string as "Month D, YYYY" (no weekday) — used for invoices.
+ * @param {string} date - "YYYY-MM-DD"
+ * @returns {string} e.g. "June 15, 2026", or "—" if date is falsy
+ */
+const formatDateShort = (date) => {
+  if (!date) return "—";
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
+};
 
 // Canonical wrapEmail — includes preheader (was missing in sendNotificationEmail.js)
 const wrapEmail = (innerHtml) => `
@@ -121,10 +134,12 @@ const buildSlotRows = (slots = []) =>
 module.exports = {
     formatTime,
     formatDate,
+    formatDateShort,
     wrapEmail,
     buildHeader,
     FOOTER,
     LOGO_URL,
     buildParticipantBlock,
+    BRAND_GRADIENT,
     buildSlotRows,
 };

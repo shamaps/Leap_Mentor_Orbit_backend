@@ -2,10 +2,11 @@
 const cron            = require("node-cron");
 const ConnectRequest  = require("../models/ConnectRequest");
 const createNotification = require("../utils/createNotification");
-const { PLATFORM_TIMEZONE } = require("../config/constants");
+const { PLATFORM_TIMEZONE, IST_OFFSET_MS } = require("../config/constants");
+const logger = require("../utils/logger"); 
 
 // ── Helper: convert "YYYY-MM-DD" + "HH:MM" to a JS Date in IST ──
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 const REMINDER_WINDOW_MINS = 10;       // ±10 min tolerance on each reminder check
 const REMINDER_24H_CENTER = 24 * 60;  // 1440 mins
 const REMINDER_1H_CENTER = 60;       // 60 mins
@@ -24,7 +25,7 @@ const toISTDate = (dateStr, timeStr) => {
 const sendSessionReminders = async () => {
   try {
     const now = new Date();
-    console.log(`[Cron] Running session reminders — ${now.toISOString()}`);
+    logger.info("Cron: session reminders running", { timestamp: now.toISOString() });
 
     // Find all accepted requests that have a confirmedSlot
     const acceptedRequests = await ConnectRequest.find({
@@ -69,7 +70,7 @@ const sendSessionReminders = async () => {
         });
 
         reminder24Count++;
-        console.log(`[Cron] 24h reminder sent for request ${request._id}`);
+        logger.info("Cron: 24h reminder sent", { requestId: request._id });
       }
 
       // ── 1-hour reminder window: between 50m and 70m ──
@@ -94,16 +95,14 @@ const sendSessionReminders = async () => {
         });
 
         reminder1Count++;
-        console.log(`[Cron] 1h reminder sent for request ${request._id}`);
+        logger.info("Cron: 1h reminder sent", { requestId: request._id });
       }
     }
 
-    console.log(`[Cron] Reminders complete:`);
-    console.log(`[Cron]   • 24h reminders sent: ${reminder24Count}`);
-    console.log(`[Cron]   • 1h  reminders sent: ${reminder1Count}`);
+    logger.info("Cron: session reminders complete", { reminder24Count, reminder1Count });
 
   } catch (err) {
-    console.error("[Cron] ❌ Session reminder error:", err.message);
+    logger.error("Cron: session reminder error", { error: err.message, stack: err.stack });
   }
 };
 
@@ -114,7 +113,7 @@ const startSessionReminderCron = () => {
     timezone: PLATFORM_TIMEZONE,
   });
 
-  console.log("[Cron] Session reminders scheduled — runs every 10 minutes IST");
+  logger.info("Cron: session reminders scheduled");
 };
 
 module.exports = { startSessionReminderCron, sendSessionReminders };

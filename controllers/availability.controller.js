@@ -1,7 +1,7 @@
 // controllers/availability.controller.js
 const availabilityService = require("../services/availability.service");
-
-const { logger } = require("@sentry/node");
+const { handleError } = require("../utils/AppError");
+const logger = require("../utils/logger");
 
 // GET /api/availability/me
 const getMyAvailability = async (req, res) => {
@@ -10,8 +10,7 @@ const getMyAvailability = async (req, res) => {
     logger.info("getMyAvailability completed successfully");
     return res.json(data);
   } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "availability.getMyAvailability");
   }
 };
 
@@ -24,9 +23,7 @@ const createAvailability = async (req, res) => {
     logger.info("createAvailability completed successfully");
     return res.status(201).json({ message: "Availability created successfully", availability });
   } catch (err) {
-    const status = err.statusCode || 500;
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(status).json({ message: err.message });
+    return handleError(res, err, "availability.createAvailability");
   }
 };
 
@@ -39,9 +36,8 @@ const updateAvailability = async (req, res) => {
     logger.info("updateAvailability completed successfully");
     return res.json({ message: "Availability updated successfully", availability });
   } catch (err) {
-    const status = err.statusCode || 500;
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(status).json({ message: err.message });
+    return handleError(res, err, "availability.updateAvailability");
+    
   }
 };
 
@@ -54,9 +50,7 @@ const getMentorAvailability = async (req, res) => {
     logger.info("getMentorAvailability completed successfully");
     return res.json(data);
   } catch (err) {
-    const status = err.statusCode || 500;
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(status).json({ message: err.message });
+    return handleError(res, err, "availability.getMentorAvailability");  
   }
 };
 
@@ -69,8 +63,8 @@ const deleteAvailability = async (req, res) => {
     logger.info("deleteAvailability completed successfully");
     return res.status(204).send();
   } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "availability.deleteAvailability");
+    
   }
 };
 
@@ -88,9 +82,7 @@ const getAvailableSlots = async (req, res) => {
     logger.info("availability.controller completed successfully");
     return res.json(data);
   } catch (err) {
-    const status = err.statusCode || 500;
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(status).json({ message: err.message });
+    return handleError(res, err, "availability.getAvailableSlots");
   }
 };
 

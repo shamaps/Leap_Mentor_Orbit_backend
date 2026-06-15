@@ -1,6 +1,6 @@
 const repo = require("../repositories/slotLock.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const LOCK_DURATION_MINUTES = 10;
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -61,7 +61,7 @@ const lockSlot = async ({ mentorId, date, startTime, endTime, menteeId }) => {
 
     // ── 3. Upsert lock — refreshes timer if same mentee re-selects ──
     const expiresAt = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
-    await repo.upsertLock(mentorId, date, startTime, endTime, menteeId, expiresAt);
+    await repo.upsertLock({mentorId, date, startTime, endTime, menteeId, expiresAt});
 
     return {
         status: 200,
@@ -74,7 +74,7 @@ const unlockSlot = async ({ mentorId, date, startTime, endTime, menteeId }) => {
         return { status: 400, body: { message: "Missing required fields" } };
     }
 
-    await repo.deleteLock(mentorId, date, startTime, endTime, menteeId);
+    await repo.deleteLock({mentorId, date, startTime, endTime, menteeId});
 
     return { status: 200, body: { message: "Slot unlocked successfully" } };
 };

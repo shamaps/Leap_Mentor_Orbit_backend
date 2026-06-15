@@ -1,6 +1,6 @@
 // controllers/admin/adminSettings.controller.js
 const adminSettingsService = require("../../services/adminSettings.service");
-const { logger } = require("@sentry/node");
+const logger = require("../../utils/logger");
 const AppError = require("../../utils/AppError");
 const { handleError } = require("../../utils/AppError");
 // ─────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ const getOverview = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// PUT /api/admin/settings/change-password
+// Patch /api/admin/settings/Password
 // ─────────────────────────────────────────────────────────────
 const changePassword = async (req, res) => {
   try {
@@ -67,7 +67,7 @@ const getCommission = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// PUT /api/admin/settings/commission
+// Patch /api/admin/settings/commission
 // ─────────────────────────────────────────────────────────────
 const updateCommission = async (req, res) => {
   try {

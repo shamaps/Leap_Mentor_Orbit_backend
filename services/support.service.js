@@ -1,7 +1,7 @@
 const { sendSupportResolvedEmail } = require("../utils/sendNotificationEmail");
 const repo = require("../repositories/support.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const createMessage = async ({ email, subject, message, role }) => {
     if (!email || !subject || !message) {
         return { status: 400, body: { error: "All fields are required" } };

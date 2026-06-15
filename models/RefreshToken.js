@@ -20,5 +20,11 @@ const refreshTokenSchema = new mongoose.Schema({
 
 // Auto-delete expired tokens from MongoDB
 refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
+refreshTokenSchema.set("toJSON", {
+    transform: (doc, ret) => {
+        delete ret.tokenHash;
+        delete ret.__v;
+        return ret;
+    }
+});
 module.exports = mongoose.model("RefreshToken", refreshTokenSchema);

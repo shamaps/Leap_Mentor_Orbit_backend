@@ -1,7 +1,7 @@
 // backend/services/adminPayments.service.js
 const repo = require("../repositories/adminPayments.repository");
 const { DEFAULT_COMMISSION_RATE } = require("../config/constants");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helper — resolves transaction status without nested ternaries
 // ─────────────────────────────────────────────────────────────

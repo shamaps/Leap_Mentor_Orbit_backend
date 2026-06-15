@@ -1,46 +1,12 @@
 // services/note.service.js
-const streamifier = require("streamifier");
-const { cloudinary } = require("../config/cloudinary");
+
 const { getFileType } = require("../middleware/upload.middleware");
 const noteRepo = require("../repositories/note.repository");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 
-const { logger } = require("@sentry/node");
-// ── Helper: validate user belongs to this session ─────────────
-const validateSessionAccess = async (connectRequestId, userId) => {
-    const request = await noteRepo.findSessionParticipants(connectRequestId);
-    if (!request) {
-        return { valid: false, reason: "Session not found", status: 404 };
-    }
-    if (!ACTIVE_SESSION_STATUSES.includes(request.status)) {
-        return { valid: false, reason: "Session is not active", status: 400 };
-    }
-    const uid = userId.toString();
-    const isMentor = request.mentor.toString() === uid;
-    const isMentee = request.mentee.toString() === uid;
-    if (!isMentor && !isMentee) {
-        return { valid: false, reason: "Not authorized", status: 403 };
-    }
-    return {
-        valid: true,
-        uploaderRole: isMentor ? "mentor" : "mentee",
-        sessionStatus: request.status,
-    };
-};
-
-// ── Helper: stream buffer to Cloudinary ───────────────────────
-const uploadToCloudinary = (buffer, options) => {
-    return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-            options,
-            (error, result) => {
-                if (error) return reject(new Error(error.message ?? JSON.stringify(error)));
-                resolve(result);
-            }
-        );
-        streamifier.createReadStream(buffer).pipe(uploadStream);
-    });
-};
+const logger = require("../utils/logger");
+const { validateSessionAccess } = require("../utils/sessionAccess");
+const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/notes/upload
@@ -60,7 +26,7 @@ const uploadNote = async (userId, body, file) => {
         throw err;
     }
 
-    const access = await validateSessionAccess(connectRequestId, userId);
+    const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
         const err = new Error(access.reason);
         err.statusCode = access.status;
@@ -102,7 +68,7 @@ const uploadNote = async (userId, body, file) => {
 // GET /api/notes/:connectRequestId
 // ─────────────────────────────────────────────────────────────
 const getNotes = async (connectRequestId, userId) => {
-    const access = await validateSessionAccess(connectRequestId, userId);
+    const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
         const err = new Error(access.reason);
         err.statusCode = access.status;
@@ -117,7 +83,7 @@ const getNotes = async (connectRequestId, userId) => {
 // GET /api/notes/:connectRequestId/private
 // ─────────────────────────────────────────────────────────────
 const getPrivateNotes = async (connectRequestId, userId) => {
-    const access = await validateSessionAccess(connectRequestId, userId);
+    const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
         const err = new Error(access.reason);
         err.statusCode = access.status;

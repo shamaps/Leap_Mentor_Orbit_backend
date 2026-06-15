@@ -2,10 +2,9 @@ const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const repo = require("../repositories/verification.repository");
 const transporter = require("../utils/mailer");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
+const { makeOtp } = require("../utils/auth.utils");
 
-// ── Helpers ───────────────────────────────────────────────────
-const makeOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
 
 /**
@@ -26,7 +25,9 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
     await repo.createVerificationToken({ user: user._id, otp: otpHash, token: tokenHash, expiresAt });
 
     const base = process.env.APP_BASE_URL;
-if (!base) throw new Error("APP_BASE_URL is not set");
+if (!base){
+    throw new Error("APP_BASE_URL is not set");
+}
     const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
     await transporter.sendMail({

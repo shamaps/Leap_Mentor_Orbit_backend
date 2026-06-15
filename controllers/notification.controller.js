@@ -1,7 +1,7 @@
 // controllers/notification.controller.js
 const notificationService = require("../services/notification.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 

@@ -1,7 +1,7 @@
 // backend/services/mentorSearch.service.js
 const repo = require("../repositories/mentorSearch.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers — extracted to reduce cognitive complexity
 // ─────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ const buildAtlasPipeline = (compound, expMatch) => [
  * Merges Atlas results with any name-matched profiles that Atlas missed.
  * FIX: extracted the union block out of searchMentors() to reduce complexity.
  */
-const mergeNameMatches = async (results, nameMatchedProfileUserIds, skill, expMatch) => {
+const mergeNameMatches = async ({results, nameMatchedProfileUserIds, skill, expMatch}) => {
     if (!nameMatchedProfileUserIds?.size) return results;
 
     const atlasUserIds = new Set(results.map((r) => r.user._id.toString()));
@@ -259,7 +259,8 @@ const searchMentors = async (params) => {
     let results = facetResult?.results || [];
 
     // Step 4 — merge any name-matched profiles Atlas missed
-    results = await mergeNameMatches(results, nameMatchedProfileUserIds, skill, expMatch);
+    // ✅ Fix
+    results = await mergeNameMatches({ results, nameMatchedProfileUserIds, skill, expMatch });
 
     if (results.length === 0) return emptyPage(pageNum);
 

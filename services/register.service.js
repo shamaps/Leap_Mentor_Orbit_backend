@@ -2,29 +2,8 @@
 const bcrypt = require("bcryptjs");
 const registerRepo = require("../repositories/register.repository");
 const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.utils");
-const { WELCOME_BONUS_LP } = require("../config/constants");
-const { logger } = require("@sentry/node");
-
-const provisionWallet = async (userId, role) => {
-    const isMentee = role === "mentee";
-    const wallet = await registerRepo.createWallet({
-        user: userId,
-        role,
-        balance: isMentee ? WELCOME_BONUS_LP : 0,
-        escrow: 0,
-    });
-    logger.info(`Wallet created — role: ${role}`, wallet);
-
-    if (isMentee) {
-        await registerRepo.createTransaction({
-            user: userId,
-            type: "credit",
-            amount: WELCOME_BONUS_LP,
-            description: `Welcome bonus —  ${WELCOME_BONUS_LP} points to get started`,
-            balanceAfter: WELCOME_BONUS_LP,
-        });
-    }
-};
+const { provisionWallet } = require("../utils/wallet");
+const logger = require("../utils/logger");
 
 const validateInput = (name, email, password, roles, termsAccepted) => {
     if (roles?.length !== 1)

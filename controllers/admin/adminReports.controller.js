@@ -1,8 +1,8 @@
 // backend/controllers/admin/adminReports.controller.js
-const AppError = require("../../utils/AppError");
+
 const adminReportsService = require("../../services/adminReports.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../../utils/logger");
 const { handleError } = require("../../utils/AppError");
 
 // ─────────────────────────────────────────────────────────────

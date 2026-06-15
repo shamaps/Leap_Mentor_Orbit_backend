@@ -2,7 +2,7 @@
 const repo = require("../repositories/feedback.repository");
 const AppError = require("../utils/AppError");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
 // ─────────────────────────────────────────────────────────────

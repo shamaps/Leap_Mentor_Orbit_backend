@@ -3,7 +3,7 @@ const goalRepo = require("../repositories/goal.repository");
 const socketHandler = require("../socket/socketHandler");
 const { VALID_GOAL_STATUSES } = require("../config/constants");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ── Socket helper ─────────────────────────────────────────────
 const emitToRoom = (connectRequestId, event, data) => {
     try {
@@ -258,11 +258,11 @@ const deleteMilestone = async (milestoneId, userId) => {
     }
 
     const connectRequestId = milestone.connectRequest;
-    const milestoneIdStr = milestone._id.toString();
+    const milestoneIds = milestone._id.toString();
 
     await goalRepo.deleteMilestoneById(milestoneId);
 
-    emitToRoom(connectRequestId, "milestone_deleted", { milestoneId: milestoneIdStr });
+    emitToRoom(connectRequestId, "milestone_deleted", { milestoneIds });
 
     return { message: "Milestone deleted" };
 };

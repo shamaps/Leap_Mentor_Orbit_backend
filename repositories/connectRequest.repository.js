@@ -99,16 +99,6 @@ const findOngoingConnects = async (userId) => {
     .lean();
 };
 
-/**
- * Check whether a referral already exists between a mentee and target mentor.
- */
-const findExistingReferral = async (menteeId, mentorId) => {
-  return await ConnectRequest.findOne({
-    mentee: menteeId,
-    mentor: mentorId,
-    status: "pending",
-  });
-};
 
 // ─────────────────────────────────────────────────────────────
 // PROFILE LOOKUPS
@@ -185,7 +175,6 @@ module.exports = {
   findMyRequests,
   findIncomingRequests,
   findOngoingConnects,
-  findExistingReferral,
   // profile lookups
   findMentorProfile,
   findMentorProfileFull,

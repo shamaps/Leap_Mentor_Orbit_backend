@@ -2,7 +2,7 @@
 const leapRequestRepo = require("../repositories/leapRequest.repository");
 const { LEAP_REFILL_THRESHOLD, LEAP_REFILL_AMOUNT } = require("../config/constants");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ── MENTEE: Check my latest request ──────────────────────────
 const getMyRequest = async (menteeId) => {
     const request = await leapRequestRepo.findPendingByMentee(menteeId);

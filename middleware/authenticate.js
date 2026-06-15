@@ -2,7 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Sentry = require("@sentry/node");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const { maskEmail } = require("../utils/mask");
 
 const authenticate = async (req, res, next) => {

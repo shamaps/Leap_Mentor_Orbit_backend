@@ -14,10 +14,10 @@ const {
 router.post("/lock", authenticate, lockSlot);
 
 // Unlock a specific slot (mentee deselects a slot)
-router.post("/unlock", authenticate, unlockSlot);
+router.delete("/lock", authenticate, unlockSlot);        
 
 // Unlock all locks by mentee (mentee closes modal)
-router.post("/unlock-all", authenticate, unlockAllByMentee);
+router.delete("/locks", authenticate, unlockAllByMentee); // DELETE /locks (all locks)
 
 // Get active locks for a mentor (used internally)
 router.get("/:mentorId", authenticate, getActiveLocks);

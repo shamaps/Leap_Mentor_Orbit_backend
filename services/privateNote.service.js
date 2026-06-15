@@ -1,23 +1,8 @@
 // services/privateNote.service.js
 const privateNoteRepo = require("../repositories/privateNote.repository");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
-
-const { logger } = require("@sentry/node");
-// ── Helper: confirm user is a session participant ─────────────
-const validateSessionAccess = async (connectRequestId, userId) => {
-    const request = await privateNoteRepo.findSessionParticipants(connectRequestId);
-    if (!request) {
-        return { valid: false, reason: "Session not found", status: 404 };
-    }
-    if (!ACTIVE_SESSION_STATUSES.includes(request.status)) {
-        return { valid: false, reason: "Session is not active", status: 400 };
-    }
-    const uid = userId.toString();
-    if (request.mentor.toString() !== uid && request.mentee.toString() !== uid) {
-        return { valid: false, reason: "Not authorized", status: 403 };
-    }
-    return { valid: true };
-};
+const logger = require("../utils/logger");
+const { validateSessionAccess } = require("../utils/sessionAccess");
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/private-notes
@@ -31,7 +16,7 @@ const createNote = async (userId, body) => {
         throw err;
     }
 
-    const access = await validateSessionAccess(connectRequestId, userId);
+    const access = await validateSessionAccess(privateNoteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
         const err = new Error(access.reason);
         err.statusCode = access.status;
@@ -52,7 +37,7 @@ const createNote = async (userId, body) => {
 // GET /api/private-notes/:connectRequestId
 // ─────────────────────────────────────────────────────────────
 const getNotes = async (connectRequestId, userId) => {
-    const access = await validateSessionAccess(connectRequestId, userId);
+    const access = await validateSessionAccess(privateNoteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
         const err = new Error(access.reason);
         err.statusCode = access.status;

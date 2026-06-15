@@ -5,7 +5,7 @@ const AppError = require("../utils/AppError");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
 const { sendPaymentReceivedEmail } = require("../utils/sendNotificationEmail");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("../config/constants");
 
 const requireAdmin = async () => {
@@ -62,9 +62,9 @@ const dispatchPaySideEffects = (connectRequest, { sessionRate, sessionCount, tot
 
 // PAY
 const pay = async ({ connectRequestId, sessionRate, sessionCount, menteeId }) => {
-  if (!connectRequestId) throw new AppError(400, "connectRequestId is required");
-  if (!sessionRate || sessionRate < 1) throw new AppError(400, "sessionRate must be at least 1");
-  if (!sessionCount || sessionCount < 1) throw new AppError(400, "sessionCount must be at least 1");
+  if (!connectRequestId) throw new AppError(400, "connectRequestId is required");   // keep 400 — missing field
+  if (!sessionRate || sessionRate < 1) throw new AppError(422, "sessionRate must be at least 1");   // 422 — value invalid
+  if (!sessionCount || sessionCount < 1) throw new AppError(422, "sessionCount must be at least 1"); // 422
 
   const admin = await requireAdmin();
   const commissionRate = admin.commissionRate ?? DEFAULT_COMMISSION_RATE;
@@ -367,9 +367,8 @@ const getCommissionRate = async () => {
 // PAY ADDITIONAL
 const payAdditional = async ({ connectRequestId, sessionRate, slotId, menteeId }) => {
   if (!connectRequestId || !sessionRate || !slotId)
-    throw new AppError(400, "connectRequestId, sessionRate, and slotId are required");
-  if (sessionRate < 1) throw new AppError(400, "sessionRate must be at least 1");
-
+    throw new AppError(422, "connectRequestId, sessionRate, and slotId are required");  
+  if (sessionRate < 1) throw new AppError(422, "sessionRate must be at least 1");
   const admin = await requireAdmin();
   const commissionRate = admin.commissionRate ?? DEFAULT_COMMISSION_RATE;
   const platformFee = Math.ceil((sessionRate * commissionRate) / 100);

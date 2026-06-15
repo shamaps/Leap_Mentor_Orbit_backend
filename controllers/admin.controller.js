@@ -2,7 +2,7 @@
 const AppError = require("../utils/AppError");
 const adminService = require("../services/admin.service");
 const { handleError } = require("../utils/AppError");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 
 // ═════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 // services/message.service.js
 const messageRepo = require("../repositories/message.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/messages/:connectRequestId
 // ─────────────────────────────────────────────────────────────

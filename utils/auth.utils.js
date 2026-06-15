@@ -7,6 +7,7 @@ const { createClerkClient } = require("@clerk/backend");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
+const makeOtp = () => String(crypto.randomInt(100000, 1000000));
 // ── helpers ──────────────────────────────────────────────────
 const getRefreshMs = () => {
   const days = Number.parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || "7", 10);
@@ -75,10 +76,10 @@ const sanitizeUser = (user) => {
 };
 
 const validateRoles = (roles) => {
-  const validRoles = ["mentor", "mentee"];
+  const validRoles = new Set(["mentor", "mentee"]);
   const uniqueRoles = [...new Set(roles)];
   for (const r of uniqueRoles) {
-    if (!validRoles.includes(r)) {
+    if (!validRoles.has(r)) {
       return { valid: false, message: "Invalid role. Use mentor and/or mentee." };
     }
   }
@@ -96,5 +97,6 @@ module.exports = {
   sanitizeUser,
   validateRoles,
   getRefreshMs,     
-  mergeRoles,     
+  mergeRoles, 
+  makeOtp,    
 };

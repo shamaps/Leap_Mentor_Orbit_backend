@@ -1,6 +1,6 @@
 // controllers/note.controller.js
 const noteService = require("../services/note.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────

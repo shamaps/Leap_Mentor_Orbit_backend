@@ -1,6 +1,7 @@
 // backend/middleware/adminAuth.js
 const jwt = require("jsonwebtoken");
 const AdminUser = require("../models/AdminUser");
+const logger = require("../utils/logger");
 
 // ── UPDATED: reads adminAccessToken from httpOnly cookie ──────
 // Previously read from req.headers.authorization (Bearer token)
@@ -24,9 +25,10 @@ const adminAuthenticate = async (req, res, next) => {
 
     req.admin = admin;
 
-    console.log(`🛡️  adminAuth — admin: ${admin.email}`);
+    logger.info("Admin authenticated", { adminId: admin._id, email: admin.email });
     next();
   } catch (err) {
+    logger.error("Admin authentication failed", { error: err.message, stack: err.stack });
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };

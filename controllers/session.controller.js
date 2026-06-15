@@ -1,8 +1,9 @@
 // controllers/session.controller.js
 const sessionService = require("../services/session.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
+
 // ─────────────────────────────────────────────────────────────
 // GET /api/sessions/:connectRequestId/slots
 // ─────────────────────────────────────────────────────────────
@@ -25,12 +26,12 @@ const getSlots = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const setMeetingLink = async (req, res) => {
   try {
-    const data = await sessionService.setMeetingLink(
-      req.params.connectRequestId,
-      req.params.slotIndex,
-      req.body.meetingLink,
-      req.user._id
-    );
+    const data = await sessionService.setMeetingLink({  // ← was positional, now object
+      connectRequestId: req.params.connectRequestId,
+      slotIndex: req.params.slotIndex,
+      meetingLink: req.body.meetingLink,
+      userId: req.user._id,
+    });
     logger.info("setMeetingLink completed successfully");
     return res.json({ success: true, message: "Meeting link updated", ...data });
   } catch (err) {
@@ -84,12 +85,12 @@ const addSlot = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const cancelSlot = async (req, res) => {
   try {
-    const data = await sessionService.cancelSlot(
-      req.params.connectRequestId,
-      req.params.slotIndex,
-      req.user._id,
-      req.body.reason
-    );
+    const data = await sessionService.cancelSlot({  // ← was positional, now object
+      connectRequestId: req.params.connectRequestId,
+      slotIndex: req.params.slotIndex,
+      userId: req.user._id,
+      reason: req.body.reason,
+    });
     logger.info("cancelSlot completed successfully");
     return res.json({ success: true, message: "Slot cancelled successfully", ...data });
   } catch (err) {
@@ -103,12 +104,12 @@ const cancelSlot = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const rescheduleSlot = async (req, res) => {
   try {
-    const data = await sessionService.rescheduleSlot(
-      req.params.connectRequestId,
-      req.params.slotIndex,
-      req.body,
-      req.user._id
-    );
+    const data = await sessionService.rescheduleSlot({  // ← was positional, now object
+      connectRequestId: req.params.connectRequestId,
+      slotIndex: req.params.slotIndex,
+      body: req.body,
+      userId: req.user._id,
+    });
     logger.info("rescheduleSlot completed successfully");
     return res.json({ success: true, message: "Slot rescheduled successfully", ...data });
   } catch (err) {

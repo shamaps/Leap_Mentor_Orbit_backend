@@ -1,10 +1,12 @@
 // backend/utils/sendInvoiceEmail.js
 const generateInvoice = require("./generateInvoice");
 const transporter = require("./mailer");
+const logger = require("../utils/logger");
 const {
   wrapEmail,
   buildHeader,
   FOOTER,
+  BRAND_GRADIENT
 } = require("./emailHelpers");
 
 const sendInvoiceEmail = async (params) => {
@@ -16,10 +18,8 @@ const sendInvoiceEmail = async (params) => {
   const invoiceNumber = `INV-${connectRequestId.toString().slice(-6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
   const pdfBuffer = await generateInvoice({ ...params, invoiceNumber });
 
-  const gradient = "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)";
-
   const html = wrapEmail(`
-    ${buildHeader(gradient, "Payment Confirmed ✓", `Invoice #${invoiceNumber}`)}
+    ${buildHeader(BRAND_GRADIENT, "Payment Confirmed ✓", `Invoice #${invoiceNumber}`)}
 
     <div class="email-body" style="padding:24px 32px;">
       <p style="font-size:14px;color:#334155;margin:0 0 18px;">
@@ -76,7 +76,7 @@ const sendInvoiceEmail = async (params) => {
     attachments: [{ filename: `Invoice-${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
   });
 
-  console.log(`✅ Invoice email sent to ${menteeEmail} — ${invoiceNumber}`);
+  logger.info("Invoice email sent", { menteeEmail, invoiceNumber });
 };
 
 module.exports = sendInvoiceEmail;

@@ -1,7 +1,7 @@
 // services/mentorProfile.service.js
 const mentorProfileRepo = require("../repositories/mentorProfile.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 /**
  * POST /api/mentor-profile
  */

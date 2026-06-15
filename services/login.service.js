@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const repo = require("../repositories/login.repository");
 const AppError = require("../utils/AppError");
 const { sanitizeUser } = require("../utils/auth.utils");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 const login = async (email, password) => {
     if (!email || !password)

@@ -1,5 +1,5 @@
 // utils/AppError.js
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 class AppError extends Error {
   constructor(status, message) {

@@ -66,4 +66,11 @@ adminUserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
+adminUserSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password;
+    delete ret.__v;
+    return ret;
+  }
+});
 module.exports = mongoose.model("AdminUser", adminUserSchema);

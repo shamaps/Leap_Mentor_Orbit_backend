@@ -32,8 +32,8 @@ router.get(
   getMyProfile
 );
 
-// ✅ PUT /api/mentor-profile/me — update own profile
-router.put(
+// ✅ PATCH /api/mentor-profile/me — update own profile
+router.patch(
   "/me",
   authenticate,
   requireRole("mentor"),

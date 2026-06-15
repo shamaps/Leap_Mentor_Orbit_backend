@@ -1,8 +1,9 @@
 // backend/controllers/earnings.controller.js
 const earningsService = require("../services/earnings.service");
-
-const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
+const walletWithdrawalService = require("../services/walletWithdrawal.service");
+const { handleError } = require("../utils/AppError");
+const logger = require("../utils/logger");
+// ────────────────────────────────────────────────────────────
 // GET /api/mentor/earnings
 // Stat cards — totalEarnings, sessionsThisMonth, avgRating, pendingPayout
 // ─────────────────────────────────────────────────────────────
@@ -12,8 +13,7 @@ const getEarningsSummary = async (req, res) => {
     logger.info("earnings.controller completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "earnings.getEarningsSummary");
   }
 };
 
@@ -27,8 +27,7 @@ const getEarningsChart = async (req, res) => {
     logger.info("earnings.controller completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+return handleError(res, err, "earnings.getEarningsChart");
   }
 };
 
@@ -42,8 +41,7 @@ const getPayoutHistory = async (req, res) => {
     logger.info("earnings.controller completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
+    return handleError(res, err, "earnings.getPayoutHistory");
   }
 };
 
@@ -53,13 +51,11 @@ const getPayoutHistory = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const withdrawEarnings = async (req, res) => {
   try {
-    const data = await earningsService.withdrawEarnings(req.user._id);
+    const data = await walletWithdrawalService.withdrawEarnings(req.user._id);
     logger.info("withdrawEarnings completed successfully");
     return res.json({ success: true, ...data });
   } catch (err) {
-    const status = err.statusCode || 500;
-    logger.error("Unhandled error in earnings.controller", { error: err.message, stack: err.stack });
-    return res.status(status).json({ message: err.message });
+    return handleError(res, err, "earnings.withdrawEarnings");
   }
 };
 

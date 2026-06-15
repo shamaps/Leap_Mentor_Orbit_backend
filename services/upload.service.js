@@ -1,20 +1,8 @@
-const streamifier = require("streamifier");
-const { cloudinary } = require("../config/cloudinary");
+
 const { sendDocumentsSubmittedEmail } = require("../utils/sendNotificationEmail");
 const repo = require("../repositories/upload.repository");
-
-// ── Cloudinary helper ─────────────────────────────────────────
-const uploadToCloudinary = (buffer, options) =>
-    new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-            { ...options },
-            (error, result) => {
-                if (error) return reject(new Error(error.message ?? JSON.stringify(error)));
-                resolve(result);
-            }
-        );
-        streamifier.createReadStream(buffer).pipe(uploadStream);
-    });
+const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
+const logger = require("../utils/logger");
 
 // ─────────────────────────────────────────────────────────────
 
@@ -103,7 +91,7 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
 
     // ── Send documents submitted email (non-blocking) ──
     sendDocumentsSubmittedEmail({ mentorName: user.name, mentorEmail: user.email }).catch((emailErr) => {
-        logger.error(" sendDocumentsSubmittedEmail failed", {error:emailErr.message});
+        logger.error("❌ sendDocumentsSubmittedEmail failed:", emailErr.message);
     });
 
     return {

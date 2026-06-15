@@ -1,5 +1,5 @@
 // repositories/leapRequest.repository.js
-const LeapRequest = require("../models/LeapRequest.model");
+const LeapRequest = require("../models/LeapRequest");
 const Wallet = require("../models/Wallet");
 
 // ─── LeapRequest ─────────────────────────────────────────────

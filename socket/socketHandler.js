@@ -1,9 +1,12 @@
 // backend/socket/socketHandler.js
 const Message = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
-
+const { logger } = require("@sentry/node");
 // Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
+// TODO: Replace in-memory Maps with @socket.io/redis-adapter for horizontal scalability.
+//       Currently breaks if more than one server instance is running — socket events
+//       won't cross pod boundaries. See: https://socket.io/docs/v4/redis-adapter/
 
 // Track connected sockets per user: { userId: Set<socketId> }
 // Set instead of single socketId — supports multiple simultaneous connections per user
@@ -66,7 +69,7 @@ const socketHandler = (io) => {
 
   io.on("connection", (socket) => {
     const userId = socket.user._id.toString();
-    console.log(`🔌 Socket connected: ${socket.user.email} (${socket.id})`);
+    logger.info("Socket connected", { email: socket.user.email, socketId: socket.id });
 
     //  Register this socket under the user — supports multiple sockets per user
     if (!userSockets.has(userId)) {
@@ -112,7 +115,7 @@ const socketHandler = (io) => {
           readAt: new Date(),
         });
 
-        console.log(`🏠 ${socket.user.email} joined room: ${connectRequestId}`);
+        logger.info("Socket: user joined room", { email: socket.user.email, connectRequestId });
       } catch (err) {
         logger.error("join_room error", { error: err.message, stack: err.stack, userId, connectRequestId });
         socket.emit("error", { message: "Failed to join room" });
@@ -151,7 +154,7 @@ const socketHandler = (io) => {
 
         io.to(connectRequestId).emit("new_message", populated);
 
-        console.log(`💬 Message in ${connectRequestId} from ${socket.user.email}`);
+        logger.info("Socket message sent", { email: socket.user.email, connectRequestId });
       } catch (err) {
         logger.error("send_message error", { error: err.message, stack: err.stack, userId, connectRequestId });
         socket.emit("error", { message: "Failed to send message" });
@@ -186,7 +189,7 @@ const socketHandler = (io) => {
           readAt: new Date(),
         });
       } catch (err) {
-        logger.error("mark_read error", { error: err.message, stack: err.stack, userId, connectRequestId });
+        logger.error("Socket mark_read error", { error: err.message, stack: err.stack });
       }
     });
 
@@ -207,7 +210,7 @@ const socketHandler = (io) => {
         }
         socket.to(room).emit("user_offline", { userId });
       }
-      console.log(`🔌 Socket disconnected: ${socket.user?.email} (${socket.id})`);
+      logger.info("Socket disconnected", { email: socket.user?.email, socketId: socket.id });
     });
   });
 };

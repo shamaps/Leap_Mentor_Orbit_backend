@@ -4,7 +4,7 @@ const createNotification = require("../utils/createNotification");
 const { sendReportResolvedEmail } = require("../utils/sendNotificationEmail");
 const AppError = require("../utils/AppError");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers — fix nested ternaries + nested template literals
 // ─────────────────────────────────────────────────────────────

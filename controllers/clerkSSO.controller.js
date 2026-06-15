@@ -1,7 +1,7 @@
 // controllers/clerkSSO.controller.js
 const AppError = require("../utils/AppError");
 const clerkSSOService = require("../services/clerkSSO.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const { issueTokens } = require("../utils/auth.utils");   // ← ADD
 
 const clerkSSO = async (req, res) => {

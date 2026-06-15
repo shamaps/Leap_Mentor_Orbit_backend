@@ -1,6 +1,6 @@
 // controllers/adminVerification.controller.js
 const adminVerificationService = require("../services/adminVerification.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 const getAllMentorVerifications = async (req, res) => {

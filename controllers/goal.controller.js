@@ -1,7 +1,6 @@
 // controllers/goal.controller.js
 const goalService = require("../services/goal.service");
-const { logger } = require("@sentry/node");
-const AppError = require("../utils/AppError");
+const logger = require("../utils/logger");
 const { handleError } = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // POST /api/goals

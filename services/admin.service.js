@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const repo = require("../repositories/admin.repository");
 const AppError = require("../utils/AppError");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ── Token helper ──────────────────────────────────────────────
 const signToken = (id) =>
     jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {

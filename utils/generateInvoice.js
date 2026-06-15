@@ -1,8 +1,8 @@
 // backend/utils/generateInvoice.js
 const PDFDocument = require("pdfkit");
-const path = require("path");
-const fs = require("fs");
-
+const path = require("node:path");
+const fs = require("node:fs");
+const { formatDateShort } = require("./emailHelpers");
 /**
  * Generates a LeapMentor invoice PDF buffer.
  *
@@ -51,10 +51,14 @@ const generateInvoice = (data) => {
       const escrowTotal = baseAmount + feeTokens;                    // 10 + 2 = 12
 
       // ── Slots ─────────────────────────────────────────────────
-      const slots =
-        Array.isArray(selectedSlots) && selectedSlots.length > 0
-          ? selectedSlots
-          : confirmedSlot ? [confirmedSlot] : [];
+      let slots;
+      if (Array.isArray(selectedSlots) && selectedSlots.length > 0) {
+        slots = selectedSlots;
+      } else if (confirmedSlot) {
+        slots = [confirmedSlot];
+      } else {
+        slots = [];
+      }
 
       // ── PDF setup ─────────────────────────────────────────────
       const doc = new PDFDocument({ margin: 50, size: "A4" });
@@ -88,18 +92,8 @@ const generateInvoice = (data) => {
         return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
       };
 
-      const fmtDate = (s) => {
-        if (!s) return "—";
-        return new Date(s + "T00:00:00").toLocaleDateString("en-US", {
-          month: "long", day: "numeric", year: "numeric",
-        });
-      };
-
-      const paidDate = paidAt
-        ? new Date(paidAt).toLocaleDateString("en-US", {
-          month: "long", day: "numeric", year: "numeric",
-        })
-        : "—";
+      
+      const paidDate = paidAt ? formatDateShort(paidAt.toISOString().slice(0, 10)) : "—";
 
       // ── Layout constants ──────────────────────────────────────
       const L = 50;
@@ -125,9 +119,10 @@ const generateInvoice = (data) => {
         try {
           doc.image(logoPath, LOGO_X, LOGO_Y, { width: LOGO_SIZE, height: LOGO_SIZE });
           logoLoaded = true;
-        } catch (_) { /* .webp skip */ }
+        } catch (logoErr) {
+          logger.warn("⚠️ Logo image could not be loaded:", logoErr.message);
+        }
       }
-
       const textX = logoLoaded ? LOGO_X + LOGO_SIZE + 10 : L;
       doc
         .fillColor(C.white)
@@ -188,7 +183,7 @@ const generateInvoice = (data) => {
       y += 16;
       doc.fillColor(C.slate400).fontSize(8).font("Helvetica-Bold")
         .text(
-          `SESSION DETAILS (${slots.length} session${slots.length !== 1 ? "s" : ""})`,
+          `SESSION DETAILS (${slots.length} session${slots.length === 1 ? "" : "s"})`,
           L, y
         );
 
@@ -200,7 +195,7 @@ const generateInvoice = (data) => {
       } else {
         slots.forEach((slot, i) => {
           const sd = slot?.date
-            ? `${slot.day}, ${fmtDate(slot.date)}`
+            ? `${slot.day}, ${formatDateShort(slot.date)}`
             : "—";
           const st = slot?.startTime && slot?.endTime
             ? `${fmt12(slot.startTime)} – ${fmt12(slot.endTime)}`
@@ -250,7 +245,7 @@ const generateInvoice = (data) => {
 
       // Row 1 — base
       doc.fillColor(C.slate500).fontSize(10).font("Helvetica")
-        .text(`${rate} × ${count} session${count !== 1 ? "s" : ""}`, L, y);
+        .text(`${rate} × ${count} session${count === 1 ? "" : "s"}`, L, y);
       doc.fillColor(C.slate700).font("Helvetica-Bold")
         .text(`${baseAmount} tokens`, R - COL_W, y, { width: COL_W, align: "right" });
       y += LINE_MD;

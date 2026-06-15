@@ -52,7 +52,36 @@ const getDayName = (dateStr) => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return days[new Date(dateStr + "T00:00:00").getDay()];
 };
+/**
+ * Returns true if a block overlaps with any booked slot on the given date.
+ * Extracted to remove the nested .some() from the main loop.
+ */
+const isBlockBooked = (block, date, bookedSlots) =>
+  bookedSlots.some((b) => {
+    if (b.date !== date) return false;
+    const bStart = timeToMinutes(b.startTime);
+    const bEnd = timeToMinutes(b.endTime);
+    const sStart = timeToMinutes(block.startTime);
+    const sEnd = timeToMinutes(block.endTime);
+    return sStart < bEnd && sEnd > bStart;
+  });
 
+/**
+ * Returns available (non-booked, non-past) blocks for a single time range.
+ * Extracted to remove the inner two loops from generateSlotsFromSpecificDates.
+ */
+const getAvailableBlocks = (timeRanges, date, durationMinutes, bookedSlots, isToday, currentTimeInMinutes) => {
+  const available = [];
+  for (const timeRange of timeRanges) {
+    const blocks = splitIntoBlocks(timeRange.startTime, timeRange.endTime, durationMinutes);
+    for (const block of blocks) {
+      if (isToday && timeToMinutes(block.startTime) <= currentTimeInMinutes) continue;
+      if (isBlockBooked(block, date, bookedSlots)) continue;
+      available.push({ startTime: block.startTime, endTime: block.endTime, isBooked: false });
+    }
+  }
+  return available;
+};
 /**
  * Generate slots from specific dates (calendar-based)
  *
@@ -62,47 +91,26 @@ const getDayName = (dateStr) => {
  * @returns {Array} grouped slots by date
  */
 const generateSlotsFromSpecificDates = (specificDates, durationMinutes = 60, bookedSlots = []) => {
-  const result               = [];
-  const todayYYYYMMDD        = getTodayLocal();
-  const now                  = new Date();
+  const result = [];
+  const todayYYYYMMDD = getTodayLocal();
+  const now = new Date();
   const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-  for (const dateEntry of specificDates) {
-    const { date, slots } = dateEntry;
-
+  for (const { date, slots } of specificDates) {
     if (date < todayYYYYMMDD) continue;
     if (!slots?.length) continue;
 
-    const slotsForDate = [];
-    const isToday      = date === todayYYYYMMDD;
-
-    for (const timeRange of slots) {
-      const blocks = splitIntoBlocks(timeRange.startTime, timeRange.endTime, durationMinutes);
-
-      for (const block of blocks) {
-        if (isToday && timeToMinutes(block.startTime) <= currentTimeInMinutes) continue;
-
-        const isBooked = bookedSlots.some((b) => {
-          if (b.date !== date) return false;
-          const bStart = timeToMinutes(b.startTime);
-          const bEnd   = timeToMinutes(b.endTime);
-          const sStart = timeToMinutes(block.startTime);
-          const sEnd   = timeToMinutes(block.endTime);
-          // overlap: block starts before booked ends AND block ends after booked starts
-          return sStart < bEnd && sEnd > bStart;
-        });
-        if (isBooked) continue;
-
-        slotsForDate.push({ startTime: block.startTime, endTime: block.endTime, isBooked: false });
-      }
-    }
+    const slotsForDate = getAvailableBlocks(
+      slots, date, durationMinutes, bookedSlots,
+      date === todayYYYYMMDD, currentTimeInMinutes
+    );
 
     if (slotsForDate.length > 0) {
       result.push({
         date,
         displayDate: formatDisplayDate(date),
-        day:         getDayName(date),
-        slots:       slotsForDate,
+        day: getDayName(date),
+        slots: slotsForDate,
       });
     }
   }
@@ -110,5 +118,4 @@ const generateSlotsFromSpecificDates = (specificDates, durationMinutes = 60, boo
   result.sort((a, b) => new Date(a.date) - new Date(b.date));
   return result;
 };
-
 module.exports = { generateSlotsFromSpecificDates };

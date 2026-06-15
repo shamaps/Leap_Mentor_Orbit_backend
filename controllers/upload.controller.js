@@ -1,6 +1,6 @@
 // backend/controllers/upload.controller.js
 const uploadService = require("../services/upload.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 const uploadProfilePicture = async (req, res) => {
   try {

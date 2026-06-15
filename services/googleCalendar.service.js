@@ -2,7 +2,7 @@
 const { google } = require("googleapis");
 const repo = require("../repositories/googleCalendar.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 
 // ─────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ const normalizeEvent = (e) => ({
  * @param {string} timeMax
  * @returns {Promise<Array>}
  */
-const fetchEventsFromCalendar = async (calendar, calId, timeMin, timeMax) => {
+const fetchEventsFromCalendar = async ({calendar, calId, timeMin, timeMax}) => {
     try {
         const response = await calendar.events.list({
             calendarId: calId,
@@ -183,7 +183,7 @@ const fetchEventsFromCalendar = async (calendar, calId, timeMin, timeMax) => {
         });
         return (response.data.items || []).map(normalizeEvent);
     } catch (err) {
-        // Sonar fix: log the skipped calendar instead of silently swallowing
+        // log the skipped calendar instead of silently swallowing
         logger.warn(`⚠️ Could not read calendar ${calId} — skipping. Reason: ${err.message}`);
         return [];
     }
@@ -231,7 +231,7 @@ const getEvents = async (mentorId, startDate, endDate) => {
 
     // Fetch from all calendars in parallel
     const eventArrays = await Promise.all(
-        calendarIds.map((calId) => fetchEventsFromCalendar(calendar, calId, timeMin, timeMax))
+        calendarIds.map((calId) => fetchEventsFromCalendar({calendar, calId, timeMin, timeMax}))
     );
 
     return deduplicateEvents(eventArrays.flat());

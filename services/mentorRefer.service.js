@@ -1,7 +1,7 @@
 // services/mentorRefer.service.js
 const mentorReferRepo = require("../repositories/mentorRefer.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const getSimilarMentors = async (requestId, userId) => {
     const request = await mentorReferRepo.findRequestWithMentor(requestId);
     if (!request) {

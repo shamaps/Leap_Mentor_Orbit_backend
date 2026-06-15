@@ -1,6 +1,6 @@
 // controllers/mentorProfile.controller.js
 const mentorProfileService = require("../services/mentorProfile.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { handleError } = require("../utils/AppError");
 /**

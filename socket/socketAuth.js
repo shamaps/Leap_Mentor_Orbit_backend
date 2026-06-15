@@ -23,7 +23,11 @@ const socketAuth = async (socket, next) => {
     socket.user = user;
     next();
   } catch (err) {
-    return next(new Error("Authentication error: invalid or expired token"));
+    if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
+      return next(new Error("Authentication error: invalid or expired token"));
+    }
+    // Unexpected error (e.g. JWT_SECRET undefined, DB error) — surface it
+    return next(err);
   }
 };
 

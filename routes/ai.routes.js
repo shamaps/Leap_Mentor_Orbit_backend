@@ -1,6 +1,7 @@
 // backend/routes/ai.route.js
 const express = require("express");
 const router  = express.Router();
+const logger = require("../utils/logger");
 
 console.log("GROQ KEY LOADED:", process.env.GROQ_API_KEY ? "YES ✅" : "NO ❌");
 
@@ -36,8 +37,8 @@ router.post("/chat", async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Groq error:", JSON.stringify(data));
-      return res.status(response.status).json({ error: data });
+      logger.error("Groq API error", { status: response.status, response: data });
+      return res.status(502).json({ error: "AI service temporarily unavailable" });
     }
 
     // Reformat to match shape HelpCenter.jsx expects
@@ -45,7 +46,7 @@ router.post("/chat", async (req, res) => {
     res.json({ content: [{ type: "text", text }] });
 
   } catch (err) {
-    console.error("AI proxy error:", err);
+    logger.error("AI proxy error", { error: err.message, stack: err.stack });
     res.status(500).json({ error: "AI service unavailable" });
   }
 });

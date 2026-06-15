@@ -2,7 +2,7 @@
 const repo = require("../repositories/invoice.repository");
 const generateInvoice = require("../utils/generateInvoice");
 const AppError = require("../utils/AppError");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 /**
  * Generate and return a PDF invoice buffer for a paid session.
  * Only the mentee who paid can download the invoice.

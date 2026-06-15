@@ -2,9 +2,11 @@
 const { generateICS } = require("./generateICS");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
 const transporter = require("./mailer");
+const logger = require("../utils/logger");
 const {
   formatTime,
   formatDate,
+  BRAND_GRADIENT,
   wrapEmail,
   buildHeader,
   FOOTER,
@@ -33,12 +35,10 @@ const sendCalendarInvite = async ({
     contentType: "text/calendar; method=REQUEST",
   };
 
-  const gradient = "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)";
-
   // ── Mentee email ──────────────────────────────────────────
   const menteeHtml = wrapEmail(`
     ${buildHeader(
-    gradient,
+    BRAND_GRADIENT,
     `Your ${slotCount} session${slotCount > 1 ? "s are" : " is"} confirmed! 🎉`,
     `Payment received · Sessions locked in with ${mentorName}`
   )}
@@ -74,7 +74,7 @@ const sendCalendarInvite = async ({
   // ── Mentor email ──────────────────────────────────────────
   const mentorHtml = wrapEmail(`
     ${buildHeader(
-    gradient,
+    BRAND_GRADIENT,
     `${slotCount} new session${slotCount > 1 ? "s" : ""} scheduled 📅`,
     `${menteeName} has completed payment · Sessions confirmed`
   )}
@@ -127,7 +127,7 @@ const sendCalendarInvite = async ({
     }),
   ]);
 
-  console.log(`✅ Calendar invites (${slotCount} slot${slotCount > 1 ? "s" : ""}) sent to ${menteeEmail} and ${mentorEmail}`);
+  logger.info("Calendar invites sent", { slotCount, menteeEmail, mentorEmail });
 };
 
 module.exports = { sendCalendarInvite };

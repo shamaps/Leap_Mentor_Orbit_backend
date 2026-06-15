@@ -1,7 +1,7 @@
 // services/menteeProfile.service.js
 const menteeProfileRepo = require("../repositories/menteeProfile.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 /**
  * POST /api/mentee-profile
  */

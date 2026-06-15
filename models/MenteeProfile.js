@@ -50,12 +50,14 @@ const menteeProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
     },
 
     portfolioUrl: {
       type: String,
       trim: true,
       default: "",
+      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
     },
 
     skills: {

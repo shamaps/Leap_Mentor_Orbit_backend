@@ -1,7 +1,7 @@
 const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.utils");
 const repo = require("../repositories/socialAuth.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const ALLOWED_PROVIDERS = new Set(["linkedin", "apple"]);
 
 const socialAuth = async ({ provider, providerId, email, name, roles, termsAccepted, res }) => {

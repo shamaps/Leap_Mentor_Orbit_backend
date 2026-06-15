@@ -1,7 +1,7 @@
 // backend/controllers/escrow.controller.js
 const AppError = require("../utils/AppError");
 const escrowService = require("../services/escrow.service");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const { handleError } = require("../utils/AppError");
 
 // POST /api/escrow/pay

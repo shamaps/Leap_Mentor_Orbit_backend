@@ -2,7 +2,7 @@
 const adminVerificationRepo = require("../repositories/adminVerification.repository");
 const { sendMentorVerifiedEmail } = require("../utils/sendNotificationEmail");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const getAllMentorVerifications = async () => {
     const mentorProfiles = await adminVerificationRepo.findAllMentorProfiles();
 

@@ -6,10 +6,11 @@ const {
   wrapEmail,
   buildHeader,
   FOOTER,
+  BRAND_GRADIENT,
   buildParticipantBlock,
   buildSlotRows,
 } = require("./emailHelpers");
-
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Email 1: Mentor notified when mentee sends a connect request
 // ─────────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ const sendConnectRequestEmail = async ({
 
   const html = wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    BRAND_GRADIENT,
     "New Connect Request",
     `${menteeName} wants to book a session with you`
   )}
@@ -83,7 +84,7 @@ const sendConnectRequestEmail = async ({
     html,
   });
 
-  console.log(`✅ Connect request email sent to mentor: ${mentorEmail}`);
+  logger.info("Connect request email sent", { mentorEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ const sendRequestAcceptedEmail = async ({
 
   const html = wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    "BRAND_GRADIENT",
     "Your request was accepted!",
     `${mentorName} has accepted your connect request`
   )}
@@ -151,7 +152,7 @@ const sendRequestAcceptedEmail = async ({
     html,
   });
 
-  console.log(`✅ Request accepted email sent to mentee: ${menteeEmail}`);
+  logger.info("Request accepted email sent", { menteeEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ const sendPaymentReceivedEmail = async ({
 
   const html = wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    BRAND_GRADIENT,
     "Payment Received",
     `${menteeName} has paid for ${slotCount} session${slotCount > 1 ? "s" : ""} with you`
   )}
@@ -224,11 +225,21 @@ const sendPaymentReceivedEmail = async ({
         ${mentorPayout} tokens
       </td>
     </tr>
-  </table>
-</div>
+      </table>
+    </div>
 
-${FOOTER}
-  `);
+    <div style="text-align:center;margin-top:18px;">
+      <a href="${dashboardLink}" class="cta-btn"
+        style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+        color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
+        text-decoration:none;letter-spacing:0.3px;">
+        View Dashboard
+      </a>
+    </div>
+  </div>
+
+  ${FOOTER}
+`);
 
   await transporter.sendMail({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
@@ -237,7 +248,7 @@ ${FOOTER}
     html,
   });
 
-  console.log(`✅ Payment received email sent to mentor: ${mentorEmail}`);
+  logger.info("Payment received email sent", { mentorEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -246,7 +257,7 @@ ${FOOTER}
 const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
   const html = wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    BRAND_GRADIENT,
     "Your support request is resolved",
     "Our team has looked into your issue and marked it as resolved."
   )}
@@ -282,7 +293,7 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
     html,
   });
 
-  console.log(`✅ Support resolved email sent to: ${toEmail}`);
+  logger.info("Support resolved email sent", { toEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -301,7 +312,7 @@ const sendSlotCancelledEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)",
+    BRAND_GRADIENT,
     "Session Slot Cancelled",
     `${cancelledByName} has cancelled a session slot`
   )}
@@ -346,7 +357,7 @@ const sendSlotCancelledEmail = async ({
 
       <div style="text-align:center;">
         <a href="${dashboardLink}" class="cta-btn"
-          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          style="display:inline-block;background:BRAND_GRADIENT;
           color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
           text-decoration:none;letter-spacing:0.3px;">
           View Dashboard
@@ -372,7 +383,7 @@ const sendSlotCancelledEmail = async ({
     }),
   ]);
 
-  console.log(`✅ Slot cancelled emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
+  logger.info("Slot cancelled emails sent", { mentorEmail, menteeEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -389,7 +400,7 @@ const sendSlotRescheduledEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    BRAND_GRADIENT,
     "Session Rescheduled",
     `${menteeName} has rescheduled a session slot`
   )}
@@ -465,7 +476,7 @@ const sendSlotRescheduledEmail = async ({
     }),
   ]);
 
-  console.log(`✅ Slot rescheduled emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
+  logger.info("Slot rescheduled emails sent", { mentorEmail, menteeEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -481,7 +492,7 @@ const sendAdditionalSlotEmail = async ({
 
   const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
-    "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+    BRAND_GRADIENT,
     "Additional Session Added",
     `${menteeName} has added a new session slot`
   )}
@@ -544,7 +555,7 @@ const sendAdditionalSlotEmail = async ({
     }),
   ]);
 
-  console.log(`✅ Additional slot emails sent to mentor (${mentorEmail}) and mentee (${menteeEmail})`);
+  logger.info("Additional slot emails sent", { mentorEmail, menteeEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -555,7 +566,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+      BRAND_GRADIENT,
       "Application Received",
       "We've received your verification documents"
     )}
@@ -624,7 +635,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
     html,
   });
 
-  console.log(`✅ Documents submitted email sent to mentor: ${mentorEmail}`);
+  logger.info("Documents submitted email sent", { mentorEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -635,7 +646,7 @@ const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#16a34a 0%,#2563eb 100%)",
+      BRAND_GRADIENT,
       "Account Verified!",
       "Congratulations — you're now a verified mentor"
     )}
@@ -708,7 +719,7 @@ const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
     html,
   });
 
-  console.log(`✅ Mentor verified email sent to: ${mentorEmail}`);
+  logger.info("Mentor verified email sent", { mentorEmail });
 };
 // ─────────────────────────────────────────────────────────────
 // Email 10: Reporter notified when they successfully submit a report
@@ -722,7 +733,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
 
   const html = wrapEmail(`
     ${buildHeader(
-      "linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)",
+      BRAND_GRADIENT,
       "Report Submitted",
       "We've received your report and will review it shortly"
     )}
@@ -757,7 +768,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
 
       <div style="text-align:center;">
         <a href="${dashboardLink}" class="cta-btn"
-          style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+          style="display:inline-block;background:BRAND_GRADIENT;
           color:white;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;
           text-decoration:none;letter-spacing:0.3px;">
           View Dashboard
@@ -775,7 +786,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
     html,
   });
 
-  console.log(`✅ Report submitted email sent to: ${reporterEmail}`);
+  logger.info("Report submitted email sent", { reporterEmail });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -794,7 +805,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
   const statusColor   = isResolved ? "#16a34a"  : "#dc2626";
   const statusBg      = isResolved ? "#dcfce7"  : "#fee2e2";
   const headerGradient = isResolved
-    ? "linear-gradient(135deg,#16a34a 0%,#2563eb 100%)"
+    ? BRAND_GRADIENT
     : "linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)";
   const bannerBg      = isResolved ? "#f0fdf4"  : "#fef2f2";
   const bannerBorder  = isResolved ? "#bbf7d0"  : "#fecaca";
@@ -860,7 +871,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
     html,
   });
 
-  console.log(`✅ Report ${statusLabel.toLowerCase()} email sent to: ${reporterEmail}`);
+  logger.info("Report resolved email sent", { reporterEmail });
 };
 
 module.exports = {

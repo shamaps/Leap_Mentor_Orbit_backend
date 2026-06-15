@@ -2,7 +2,7 @@
 const bcrypt = require("bcryptjs");
 const changePasswordRepo = require("../repositories/changePassword.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 const changePassword = async (userId, currentPassword, newPassword) => {
     if (!currentPassword || !newPassword) {
         const err = new Error("All fields are required");

@@ -1,7 +1,7 @@
 const AppError = require("../utils/AppError");
 const loginService = require("../services/login.service");
 const { issueTokens, sanitizeUser } = require("../utils/auth.utils");
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 
 const login = async (req, res) => {
   try {

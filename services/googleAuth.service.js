@@ -2,8 +2,8 @@
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/googleAuth.repository");
 const { googleClient, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
-const { WELCOME_BONUS_LP } = require("../config/constants");
-const { logger } = require("@sentry/node");
+const { provisionWallet } = require("../utils/wallet")
+const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -70,16 +70,8 @@ const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerifie
         termsAcceptedAt: new Date(),
     });
 
-    //  Create wallet — WELCOME_BONUS_LP points for mentee, 0 for mentor
-    const isMentee = uniqueRoles.includes("mentee");
-    const startingBalance = isMentee ? WELCOME_BONUS_LP : 0;
-
-    await repo.createWallet(user._id, startingBalance);
-
-    if (isMentee) {
-        await repo.createWelcomeTransaction(user._id);
-    }
-
+    
+    await provisionWallet(user._id, uniqueRoles);
     return user;
 };
 

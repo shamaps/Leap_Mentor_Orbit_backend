@@ -12,14 +12,14 @@ const findConfirmedBookings = (mentorId) =>
 const findActiveLocks = (mentorId, date) =>
     SlotLock.find({ mentorId, date }).lean();
 
-const upsertLock = (mentorId, date, startTime, endTime, menteeId, expiresAt) =>
+const upsertLock = ({mentorId, date, startTime, endTime, menteeId, expiresAt}) =>
     SlotLock.findOneAndUpdate(
         { mentorId, date, startTime, endTime, lockedBy: menteeId },
         { expiresAt },
         { upsert: true, new: true }
     );
 
-const deleteLock = (mentorId, date, startTime, endTime, menteeId) =>
+const deleteLock = ({mentorId, date, startTime, endTime, menteeId}) =>
     SlotLock.findOneAndDelete({
         mentorId,
         date,

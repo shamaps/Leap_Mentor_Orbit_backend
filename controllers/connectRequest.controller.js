@@ -1,7 +1,7 @@
 // controllers/connectRequest.controller.js
 const service = require("../services/connectRequest.service");
-const { logger } = require("@sentry/node");
-
+const logger = require("../utils/logger");
+const { handleError } = require("../utils/AppError");
 const sendConnectRequest = async (req, res, next) => {
   try {
     const { mentorId, message, selectedSlots, sessionRate, sessionCount } = req.body;
@@ -25,7 +25,7 @@ const sendConnectRequest = async (req, res, next) => {
 
     logger.info("sendConnectRequest completed successfully");
     return res.status(201).json({ message: "Connect request sent successfully", request });
-  } catch (err) {
+  }  catch (err) {
     if (err.code === 11000) {
       logger.warn("Duplicate connect request attempt", {
         menteeId: req.user._id.toString(),
@@ -33,7 +33,7 @@ const sendConnectRequest = async (req, res, next) => {
       });
       return res.status(409).json({ message: "You already have a pending request with this mentor" });
     }
-    next(err);
+    return handleError(res, err, "connectRequest.sendConnectRequest");
   }
 };
 
@@ -43,10 +43,8 @@ const getMyRequests = async (req, res, next) => {
     logger.info("getMyRequests completed successfully");
     return res.json({ success: true, requests });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.getMyRequests");
+  }
 };
 
 const getIncomingRequests = async (req, res, next) => {
@@ -55,22 +53,21 @@ const getIncomingRequests = async (req, res, next) => {
     logger.info("getIncomingRequests completed successfully");
     return res.json({ success: true, requests });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.getIncomingRequests");
+  }
 };
+
 
 const respondToRequest = async (req, res, next) => {
   try {
     const { status, confirmedSlot } = req.body;
 
-    const request = await service.respondToRequest(
-      req.params.id,
-      req.user._id,
+    const request = await service.respondToRequest({   // ← wrap in object
+      requestId: req.params.id,
+      mentorUserId: req.user._id,
       status,
-      confirmedSlot
-    );
+      confirmedSlot,
+    });
 
     logger.info("Connect request responded", {
       mentorId: req.user._id.toString(),
@@ -82,10 +79,8 @@ const respondToRequest = async (req, res, next) => {
     logger.info("respondToRequest completed successfully");
     return res.json({ message: `Request ${status} successfully`, request });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.respondToRequest");
+  }
 };
 
 const cancelRequest = async (req, res, next) => {
@@ -99,10 +94,8 @@ const cancelRequest = async (req, res, next) => {
 
     return res.status(204).send();
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.cancelRequest");
+  }
 };
 
 const referRequest = async (req, res, next) => {
@@ -123,9 +116,7 @@ const referRequest = async (req, res, next) => {
     logger.info("referRequest completed successfully");
     return res.json({ message: "Request referred successfully", originalRequest, newRequest });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
+    return handleError(res, err, "connectRequest.referRequest");
 }
 };
 
@@ -135,10 +126,8 @@ const getOngoingConnects = async (req, res, next) => {
     logger.info("getOngoingConnects completed successfully");
     return res.json({ success: true, connects });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.getOngoingConnects");
+  }
 };
 
 const getConnectDetail = async (req, res, next) => {
@@ -147,10 +136,8 @@ const getConnectDetail = async (req, res, next) => {
     logger.info("getConnectDetail completed successfully");
     return res.json({ success: true, connect });
   } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in connectRequest.controller", { error: err.message, stack: err.stack });
-}
+    return handleError(res, err, "connectRequest.getConnectDetail");
+  }
 };
 
 module.exports = {

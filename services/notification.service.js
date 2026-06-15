@@ -1,7 +1,7 @@
 // services/notification.service.js
 const notificationRepo = require("../repositories/notification.repository");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // GET /api/notifications
 const getNotifications = async (userId) => {
     // Debug logs preserved from original

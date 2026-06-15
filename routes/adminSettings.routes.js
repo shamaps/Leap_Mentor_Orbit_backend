@@ -17,9 +17,9 @@ const {
 router.use(adminAuthenticate);
 
 router.get( "/overview",        getOverview);
-router.put( "/change-password", changePassword);
-router.post("/add-admin",       addAdmin);
+router.patch( "/change-password", changePassword);
+router.post("/admins",       addAdmin);
 router.get( "/commission",      getCommission);
-router.put( "/commission",      updateCommission);
+router.patch( "/commission",      updateCommission);
 
 module.exports = router;

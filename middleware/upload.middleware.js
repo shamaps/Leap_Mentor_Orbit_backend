@@ -61,5 +61,17 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
 });
+// Image-only multer instance — for profile pictures (5MB, images only)
+const uploadImage = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
 
-module.exports = { upload, getFileType };
+module.exports = { upload, uploadImage, getFileType };

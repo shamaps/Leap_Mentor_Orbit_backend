@@ -5,7 +5,7 @@ require("./instrument");
 require("dotenv").config();
 
 const express = require("express");
-const http       = require("http");
+const http       = require("node:http");
 const { Server } = require("socket.io");
 const mongoose   = require("mongoose");
 

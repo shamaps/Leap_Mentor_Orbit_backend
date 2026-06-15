@@ -1,7 +1,7 @@
 // controllers/googleCalendar.controller.js
 const service = require("../services/googleCalendar.service");
 
-const { logger } = require("@sentry/node");
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/google-calendar/auth-url
 // ─────────────────────────────────────────────────────────────
