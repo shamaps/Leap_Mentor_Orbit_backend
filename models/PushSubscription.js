@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const pushSubscriptionSchema = new mongoose.Schema(
   {
     user: {
@@ -16,10 +16,16 @@ const pushSubscriptionSchema = new mongoose.Schema(
       },
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // One subscription per user per endpoint
 pushSubscriptionSchema.index({ user: 1, "subscription.endpoint": 1 }, { unique: true });
-
+pushSubscriptionSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.subscription;
+    delete ret.__v;
+    return ret;
+  },
+});
 module.exports = mongoose.model("PushSubscription", pushSubscriptionSchema);

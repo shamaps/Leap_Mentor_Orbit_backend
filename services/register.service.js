@@ -1,10 +1,11 @@
 // services/register.service.js
 const bcrypt = require("bcryptjs");
 const registerRepo = require("../repositories/register.repository");
-const { issueTokens, sanitizeUser, validateRoles } = require("../utils/auth.utils");
+const { issueTokens,  validateRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
 const logger = require("../utils/logger");
-
+const { toUserDTO } = require("../utils/mappers/user.mapper");
+const AppError = require("../utils/appError");
 const validateInput = (name, email, password, roles, termsAccepted) => {
     if (roles?.length !== 1)
         throw Object.assign(new Error("Exactly one role is required."), { statusCode: 400 });
@@ -16,7 +17,7 @@ const validateInput = (name, email, password, roles, termsAccepted) => {
         throw Object.assign(new Error("You must accept terms to continue"), { statusCode: 400 });
 };
 
-// ── Extracted helper: handles role-merge logic for existing users ─
+
 const handleExistingUser = async (existing, uniqueRoles) => {
     const newRoles = [...new Set([...existing.roles, ...uniqueRoles])];
     const rolesChanged = newRoles.length !== existing.roles.length;
@@ -33,11 +34,8 @@ const handleExistingUser = async (existing, uniqueRoles) => {
             }
         }
     }
-
-    throw Object.assign(
-        new Error("This email is already registered. Please login instead"),
-        { statusCode: 400 }
-    );
+        throw new AppError(400, "This email is already registered. Please login instead.");
+    
 };
 
 const register = async (res, body) => {
@@ -75,7 +73,7 @@ const register = async (res, body) => {
     return {
         message: "Registered successfully",
         accessToken,
-        user: sanitizeUser(user),
+        user: toUserDTO(user),
         isNewUser: true,
     };
 };

@@ -1,5 +1,6 @@
 const reportService = require("../services/report.service");
-
+const { ok, fail } = require("../utils/response"); 
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
 const submitReport = async (req, res) => {
   try {
@@ -12,10 +13,10 @@ const submitReport = async (req, res) => {
       file: req.file,
       user: req.user,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     logger.error("❌ submitReport error:", err);
-    return res.status(500).json({ message: "Server error. Please try again." });
+    return fail(res, "Server error. Please try again.", 500);
   }
 };
 
@@ -26,10 +27,10 @@ const getMyReport = async (req, res) => {
       connectRequestId,
       userId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     logger.error("❌ getMyReport error:", err);
-    return res.status(500).json({ message: "Server error." });
+    return fail(res, "Server error.", 500);
   }
 };
 
@@ -41,10 +42,10 @@ const getAllReports = async (req, res) => {
       page,
       limit,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     logger.error("❌ getAllReports error:", err);
-    return res.status(500).json({ message: "Server error." });
+    return fail(res, "Server error.", 500);
   }
 };
 
@@ -58,10 +59,10 @@ const updateReportStatus = async (req, res) => {
       adminNote,
       userId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     logger.error("❌ updateReportStatus error:", err);
-    return res.status(500).json({ message: "Server error." });
+    return fail(res, "Server error.", 500);
   }
 };
 

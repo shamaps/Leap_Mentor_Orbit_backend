@@ -1,6 +1,6 @@
 // controllers/invoice.controller.js
 const service = require("../services/invoice.service");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
 /**
  * GET /api/invoices/:connectRequestId

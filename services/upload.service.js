@@ -1,5 +1,5 @@
 
-const { sendDocumentsSubmittedEmail } = require("../utils/sendNotificationEmail");
+const { sendDocumentsSubmittedEmail } = require("../utils/emails");
 const repo = require("../repositories/upload.repository");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 const logger = require("../utils/logger");

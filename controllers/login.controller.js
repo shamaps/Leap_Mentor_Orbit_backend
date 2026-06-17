@@ -1,8 +1,8 @@
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/appError");
 const loginService = require("../services/login.service");
-const { issueTokens, sanitizeUser } = require("../utils/auth.utils");
+const { issueTokens } = require("../utils/auth.utils");
 const logger = require("../utils/logger");
-
+const { ok, fail } = require("../utils/response");
 const login = async (req, res) => {
   try {
     const result = await loginService.login(req.body.email, req.body.password);
@@ -17,10 +17,11 @@ const login = async (req, res) => {
     });
 
     logger.info("login completed successfully");
-    return res.json({
+    return ok(res, {
       message: "Login successful",
       accessToken,
-      user: sanitizeUser(result.user),
+      user: result.user,
+      isNewUser: false
     });
   } catch (err) {
     if (err instanceof AppError) {
@@ -35,7 +36,7 @@ const login = async (req, res) => {
       const body = { message: err.message };
       if (err.isEmailVerified !== undefined) body.isEmailVerified = err.isEmailVerified;
       if (err.email) body.email = err.email;
-      return res.status(err.status).json(body);
+      return res.status(err.status).json({ success: false, ...body });
     }
 
     // ✅ Unexpected errors — error level
@@ -44,7 +45,7 @@ const login = async (req, res) => {
       error: err.message,
     });
 
-    return res.status(500).json({ message: err.message });
+    return fail(res, "Internal server error", 500);
   }
 };
 

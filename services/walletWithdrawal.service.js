@@ -1,6 +1,6 @@
 // services/walletWithdrawal.service.js
 const earningsRepo = require("../repositories/earnings.repository");
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/appError");
 
 /**
  * Withdraws the mentor's full available wallet balance.

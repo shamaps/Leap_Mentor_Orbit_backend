@@ -1,13 +1,13 @@
 // controllers/adminVerification.controller.js
 const adminVerificationService = require("../services/adminVerification.service");
 const logger = require("../utils/logger");
-const AppError = require("../utils/AppError");
-const { handleError } = require("../utils/AppError");
+const { ok } = require("../utils/response");
+const { handleError } = require("../utils/appError");
 const getAllMentorVerifications = async (req, res) => {
   try {
     const data = await adminVerificationService.getAllMentorVerifications();
     logger.info("getAllMentorVerifications completed successfully");
-    return res.status(200).json(data);
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getAllMentorVerifications");
@@ -20,7 +20,7 @@ const getMentorVerificationById = async (req, res) => {
       req.params.mentorProfileId
     );
     logger.info("getMentorVerificationById completed successfully");
-    return res.status(200).json(data);
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getMentorVerificationById");
@@ -33,7 +33,7 @@ const verifyMentor = async (req, res) => {
       req.params.mentorProfileId
     );
     logger.info("verifyMentor completed successfully");
-    return res.status(200).json(data);
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "verifyMentor");
@@ -46,7 +46,7 @@ const revokeMentorVerification = async (req, res) => {
       req.params.mentorProfileId
     );
     logger.info("revokeMentorVerification completed successfully");
-    return res.status(200).json(data);
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "revokeMentorVerification");

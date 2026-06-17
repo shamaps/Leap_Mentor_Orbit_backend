@@ -1,8 +1,8 @@
 // controllers/admin/adminSettings.controller.js
 const adminSettingsService = require("../../services/adminSettings.service");
 const logger = require("../../utils/logger");
-const AppError = require("../../utils/AppError");
-const { handleError } = require("../../utils/AppError");
+const { ok, created } = require("../../utils/response");
+const { handleError } = require("../../utils/appError");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/settings/overview
 // ─────────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ const getOverview = async (req, res) => {
   try {
     const data = await adminSettingsService.getOverview();
     logger.info("getOverview completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminSettings.getOverview");
@@ -30,7 +30,7 @@ const changePassword = async (req, res) => {
       newPassword
     );
     logger.info("changePassword completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminSettings.changePassword");
@@ -45,7 +45,7 @@ const addAdmin = async (req, res) => {
     const { name, email } = req.body;
     const data = await adminSettingsService.addAdmin(name, email);
     logger.info("addAdmin completed successfully");
-    return res.status(201).json({ success: true, ...data });
+    return created(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminSettings.addAdmin");
@@ -59,7 +59,7 @@ const getCommission = async (req, res) => {
   try {
     const data = await adminSettingsService.getCommission(req.admin._id);
     logger.info("getCommission completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminSettings.getCommission");
@@ -76,7 +76,7 @@ const updateCommission = async (req, res) => {
       req.body.commissionRate
     );
     logger.info("updateCommission completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminSettings.updateCommission");

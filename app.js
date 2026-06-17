@@ -84,7 +84,7 @@ v1.use("/invoices", require("./routes/invoice.routes"));
 v1.use("/goals", require("./routes/goal.routes"));
 v1.use("/messages", require("./routes/message.routes"));
 v1.use("/notes", require("./routes/note.routes"));
-v1.use("/notifications", require("./routes/notifications"));
+v1.use("/notifications", require("./routes/notifications.routes"));
 v1.use("/feedback", require("./routes/feedback.routes"));
 v1.use("/reports", require("./routes/report.routes"));
 v1.use("/sessions", require("./routes/session.routes"));

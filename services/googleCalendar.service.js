@@ -4,10 +4,8 @@ const repo = require("../repositories/googleCalendar.repository");
 
 const logger = require("../utils/logger");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
-
-// ─────────────────────────────────────────────────────────────
+const { withTimeout } = require("../utils/withTimeout");
 // HELPERS
-// ─────────────────────────────────────────────────────────────
 
 /**
  * Create a base OAuth2 client using env credentials.
@@ -89,7 +87,7 @@ const handleCallback = async (code, state) => {
     const { userId } = JSON.parse(Buffer.from(state, "base64").toString());
 
     const client = createOAuthClient();
-    const { tokens } = await client.getToken(code);
+    const { tokens } = await withTimeout(client.getToken(code), 8000, "Google token exchange");
     const tokenJson = JSON.stringify(tokens);
 
     await repo.saveCalendarToken(userId, tokenJson);
@@ -132,13 +130,13 @@ const getBusySlots = async (mentorId, startDate, endDate) => {
     const timeMin = new Date(`${startDate}T00:00:00Z`).toISOString();
     const timeMax = new Date(`${endDate}T23:59:59Z`).toISOString();
 
-    const freeBusy = await calendar.freebusy.query({
+    const freeBusy = await withTimeout(calendar.freebusy.query({
         requestBody: {
             timeMin,
             timeMax,
             items: [{ id: "primary" }],
         },
-    });
+    }), 10000, "Google freebusy query");
 
     return freeBusy.data.calendars.primary.busy;
 };
@@ -173,14 +171,14 @@ const normalizeEvent = (e) => ({
  */
 const fetchEventsFromCalendar = async ({calendar, calId, timeMin, timeMax}) => {
     try {
-        const response = await calendar.events.list({
+        const response = await withTimeout(calendar.events.list({
             calendarId: calId,
             timeMin,
             timeMax,
             singleEvents: true,
             orderBy: "startTime",
             maxResults: 250,
-        });
+        }), 10000, `Google events.list for calendar ${calId}`);
         return (response.data.items || []).map(normalizeEvent);
     } catch (err) {
         // log the skipped calendar instead of silently swallowing
@@ -231,7 +229,7 @@ const getEvents = async (mentorId, startDate, endDate) => {
 
     // Fetch from all calendars in parallel
     const eventArrays = await Promise.all(
-        calendarIds.map((calId) => fetchEventsFromCalendar({calendar, calId, timeMin, timeMax}))
+        calendarIds.map((calId) => withTimeout(fetchEventsFromCalendar({calendar, calId, timeMin, timeMax}), 10000, `Google events.list for calendar ${calId}`))
     );
 
     return deduplicateEvents(eventArrays.flat());

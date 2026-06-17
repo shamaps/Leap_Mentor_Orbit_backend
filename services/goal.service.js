@@ -2,6 +2,7 @@
 const goalRepo = require("../repositories/goal.repository");
 const socketHandler = require("../socket/socketHandler");
 const { VALID_GOAL_STATUSES } = require("../config/constants");
+const { toGoalDTO, toMilestoneDTO } = require("../utils/mappers/goal.mapper");
 
 const logger = require("../utils/logger");
 // ── Socket helper ─────────────────────────────────────────────
@@ -78,7 +79,7 @@ const createGoal = async (body, userId) => {
 
     emitToRoom(connectRequestId, "goal_created", { goal });
 
-    return { goal };
+    return { goal: toGoalDTO(goal) };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ const getGoal = async (connectRequestId, userId) => {
 
     const milestones = await goalRepo.findMilestonesByGoal(goal._id);
 
-    return { goal, milestones };
+    return { goal: toGoalDTO(goal), milestones: milestones.map(toMilestoneDTO) };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ const updateGoal = async (goalId, body, userId) => {
 
     emitToRoom(goal.connectRequest, "goal_updated", { goal });
 
-    return { goal };
+    return { goal: toGoalDTO(goal) };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ const addMilestone = async (goalId, body, userId) => {
 
     emitToRoom(goal.connectRequest, "milestone_added", { milestone });
 
-    return { milestone };
+    return { milestone: toMilestoneDTO(milestone) };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -236,7 +237,7 @@ const updateMilestone = async (milestoneId, body, userId) => {
 
     emitToRoom(milestone.connectRequest, "milestone_updated", { milestone });
 
-    return { milestone };
+    return { milestone: toMilestoneDTO(milestone) };
 };
 
 // ─────────────────────────────────────────────────────────────

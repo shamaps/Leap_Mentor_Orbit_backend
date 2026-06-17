@@ -1,6 +1,6 @@
 // backend/models/Report.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const COMPLAINT_TYPES = [
   "inappropriate_behavior",
   "session_misconduct",
@@ -58,7 +58,7 @@ const reportSchema = new mongoose.Schema(
     refundProcessed: { type: Boolean, default: false },
     refundedAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 reportSchema.index({ connectRequest: 1 });

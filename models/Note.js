@@ -1,5 +1,6 @@
 // backend/models/Note.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 const noteSchema = new mongoose.Schema(
   {
@@ -52,7 +53,7 @@ const noteSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 noteSchema.index({ connectRequest: 1, createdAt: -1 });

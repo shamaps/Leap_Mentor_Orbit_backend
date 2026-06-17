@@ -1,5 +1,6 @@
 // models/MentorProfile.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS, applySoftDelete } = require("../utils/baseSchema");
 
 const documentSchema = new mongoose.Schema(
   {
@@ -155,7 +156,8 @@ const mentorProfileSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
+applySoftDelete(mentorProfileSchema);
 
 module.exports = mongoose.model("MentorProfile", mentorProfileSchema);

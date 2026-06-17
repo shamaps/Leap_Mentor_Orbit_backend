@@ -1,4 +1,4 @@
-const { sendSupportResolvedEmail } = require("../utils/sendNotificationEmail");
+const { sendSupportResolvedEmail } = require("../utils/emails");
 const repo = require("../repositories/support.repository");
 
 const logger = require("../utils/logger");
@@ -42,13 +42,9 @@ const resolveMessage = async (id) => {
         });
     }
 
-    // ── 2. Email notification ─────────────────────────────────
-    try {
-        await sendSupportResolvedEmail({ toEmail: msg.email, subject: msg.subject });
-    } catch (emailErr) {
-        logger.error("⚠️ Support resolved email failed:", emailErr.message);
-        // don't block the response if email fails
-    }
+    // ── 2. Email notification (non-blocking) ─────────────────
+    sendSupportResolvedEmail({ toEmail: msg.email, subject: msg.subject })
+        .catch((emailErr) => logger.error("⚠️ Support resolved email failed:", emailErr.message));
 
     return { status: 200, body: msg };
 };

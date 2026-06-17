@@ -1,5 +1,6 @@
 // backend/models/ConnectRequest.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 // Additional session slot schema — tracks per-slot payment for extra sessions
 const additionalSlotSchema = new mongoose.Schema(
@@ -183,7 +184,7 @@ const connectRequestSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // ── Indexes ───────────────────────────────────────────────────

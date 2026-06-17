@@ -1,5 +1,6 @@
 // backend/models/Feedback.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 const feedbackSchema = new mongoose.Schema(
   {
@@ -36,7 +37,7 @@ const feedbackSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // ✅ One feedback per user per session

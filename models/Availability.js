@@ -1,6 +1,7 @@
 // models/Availability.js
 const mongoose = require("mongoose");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 // ─── Time Slot ────────────────────────────────────────────────
 const timeSlotSchema = new mongoose.Schema(
@@ -89,7 +90,7 @@ const availabilitySchema = new mongoose.Schema(
       select: false,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("Availability", availabilitySchema);

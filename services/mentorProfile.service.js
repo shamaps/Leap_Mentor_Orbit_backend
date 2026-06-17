@@ -1,6 +1,6 @@
 // services/mentorProfile.service.js
 const mentorProfileRepo = require("../repositories/mentorProfile.repository");
-
+const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const logger = require("../utils/logger");
 /**
  * POST /api/mentor-profile
@@ -46,7 +46,7 @@ const createProfile = async (userId, body) => {
         isProfilePublished: true,
     });
 
-    return { message: "Mentor profile created successfully", profile };
+    return { message: "Mentor profile created successfully", profile: toMentorProfileDTO(profile) };
 };
 
 /**
@@ -62,7 +62,7 @@ const getMyProfile = async (userId) => {
         throw err;
     }
 
-    return profile;
+    return toMentorProfileDTO(profile);
 };
 
 /**
@@ -77,7 +77,7 @@ const updateProfile = async (userId, body) => {
         throw err;
     }
 
-    return { message: "Profile updated successfully", profile };
+    return { message: "Profile updated successfully", profile: toMentorProfileDTO(profile) };
 };
 
 /**
@@ -92,7 +92,7 @@ const getPublicProfile = async (userId) => {
         throw err;
     }
 
-    return profile;
+    return toMentorProfileDTO(profile);
 };
 
 module.exports = {

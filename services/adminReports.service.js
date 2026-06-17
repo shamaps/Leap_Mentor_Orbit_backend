@@ -1,8 +1,8 @@
 // backend/services/adminReports.service.js
 const repo = require("../repositories/adminReports.repository");
 const createNotification = require("../utils/createNotification");
-const { sendReportResolvedEmail } = require("../utils/sendNotificationEmail");
-const AppError = require("../utils/AppError");
+const { sendReportResolvedEmail } = require("../utils/emails");
+const AppError = require("../utils/appError");
 
 const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────

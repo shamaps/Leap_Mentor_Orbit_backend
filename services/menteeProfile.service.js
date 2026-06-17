@@ -1,6 +1,6 @@
 // services/menteeProfile.service.js
 const menteeProfileRepo = require("../repositories/menteeProfile.repository");
-
+const { toMenteeProfileDTO } = require("../utils/mappers/menteeProfile.mapper");
 const logger = require("../utils/logger");
 /**
  * POST /api/mentee-profile
@@ -46,7 +46,7 @@ const createProfile = async (userId, body) => {
         isProfilePublished: true,
     });
 
-    return { message: "Mentee profile created successfully", profile };
+    return { message: "Mentee profile created successfully", profile: toMenteeProfileDTO(profile) };
 };
 
 /**
@@ -62,7 +62,7 @@ const getMyProfile = async (userId) => {
         throw err;
     }
 
-    return profile;
+    return toMenteeProfileDTO(profile);
 };
 
 /**
@@ -77,7 +77,7 @@ const updateProfile = async (userId, body) => {
         throw err;
     }
 
-    return { message: "Profile updated successfully", profile };
+    return { message: "Profile updated successfully", profile: toMenteeProfileDTO(profile) };
 };
 
 /**
@@ -92,7 +92,7 @@ const getPublicProfile = async (userId) => {
         throw err;
     }
 
-    return profile;
+    return toMenteeProfileDTO(profile);
 };
 
 module.exports = {

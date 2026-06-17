@@ -2,7 +2,7 @@
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const {RedisStore}= require("rate-limit-redis");
 const Redis = require("ioredis");
-
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Redis client
 // Set these in your .env:
@@ -18,8 +18,8 @@ const redisClient = new Redis({
     tls: process.env.REDIS_TLS === "true" ? {} : undefined,
 });
 
-redisClient.on("connect", () => console.log("✅ Redis connected (rate limiter)"));
-redisClient.on("error", (err) => console.error("❌ Redis error:", err.message));
+redisClient.on("connect", () => logger.info("✅ Redis connected (rate limiter)"));
+redisClient.on("error", (err) => logger.error("❌ Redis error:", err.message));
 
 // ─────────────────────────────────────────────────────────────
 // Factory — creates a Redis-backed store with a unique prefix

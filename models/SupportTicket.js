@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const supportTicketSchema = new mongoose.Schema(
   {
     user: {
@@ -9,10 +9,15 @@ const supportTicketSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
     },
     message: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: [2000, "Message cannot exceed 2000 characters"],
     },
     category: {
       type: String,
@@ -24,7 +29,7 @@ const supportTicketSchema = new mongoose.Schema(
       default: "open",
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("SupportTicket", supportTicketSchema);

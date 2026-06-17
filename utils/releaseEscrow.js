@@ -1,14 +1,10 @@
 // backend/utils/releaseEscrow.js
-const Wallet = require("../models/Wallet");
-const Transaction = require("../models/Transaction");
-const ConnectRequest = require("../models/ConnectRequest");
-const AdminUser = require("../models/AdminUser");
+const repo = require("../repositories/escrow.repository");
 const logger = require("../utils/logger");
 
 const r = (n) => Math.round(n * 100) / 100;
 const releaseEscrow = async (connectRequestId, mongoSession) => {
-  const connectRequest = await ConnectRequest.findById(connectRequestId)
-    .session(mongoSession);
+  const connectRequest = await repo.findConnectRequestRaw(connectRequestId, mongoSession);
 
   if (!connectRequest) throw new Error("Connect request not found");
   if (connectRequest.paymentStatus !== "paid") throw new Error("No paid escrow found for this session");
@@ -39,8 +35,8 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
   const adjustedCommission = r(perSlotCommission * activeSlots);
   // ── Fetch wallets ─────────────────────────────────────────
   const [menteeWallet, mentorWallet] = await Promise.all([
-    Wallet.findOne({ user: menteeId }).session(mongoSession),
-    Wallet.findOne({ user: mentorId }).session(mongoSession),
+    repo.findWalletByUser(menteeId, mongoSession),
+    repo.findWalletByUser(mentorId, mongoSession),
   ]);
 
   if (!menteeWallet) throw new Error("Mentee wallet not found");
@@ -57,16 +53,16 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
   menteeWallet.escrow -= menteeWallet.escrow;   // drain whatever remains (handles rounding)
   mentorWallet.balance += adjustedPayout;
 
-  await menteeWallet.save({ session: mongoSession });
-  await mentorWallet.save({ session: mongoSession });
+  await repo.saveWallet(menteeWallet, mongoSession);
+  await repo.saveWallet(mentorWallet, mongoSession);
 
   // ── Mark session completed ────────────────────────────────
   connectRequest.status = "completed";
   connectRequest.completedAt = new Date();
-  await connectRequest.save({ session: mongoSession });
+  await repo.saveConnectRequest(connectRequest, mongoSession);
 
   // ── Log 3 transactions ────────────────────────────────────
-  await Transaction.create(
+  await repo.createTransaction(
     [
       {
         user: menteeId,
@@ -99,10 +95,8 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
   // ── Credit admin wallet after commit ──────────────────────
   setImmediate(async () => {
     try {
-      await AdminUser.findOneAndUpdate(
-        { isActive: true },
-        { $inc: { walletBalance: adjustedCommission } }
-      );
+      const admin = await repo.findActiveAdmin();
+      if (admin) await repo.creditAdmin(admin._id, adjustedCommission);
       logger.info("Admin wallet credited", { amount: adjustedCommission });
     } catch (err) {
       logger.error("Admin wallet credit failed", { error: err.message, stack: err.stack });

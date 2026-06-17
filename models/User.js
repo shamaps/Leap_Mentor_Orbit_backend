@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -49,32 +49,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
-    deletedAt: {
-      type: Date,
-      default: null,
-    },
   },
-  { timestamps: true },
+  BASE_SCHEMA_OPTIONS,
 );
 // No changes to schema fields — isDeleted and deletedAt are correct ✅
 
-// Replace your pre-find middleware with this:
-userSchema.pre(/^find/, function (next) {
-  if (typeof next !== "function") return;
 
-  const options = this.getOptions() || {};
-  const filter = this.getFilter() || {};
-
-  if (options.ignoreIsDeleted) return next();
-  if (filter.isDeleted === true) return next();
-
-  this.where({ isDeleted: { $ne: true } });
-  next();
-});
 userSchema.index({ roles: 1 });
 userSchema.set("toJSON", {
   transform: (doc, ret) => {
@@ -84,4 +64,5 @@ userSchema.set("toJSON", {
     return ret;
   }
 });
+applySoftDelete(userSchema);
 module.exports = mongoose.model("User", userSchema);

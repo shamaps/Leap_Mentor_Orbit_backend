@@ -1,8 +1,9 @@
 // controllers/note.controller.js
 const noteService = require("../services/note.service");
 const logger = require("../utils/logger");
-const AppError = require("../utils/AppError");
-const { handleError } = require("../utils/AppError");
+const AppError = require("../utils/appError");
+const { handleError } = require("../utils/appError");
+const { ok, created, fail, noContent } = require("../utils/response"); 
 // ─────────────────────────────────────────────────────────────
 // POST /api/notes/upload
 // ─────────────────────────────────────────────────────────────
@@ -10,14 +11,14 @@ const uploadNote = async (req, res) => {
   try {
     const data = await noteService.uploadNote(req.user._id, req.body, req.file);
     logger.info("uploadNote completed successfully");
-    return res.status(201).json({ success: true, ...data });
+    return created(res, data);
   } catch (err) {
     logger.error("❌ uploadNote error:", err.message);
     if (err.message?.includes("File type not allowed")) {
-      return res.status(400).json({ message: err.message });
+      return fail(res, err.message, 400);
     }
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ message: "File too large. Maximum size is 10MB." });
+      return fail(res, "File too large. Maximum size is 10MB.", 400);
     }
     return handleError(res, err, "note.uploadNote");
   }
@@ -30,7 +31,7 @@ const getNotes = async (req, res) => {
   try {
     const data = await noteService.getNotes(req.params.connectRequestId, req.user._id);
     logger.info("getNotes completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "note.getNotes");
@@ -44,7 +45,7 @@ const getPrivateNotes = async (req, res) => {
   try {
     const data = await noteService.getPrivateNotes(req.params.connectRequestId, req.user._id);
     logger.info("getPrivateNotes completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "note.getPrivateNotes");
@@ -58,7 +59,7 @@ const deleteNote = async (req, res) => {
   try {
     await noteService.deleteNote(req.params.id, req.user._id);
     logger.info("deleteNote completed successfully");
-    return res.status(204).send();
+    return noContent(res);
   } catch (err) {
     logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "note.deleteNote");

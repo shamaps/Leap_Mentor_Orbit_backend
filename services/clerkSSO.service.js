@@ -1,10 +1,11 @@
 // backend/services/clerkSSO.service.js
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/clerkSSO.repository");
-const AppError = require("../utils/AppError");
-const { clerkClient, signToken, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
+const AppError = require("../utils/appError");
+const { clerkClient, signToken,  validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
 const logger = require("../utils/logger");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
 // ─────────────────────────────────────────────────────────────
@@ -133,7 +134,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     await linkOAuthAccount(user._id, provider, providerId);
 
     // 4) Issue JWT
-    return { user: sanitizeUser(user), isNewUser };
+    return { user: toUserDTO(user), isNewUser };
 };
 
 module.exports = { clerkSSO };

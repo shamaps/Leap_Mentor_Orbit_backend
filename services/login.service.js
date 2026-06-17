@@ -1,9 +1,8 @@
 const bcrypt = require("bcryptjs");
 const repo = require("../repositories/login.repository");
-const AppError = require("../utils/AppError");
-const { sanitizeUser } = require("../utils/auth.utils");
+const AppError = require("../utils/appError");
 const logger = require("../utils/logger");
-
+const { toUserDTO } = require("../utils/mappers/user.mapper");
 const login = async (email, password) => {
     if (!email || !password)
         throw new AppError(400, "email and password are required");
@@ -49,7 +48,7 @@ const login = async (email, password) => {
         );
     }
 
-    return { user };
+    return { user: toUserDTO(user) };
 };
 
 module.exports = { login };

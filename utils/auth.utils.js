@@ -69,11 +69,7 @@ const issueTokens = async (res, userId) => {
   return accessToken;
 };
 
-const sanitizeUser = (user) => {
-  const obj = user.toObject ? user.toObject() : user;
-  delete obj.password;
-  return obj;
-};
+
 
 const validateRoles = (roles) => {
   const validRoles = new Set(["mentor", "mentee"]);
@@ -94,7 +90,6 @@ module.exports = {
   generateRefreshToken,
   setRefreshCookie,
   issueTokens,
-  sanitizeUser,
   validateRoles,
   getRefreshMs,     
   mergeRoles, 

@@ -1,7 +1,8 @@
 // backend/controllers/feedback.controller.js
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const feedbackService = require("../services/feedback.service");
 const logger = require("../utils/logger");
+const { ok, created } = require("../utils/response");
 
 // POST /api/feedback
 const submitFeedback = async (req, res) => {
@@ -14,7 +15,7 @@ const submitFeedback = async (req, res) => {
       userId: req.user._id,
     });
     logger.info("submitFeedback completed successfully");
-    return res.status(201).json({ success: true, feedback });
+    return created(res, feedback);
   } catch (err) {
     return handleError(res, err, "feedback.submitFeedback");
   }
@@ -28,7 +29,7 @@ const getFeedback = async (req, res) => {
       userId: req.user._id,
     });
     logger.info("getFeedback completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "feedback.getFeedback");
   }

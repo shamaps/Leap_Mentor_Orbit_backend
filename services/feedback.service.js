@@ -1,7 +1,7 @@
 // backend/services/feedback.service.js
 const repo = require("../repositories/feedback.repository");
-const AppError = require("../utils/AppError");
-
+const AppError = require("../utils/appError");
+const { toFeedbackDTO } = require("../utils/mappers/feedback.mapper");
 const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers
@@ -129,7 +129,7 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
     }
 
     const populated = await repo.findFeedbackById(feedback._id);
-    return populated;
+    return toFeedbackDTO(populated);
 };
 
 // ─────────────────────────────────────────────────────────────

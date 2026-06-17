@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const goalSchema = new mongoose.Schema(
   {
     connectRequest: {
@@ -49,7 +49,7 @@ const goalSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 goalSchema.index({ mentor: 1 });

@@ -1,7 +1,7 @@
 // services/invoice.service.js
 const repo = require("../repositories/invoice.repository");
 const generateInvoice = require("../utils/generateInvoice");
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/appError");
 const logger = require("../utils/logger");
 /**
  * Generate and return a PDF invoice buffer for a paid session.

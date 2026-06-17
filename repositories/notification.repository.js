@@ -7,6 +7,10 @@ const findAllNotifications = () =>
 const findNotificationsByUser = (userId) =>
     Notification.find({ recipient: userId }).sort({ createdAt: -1 }).limit(50);
 
+const createNotification = async ({ recipient, type, title, message, metadata = {} }) => {
+    return await Notification.create({ recipient, type, title, message, metadata });
+};
+
 const markAllReadByUser = (userId) =>
     Notification.updateMany({ recipient: userId, read: false }, { read: true });
 
@@ -25,6 +29,7 @@ const deleteAllByUser = (userId) =>
 module.exports = {
     findAllNotifications,
     findNotificationsByUser,
+    createNotification,
     markAllReadByUser,
     markOneReadByUser,
     deleteOneByUser,

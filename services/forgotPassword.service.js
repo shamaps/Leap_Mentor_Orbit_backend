@@ -3,7 +3,7 @@ const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const transporter = require("../utils/mailer");
 const repo = require("../repositories/forgotPassword.repository");
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/appError");
 const logger = require("../utils/logger");
 const { makeOtp } = require("../utils/auth.utils");
 // ─────────────────────────────────────────────────────────────

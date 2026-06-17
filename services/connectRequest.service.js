@@ -6,9 +6,10 @@ const logger = require("../utils/logger");
 const {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
-} = require("../utils/sendNotificationEmail");
+} = require("../utils/emails");
 const { VALID_RESPOND_STATUSES } = require("../config/constants");
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/appError");
+const { toConnectRequestList, toConnectRequestSummary, toConnectRequestDetail } = require("../utils/mappers/connectRequest.mapper");
 
 // Lazily require the socket handler to avoid circular-require issues at module load time
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
@@ -33,10 +34,11 @@ const validateSendRequestPayload = ({ mentorId, menteeId, selectedSlots, session
     throw new AppError(400, "At least one slot must be selected");
   if (selectedSlots.length > 5)
     throw new AppError(400, "Maximum 5 slots can be proposed");
-  for (const slot of selectedSlots) {
-    if (!slot.day || !slot.date || !slot.startTime || !slot.endTime)
-      throw new AppError(400, "Each slot must have day, date, startTime and endTime");
-  }
+  const allSlotsValid = selectedSlots.every(
+    (slot) => slot.day && slot.date && slot.startTime && slot.endTime
+  );
+  if (!allSlotsValid)
+    throw new AppError(400, "Each slot must have day, date, startTime and endTime");
   if (menteeId.toString() === mentorId)
     throw new AppError(400, "You cannot send a request to yourself");
   if (sessionRate && Number(sessionRate) < 1)
@@ -64,16 +66,14 @@ const checkRequestConflicts = async (menteeId, mentorId, selectedSlots) => {
     throw new AppError(409, "You already have a pending request with this mentor");
   }
 
-  for (const slot of selectedSlots) {
-    const slotTaken = await repo.findSlotConflict(mentorId, slot);
-    if (slotTaken) {
-      logger.warn("Slot conflict detected", {
-        mentorId,
-        slot: `${slot.date} ${slot.startTime}–${slot.endTime}`,
-      });
-      throw new AppError(409, `Slot ${slot.date} ${slot.startTime}–${slot.endTime} is already taken. Please choose another.`)
-    }
-  }
+  const conflicts = await Promise.all(
+    selectedSlots.map((slot) =>
+      repo.findSlotConflict(mentorId, slot).then((taken) => (taken ? slot : null))
+    )
+  );
+  const conflicted = conflicts.find(Boolean);
+  if (conflicted)
+    throw new AppError(409, `Slot ${conflicted.date} ${conflicted.startTime}–${conflicted.endTime} is already taken. Please choose another.`);
 };
 
 /**
@@ -172,7 +172,7 @@ const sendRequest = async ({ mentorId, menteeId, menteeName, message, selectedSl
     slotCount: selectedSlots.length,
   });
 
-  return request;
+  return toConnectRequestSummary(request);
 };
 
 /**
@@ -184,13 +184,13 @@ const sendRequest = async ({ mentorId, menteeId, menteeName, message, selectedSl
  */
 const getMyRequests = async (menteeId) => {
   const requests = await repo.findMyRequests(menteeId);
-  return Promise.all(
-    requests.map(async (r) => ({
+  const enriched = await Promise.all(requests.map(async (r) => ({
       ...r,
       mentorProfile: await repo.findMentorProfile(r.mentor?._id) || null,
       referredToProfile: r.referredTo ? await repo.findMentorProfileFull(r.referredTo?._id) || null : null,
     }))
   );
+  return toConnectRequestList(enriched);
 };
 
 /**
@@ -203,12 +203,13 @@ const getMyRequests = async (menteeId) => {
  */
 const getIncomingRequests = async (mentorId, status) => {
   const requests = await repo.findIncomingRequests(mentorId, status);
-  return Promise.all(
+  const enriched = await Promise.all(
     requests.map(async (r) => ({
       ...r,
       referredByProfile: r.referredBy ? await repo.findMentorProfileFull(r.referredBy._id) || null : null,
     }))
   );
+  return toConnectRequestList(enriched);
 };
 
 /**
@@ -324,7 +325,7 @@ const respondToRequest = async ({ requestId, mentorUserId, status, confirmedSlot
     confirmedDate: confirmedSlot?.date,
   });
 
-  return request;
+  return toConnectRequestSummary(request);
 };
 
 /**
@@ -443,7 +444,7 @@ const referRequest = async (requestId, mentorUserId, referToMentorId) => {
     newRequestId: newRequest._id.toString(),
   });
 
-  return { originalRequest: request, newRequest };
+  return { originalRequest: toConnectRequestSummary(request), newRequest: toConnectRequestSummary(newRequest) };
 };
 
 /**
@@ -456,13 +457,14 @@ const referRequest = async (requestId, mentorUserId, referToMentorId) => {
  */
 const getOngoingConnects = async (userId) => {
   const requests = await repo.findOngoingConnects(userId);
-  return Promise.all(
+  const enriched = await Promise.all(
     requests.map(async (r) => {
       const isMentee = r.mentee._id.toString() === userId.toString();
       if (isMentee) return { ...r, mentorProfile: await repo.findMentorProfile(r.mentor._id) || null };
       return { ...r, menteeProfile: await repo.findMenteeProfile(r.mentee._id) || null };
     })
   );
+  return toConnectRequestList(enriched);
 };
 
 /**
@@ -490,8 +492,10 @@ const getConnectDetail = async (requestId, userId) => {
     repo.findMenteeProfile(request.mentee._id),
   ]);
 
-  return { ...request, mentorProfile: mentorProfile || null, menteeProfile: menteeProfile || null, viewerRole: isMentee ? "mentee" : "mentor" };
-};
+  const doc={ ...request, mentorProfile: mentorProfile || null, menteeProfile: menteeProfile || null, viewerRole: isMentee ? "mentee" : "mentor" };
+  return toConnectRequestDetail(doc);
+}
+
 
 module.exports = {
   sendRequest,

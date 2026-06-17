@@ -1,9 +1,9 @@
 // backend/controllers/admin/adminReports.controller.js
 
 const adminReportsService = require("../../services/adminReports.service");
-
+const { ok, fail, noContent } = require("../../utils/response");
 const logger = require("../../utils/logger");
-const { handleError } = require("../../utils/AppError");
+const { handleError } = require("../../utils/appError");
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/reports/stats
@@ -12,7 +12,7 @@ const getReportStats = async (_req, res) => {
   try {
     const data = await adminReportsService.fetchReportStats();
     logger.info("getReportStats completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getReportStats");
@@ -31,7 +31,7 @@ const getReports = async (req, res) => {
 
     const data = await adminReportsService.fetchReports({ page, limit, search, status });
     logger.info("getReports completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getReports");
@@ -46,7 +46,7 @@ const handleReport = async (req, res) => {
     const { status, adminNote } = req.body;
 
     if (!["resolved", "dismissed"].includes(status)) {
-      return res.status(422).json({ message: "Status must be resolved or dismissed." });
+      return fail(res, "Status must be resolved or dismissed.", 422);
     }
 
     const report = await adminReportsService.handleReport(
@@ -56,7 +56,7 @@ const handleReport = async (req, res) => {
     );
 
     logger.info("handleReport completed successfully");
-    return res.json({ success: true, message: `Report ${status}.`, report });
+    return ok(res, { message: `Report ${status}.`, report });
   } catch (err) {
     logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "handleReport");
@@ -75,8 +75,7 @@ const processRefund = async (req, res) => {
     );
 
     logger.info("processRefund completed successfully");
-    return res.json({
-      success: true,
+    return ok(res, {
       message: `Refund of ${refundAmount} tokens processed successfully.`,
       refundAmount,
     });
@@ -98,7 +97,7 @@ const deleteSession = async (req, res) => {
     );
 
     logger.info("deleteSession completed successfully");
-    return res.status(204).send();
+    return noContent(res);
   } catch (err) {
     logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteSession");

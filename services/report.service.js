@@ -2,7 +2,7 @@
 const {
     sendReportSubmittedEmail,
     sendReportResolvedEmail,
-} = require("../utils/sendNotificationEmail");
+} = require("../utils/emails");
 const repo = require("../repositories/report.repository");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 

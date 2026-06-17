@@ -1,6 +1,6 @@
 // backend/models/Message.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const messageSchema = new mongoose.Schema(
   {
     connectRequest: {
@@ -24,7 +24,7 @@ const messageSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // ✅ Compound index for fast paginated queries per session

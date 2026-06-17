@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 const milestoneSchema = new mongoose.Schema(
   {
@@ -53,7 +54,7 @@ slotIndex: {
   default: null,
 },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 milestoneSchema.index({ goal: 1, order: 1 });

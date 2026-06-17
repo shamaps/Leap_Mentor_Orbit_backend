@@ -1,6 +1,6 @@
 // backend/controllers/mentorSearch.controller.js
 const mentorSearchService = require("../services/mentorSearch.service");
-
+const { ok, fail } = require("../utils/response");
 const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // GET /api/mentors/search
@@ -9,7 +9,7 @@ const searchMentors = async (req, res) => {
   try {
     const result = await mentorSearchService.searchMentors(req.query);
     logger.info("searchMentors completed successfully");
-    return res.status(200).json({ success: true, ...result });
+    return ok(res, result);
   } catch (err) {
     logger.error("❌ Mentor search error:", err.message);
 
@@ -21,14 +21,14 @@ const searchMentors = async (req, res) => {
       try {
         const result = await mentorSearchService.fallbackSearch(req.query);
         logger.info("searchMentors completed successfully");
-        return res.status(200).json({ success: true, ...result });
+        return ok(res, result);
       } catch (fallbackErr) {
         logger.error("❌ Fallback search error:", fallbackErr.message);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return fail(res, "Server error", 500);
       }
     }
 
-    return res.status(500).json({ success: false, message: "use proper price ranges(min - max)" });
+    return fail(res, "use proper price ranges(min - max)", 500);
   }
 };
 
@@ -39,10 +39,10 @@ const autocompleteMentors = async (req, res) => {
   try {
     const suggestions = await mentorSearchService.autocompleteMentors(req.query);
     logger.info("autocompleteMentors completed successfully");
-    return res.status(200).json({ success: true, suggestions });
+    return ok(res, suggestions );
   } catch (err) {
     logger.error("❌ Autocomplete error:", err.message);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return fail(res, "Server error", 500);
   }
 };
 

@@ -1,6 +1,6 @@
 // optimal/models/Notification.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const notificationSchema = new mongoose.Schema(
   {
     recipient: {
@@ -36,7 +36,7 @@ const notificationSchema = new mongoose.Schema(
       rating:     { type: Number },
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("Notification", notificationSchema);

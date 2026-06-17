@@ -1,9 +1,9 @@
 // backend/routes/ai.route.js
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const logger = require("../utils/logger");
 
-console.log("GROQ KEY LOADED:", process.env.GROQ_API_KEY ? "YES ✅" : "NO ❌");
+logger.info("GROQ KEY LOADED:", process.env.GROQ_API_KEY ? "YES ✅" : "NO ❌");
 
 /**
  * POST /api/ai/chat
@@ -18,27 +18,44 @@ router.post("/chat", async (req, res) => {
       return res.status(400).json({ error: "messages array is required" });
     }
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model:      "llama-3.1-8b-instant",
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-      }),
-    });
+    // Abort if Groq takes longer than 10s — prevents hung connections
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+    let response;
+    try {
+      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          max_tokens: 1000,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages,
+          ],
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === "AbortError") {
+        logger.error("Groq API timed out after 10s");
+        return fail(res, "AI service timed out", 504);
+      }
+      throw fetchErr;
+    }
+    clearTimeout(timeoutId);
 
     const data = await response.json();
 
     if (!response.ok) {
+      // Log full Groq error internally — never forward raw vendor error to client
       logger.error("Groq API error", { status: response.status, response: data });
-      return res.status(502).json({ error: "AI service temporarily unavailable" });
+      return fail(res, "AI service temporarily unavailable", 502);
     }
 
     // Reformat to match shape HelpCenter.jsx expects
@@ -47,7 +64,7 @@ router.post("/chat", async (req, res) => {
 
   } catch (err) {
     logger.error("AI proxy error", { error: err.message, stack: err.stack });
-    res.status(500).json({ error: "AI service unavailable" });
+    return fail(res, "AI service unavailable", 500);
   }
 });
 

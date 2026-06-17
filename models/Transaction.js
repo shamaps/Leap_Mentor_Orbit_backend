@@ -1,6 +1,6 @@
 // backend/models/Transaction.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const transactionSchema = new mongoose.Schema(
   {
     user: {
@@ -48,7 +48,7 @@ const transactionSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // ── Indexes for fast lookup ───────────────────────────────────

@@ -1,8 +1,9 @@
 // backend/services/admin.service.js
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/admin.repository");
-const AppError = require("../utils/AppError");
-
+const AppError = require("../utils/appError");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
+const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const logger = require("../utils/logger");
 // ── Token helper ──────────────────────────────────────────────
 const signToken = (id) =>
@@ -22,9 +23,9 @@ const setAdminCookie = (res, token) => {
     });
 };
 
-// ═════════════════════════════════════════════════════════════
+
 // AUTH
-// ═════════════════════════════════════════════════════════════
+
 
 const loginAdmin = async (res, email, password) => {   // ← res added to set cookie
     const admin = await repo.findAdminByEmail(email);
@@ -52,9 +53,9 @@ const loginAdmin = async (res, email, password) => {   // ← res added to set c
     };
 };
 
-// ═════════════════════════════════════════════════════════════
+
 // STATS
-// ═════════════════════════════════════════════════════════════
+
 
 const fetchStats = async () => {
     const startOfMonth = new Date();
@@ -104,9 +105,9 @@ const fetchMentorIndustryStats = async () => {
     return industries.map((i) => ({ industry: i._id, count: i.count }));
 };
 
-// ═════════════════════════════════════════════════════════════
+
 // USER MANAGEMENT
-// ═════════════════════════════════════════════════════════════
+
 
 const fetchUsers = async ({ search, role, page = 1, limit = 20, deleted }) => {
     const filter = {};
@@ -164,8 +165,7 @@ const fetchUserDetail = async (userId) => {
             : repo.findMenteeProfileByUser(userId),
         repo.countCompletedSessions(userId),
     ]);
-
-    return { user, profile, sessionCount };
+    return { user: toUserDTO(user), profile: toMentorProfileDTO(profile), sessionCount };
 };
 
 const removeUser = async (userId) => {
@@ -174,7 +174,7 @@ const removeUser = async (userId) => {
 
     await repo.hardDeleteUser(userId);
 
-    logger.info(`🗑️  Admin deleted user: ${user.email} (${userId})`);
+    logger.info("Admin deleted user", { email: user.email, userId });
 
     return { message: `User ${user.name} (${user.email}) has been permanently deleted.` };
 };
@@ -183,7 +183,7 @@ const blockUser = async (userId) => {
     const user = await repo.blockUserById(userId);
     if (!user) throw new AppError(404, "User not found.");
 
-    logger.info(`🔒 Admin blocked user: ${user.email} (${userId})`);
+    logger.info("Admin blocked user", { email: user.email, userId });
     return { message: `User ${user.name} has been blocked.` };
 };
 
@@ -191,13 +191,13 @@ const unblockUser = async (userId) => {
     const user = await repo.unblockUserById(userId);
     if (!user) throw new AppError(404, "User not found.");
 
-    logger.info(`🔓 Admin unblocked user: ${user.email} (${userId})`);
+    logger.info("Admin unblocked user", { email: user.email, userId });
     return { message: `User ${user.name} has been restored.` };
 };
 
-// ═════════════════════════════════════════════════════════════
+
 // ENGAGEMENTS
-// ═════════════════════════════════════════════════════════════
+
 
 const fetchEngagementStats = async () => {
     const statuses = ["pending", "accepted", "rejected", "referred", "ongoing", "completed"];

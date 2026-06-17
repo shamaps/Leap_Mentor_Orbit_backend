@@ -1,6 +1,7 @@
 // services/adminVerification.service.js
 const adminVerificationRepo = require("../repositories/adminVerification.repository");
-const { sendMentorVerifiedEmail } = require("../utils/sendNotificationEmail");
+const { sendMentorVerifiedEmail } = require("../utils/emails");
+const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 
 const logger = require("../utils/logger");
 const getAllMentorVerifications = async () => {
@@ -8,7 +9,7 @@ const getAllMentorVerifications = async () => {
 
     const mentors = mentorProfiles.map((profile) => ({
         user: profile.user,
-        mentorProfile: { ...profile, user: undefined },
+        mentorProfile: toMentorProfileDTO({ ...profile, user: undefined }),
     }));
 
     return { mentors, total: mentors.length };
@@ -25,7 +26,7 @@ const getMentorVerificationById = async (mentorProfileId) => {
 
     return {
         user: profile.user,
-        mentorProfile: { ...profile, user: undefined },
+        mentorProfile: toMentorProfileDTO({ ...profile, user: undefined }),
     };
 };
 

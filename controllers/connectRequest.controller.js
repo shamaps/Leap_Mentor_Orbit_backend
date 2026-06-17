@@ -1,7 +1,8 @@
 // controllers/connectRequest.controller.js
 const service = require("../services/connectRequest.service");
 const logger = require("../utils/logger");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
+const { ok, created, fail, noContent } = require("../utils/response");
 const sendConnectRequest = async (req, res, next) => {
   try {
     const { mentorId, message, selectedSlots, sessionRate, sessionCount } = req.body;
@@ -24,14 +25,14 @@ const sendConnectRequest = async (req, res, next) => {
     });
 
     logger.info("sendConnectRequest completed successfully");
-    return res.status(201).json({ message: "Connect request sent successfully", request });
-  }  catch (err) {
+    return created(res, { message: "Connect request sent successfully", request });
+  } catch (err) {
     if (err.code === 11000) {
       logger.warn("Duplicate connect request attempt", {
         menteeId: req.user._id.toString(),
         mentorId: req.body.mentorId,
       });
-      return res.status(409).json({ message: "You already have a pending request with this mentor" });
+      return fail(res, "You already have a pending request with this mentor", 409);
     }
     return handleError(res, err, "connectRequest.sendConnectRequest");
   }
@@ -41,7 +42,7 @@ const getMyRequests = async (req, res, next) => {
   try {
     const requests = await service.getMyRequests(req.user._id);
     logger.info("getMyRequests completed successfully");
-    return res.json({ success: true, requests });
+    return ok(res, { requests });
   } catch (err) {
     return handleError(res, err, "connectRequest.getMyRequests");
   }
@@ -51,7 +52,7 @@ const getIncomingRequests = async (req, res, next) => {
   try {
     const requests = await service.getIncomingRequests(req.user._id, req.query.status);
     logger.info("getIncomingRequests completed successfully");
-    return res.json({ success: true, requests });
+    return ok(res, { requests });
   } catch (err) {
     return handleError(res, err, "connectRequest.getIncomingRequests");
   }
@@ -77,7 +78,7 @@ const respondToRequest = async (req, res, next) => {
     });
 
     logger.info("respondToRequest completed successfully");
-    return res.json({ message: `Request ${status} successfully`, request });
+    return ok(res, { message: `Request ${status} successfully`, request });
   } catch (err) {
     return handleError(res, err, "connectRequest.respondToRequest");
   }
@@ -114,17 +115,17 @@ const referRequest = async (req, res, next) => {
     });
 
     logger.info("referRequest completed successfully");
-    return res.json({ message: "Request referred successfully", originalRequest, newRequest });
+    return ok(res, { message: "Request referred successfully", originalRequest, newRequest });
   } catch (err) {
     return handleError(res, err, "connectRequest.referRequest");
-}
+  }
 };
 
 const getOngoingConnects = async (req, res, next) => {
   try {
     const connects = await service.getOngoingConnects(req.user._id);
     logger.info("getOngoingConnects completed successfully");
-    return res.json({ success: true, connects });
+    return ok(res, { connects });
   } catch (err) {
     return handleError(res, err, "connectRequest.getOngoingConnects");
   }
@@ -134,7 +135,7 @@ const getConnectDetail = async (req, res, next) => {
   try {
     const connect = await service.getConnectDetail(req.params.id, req.user._id);
     logger.info("getConnectDetail completed successfully");
-    return res.json({ success: true, connect });
+    return ok(res, { connect });
   } catch (err) {
     return handleError(res, err, "connectRequest.getConnectDetail");
   }

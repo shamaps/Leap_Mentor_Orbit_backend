@@ -1,6 +1,6 @@
 // backend/models/PrivateNote.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const privateNoteSchema = new mongoose.Schema(
   {
     connectRequest: {
@@ -22,9 +22,10 @@ const privateNoteSchema = new mongoose.Schema(
     content: {
       type:    String,
       default: "",
+      maxlength: [10000, "Note content cannot exceed 10000 characters"],
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // Fast queries for all notes by a user in a session

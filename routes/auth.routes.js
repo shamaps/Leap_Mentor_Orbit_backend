@@ -6,10 +6,10 @@ const RefreshToken = require("../models/RefreshToken");
 const {
     signToken,
     setRefreshCookie,
-    sanitizeUser,
     getRefreshMs,         
 } = require("../utils/auth.utils");
 const User = require("../models/User");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
 const {
     loginLimiter,
     registerLimiter,
@@ -20,7 +20,6 @@ const {
 const { register } = require("../controllers/register.controller");
 const { login } = require("../controllers/login.controller");
 const { googleAuth } = require("../controllers/googleAuth.controller");
-const { socialAuth } = require("../controllers/socialAuth.controller");
 const { clerkSSO } = require("../controllers/clerkSSO.controller");
 const { changePassword } = require("../controllers/changePassword.controller");
 const { authenticate } = require("../middleware/authenticate");
@@ -29,7 +28,6 @@ const { authenticate } = require("../middleware/authenticate");
 router.post("/register",registerLimiter, register);
 router.post("/login", loginLimiter,login);
 router.post("/google", oauthLimiter, googleAuth);
-router.post("/social", oauthLimiter, socialAuth);
 router.post("/clerk-sso", oauthLimiter, clerkSSO);
 router.patch("/password", authenticate, changePassword)
 
@@ -63,7 +61,7 @@ router.post("/refresh", async (req, res) => {
 
         return res.json({
             accessToken,
-            user: sanitizeUser(stored.user),
+            user: toUserDTO(stored.user),
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });

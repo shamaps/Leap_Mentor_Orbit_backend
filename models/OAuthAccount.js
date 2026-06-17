@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const oauthAccountSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -18,6 +18,11 @@ const oauthAccountSchema = new mongoose.Schema({
     required: true
   }
 
-}, { timestamps: true });
-
+}, BASE_SCHEMA_OPTIONS);
+oauthAccountSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.__v;
+    return ret;
+  },
+});
 module.exports = mongoose.model("OAuthAccount", oauthAccountSchema);

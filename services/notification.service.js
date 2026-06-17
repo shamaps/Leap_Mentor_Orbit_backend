@@ -1,6 +1,6 @@
 // services/notification.service.js
 const notificationRepo = require("../repositories/notification.repository");
-
+const { toNotificationList } = require("../utils/mappers/notification.mapper");
 const logger = require("../utils/logger");
 // GET /api/notifications
 const getNotifications = async (userId) => {
@@ -13,7 +13,7 @@ const getNotifications = async (userId) => {
     const notifications = await notificationRepo.findNotificationsByUser(userId);
     logger.info("🔍 Matched notifications for this user:", notifications.length);
 
-    return { notifications };
+    return { notifications: toNotificationList(notifications) };
 };
 
 // PATCH /api/notifications/mark-all-read

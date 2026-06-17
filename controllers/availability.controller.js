@@ -1,14 +1,14 @@
 // controllers/availability.controller.js
 const availabilityService = require("../services/availability.service");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
-
+const { ok, created, noContent } = require("../utils/response");
 // GET /api/availability/me
 const getMyAvailability = async (req, res) => {
   try {
     const data = await availabilityService.getMyAvailability(req.user._id);
     logger.info("getMyAvailability completed successfully");
-    return res.json(data);
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "availability.getMyAvailability");
   }
@@ -21,7 +21,7 @@ const createAvailability = async (req, res) => {
   try {
     const availability = await availabilityService.createAvailability(req.user._id, req.body);
     logger.info("createAvailability completed successfully");
-    return res.status(201).json({ message: "Availability created successfully", availability });
+    return created(res, { message: "Availability created successfully", availability });
   } catch (err) {
     return handleError(res, err, "availability.createAvailability");
   }
@@ -34,10 +34,10 @@ const updateAvailability = async (req, res) => {
   try {
     const availability = await availabilityService.updateAvailability(req.user._id, req.body);
     logger.info("updateAvailability completed successfully");
-    return res.json({ message: "Availability updated successfully", availability });
+    return ok(res, { message: "Availability updated successfully", availability });
   } catch (err) {
     return handleError(res, err, "availability.updateAvailability");
-    
+
   }
 };
 
@@ -48,9 +48,9 @@ const getMentorAvailability = async (req, res) => {
   try {
     const data = await availabilityService.getMentorAvailability(req.params.mentorId);
     logger.info("getMentorAvailability completed successfully");
-    return res.json(data);
+    return ok(res, data);
   } catch (err) {
-    return handleError(res, err, "availability.getMentorAvailability");  
+    return handleError(res, err, "availability.getMentorAvailability");
   }
 };
 
@@ -61,10 +61,10 @@ const deleteAvailability = async (req, res) => {
   try {
     await availabilityService.deleteAvailability(req.user._id);
     logger.info("deleteAvailability completed successfully");
-    return res.status(204).send();
+    return noContent(res);
   } catch (err) {
     return handleError(res, err, "availability.deleteAvailability");
-    
+
   }
 };
 
@@ -80,7 +80,7 @@ const getAvailableSlots = async (req, res) => {
       req.user._id
     );
     logger.info("availability.controller completed successfully");
-    return res.json(data);
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "availability.getAvailableSlots");
   }

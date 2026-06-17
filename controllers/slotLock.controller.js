@@ -1,6 +1,7 @@
 const slotLockService = require("../services/slotLock.service");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
+const { ok } = require("../utils/response");
 // ─────────────────────────────────────────────────────────────
 // POST /api/slot-locks/lock
 // Called when mentee selects a slot in the UI
@@ -8,14 +9,14 @@ const logger = require("../utils/logger");
 const lockSlot = async (req, res) => {
   try {
     const { mentorId, date, startTime, endTime } = req.body;
-    const { status, body } = await slotLockService.lockSlot({
+    const { body } = await slotLockService.lockSlot({
       mentorId,
       date,
       startTime,
       endTime,
       menteeId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     return handleError(res, err, "slotLock.lockSlot");
   }
@@ -28,14 +29,14 @@ const lockSlot = async (req, res) => {
 const unlockSlot = async (req, res) => {
   try {
     const { mentorId, date, startTime, endTime } = req.body;
-    const { status, body } = await slotLockService.unlockSlot({
+    const { body } = await slotLockService.unlockSlot({
       mentorId,
       date,
       startTime,
       endTime,
       menteeId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     return handleError(res, err, "slotLock.unlockSlot");
   }
@@ -48,11 +49,11 @@ const unlockSlot = async (req, res) => {
 const unlockAllByMentee = async (req, res) => {
   try {
     const { mentorId } = req.body;
-    const { status, body } = await slotLockService.unlockAllByMentee({
+    const { body } = await slotLockService.unlockAllByMentee({
       mentorId,
       menteeId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     return handleError(res, err, "slotLock.unlockAllByMentee");
   }
@@ -64,11 +65,11 @@ const unlockAllByMentee = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const getActiveLocks = async (req, res) => {
   try {
-    const { status, body } = await slotLockService.getActiveLocks({
+    const { body } = await slotLockService.getActiveLocks({
       mentorId: req.params.mentorId,
       userId: req.user._id,
     });
-    return res.status(status).json(body);
+    return ok(res, body);
   } catch (err) {
     return handleError(res, err, "slotLock.getActiveLocks");
   }

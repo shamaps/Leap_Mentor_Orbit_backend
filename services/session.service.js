@@ -2,20 +2,17 @@
 const mongoose = require("mongoose");
 const sessionRepo = require("../repositories/session.repository");
 const releaseEscrow = require("../utils/releaseEscrow");
-const escrowService = require("../services/escrow.service");
+const refundSlot = require("../utils/refundSlot");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const logger = require("../utils/logger");
 const {
     sendSlotCancelledEmail,
     sendSlotRescheduledEmail,
     sendAdditionalSlotEmail,
-} = require("../utils/sendNotificationEmail");
+} = require("../utils/emails");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
 
-// ─────────────────────────────────────────────────────────────
 // Pure helpers (no I/O — easy to unit-test in isolation)
-// ─────────────────────────────────────────────────────────────
-
 const ALLOWED_MEETING_DOMAINS = [
     "meet.google.com",
     "zoom.us",
@@ -90,9 +87,7 @@ const DAYS = [
 const dayFromDate = (dateStr) =>
     DAYS[new Date(`${dateStr}T00:00:00`).getDay()];
 
-// ─────────────────────────────────────────────────────────────
 // Notification helper (lazy-populate then send email, fire-and-forget)
-// ─────────────────────────────────────────────────────────────
 
 /**
  * Fire-and-forget: populate the session, then send a notification email.
@@ -103,17 +98,17 @@ const sendNotificationAfterPopulate = (connectRequestId, emailFn, buildPayload) 
         .then((populated) => {
             const payload = buildPayload(populated);
             emailFn(payload).catch((err) =>
-                logger.error("❌ Notification email failed:", err.message)
+                logger.error("Notification email failed", { error: err.message })
+
             );
         })
         .catch((err) =>
-            logger.error("❌ Failed to populate for notification email:", err.message)
+            logger.error("Failed to populate for notification email", { error: err.message })
+
         );
 };
 
-// ─────────────────────────────────────────────────────────────
 // Socket helpers (lazy-require avoids circular-dep issues)
-// ─────────────────────────────────────────────────────────────
 
 const emitSlotUpdate = (connectRequest, payload) => {
     try {
@@ -122,7 +117,7 @@ const emitSlotUpdate = (connectRequest, payload) => {
         emitToUser(connectRequest.mentor.toString(), "session_slots_updated", payload);
         emitToUser(connectRequest.mentee.toString(), "session_slots_updated", payload);
     } catch (emitErr) {
-        logger.warn("⚠️  emitSlotUpdate failed:", emitErr.message);
+        logger.warn("emitSlotUpdate failed", { error: emitErr.message });
     }
 };
 
@@ -136,13 +131,11 @@ const emitToOther = ({ connectRequest, currentUserId, event, payload }) => {
                 : connectRequest.mentor.toString();
         emitToUser(otherId, event, payload);
     } catch (emitErr) {
-        logger.warn("⚠️  emitToOther failed:", emitErr.message);
+        logger.warn("emitToOther failed", { error: emitErr.message });
     }
 };
 
-// ─────────────────────────────────────────────────────────────
 // Shared guards
-// ─────────────────────────────────────────────────────────────
 
 const assertSessionAccess = (connectRequest, userId, connectRequestId) => {
     if (!connectRequest) {
@@ -189,10 +182,8 @@ const loadAndValidateSlot = async (connectRequestId, slotIndex, userId, mongoSes
     return { connectRequest, ...validated };
 };
 
-// ─────────────────────────────────────────────────────────────
 // Shared helper for cancelSlot/rescheduleSlot — computes progress,
 // broadcasts the update over sockets, and fires the notification email.
-// ─────────────────────────────────────────────────────────────
 
 /**
  * Computes progress, broadcasts the slot update over sockets to both
@@ -224,9 +215,7 @@ const finalizeSlotMutation = (connectRequest, connectRequestId, userId, event, o
     return socketPayload;
 };
 
-// ─────────────────────────────────────────────────────────────
 // Pure helper — builds the completion message (fixes nested ternary lint)
-// ─────────────────────────────────────────────────────────────
 const buildCompleteMessage = (allComplete, bothMarked, isMentee) => {
     if (allComplete) return "All sessions complete! Tokens released to mentor.";
     if (bothMarked) return "Session marked complete by both parties.";
@@ -234,10 +223,8 @@ const buildCompleteMessage = (allComplete, bothMarked, isMentee) => {
     return `Session marked complete. Waiting for ${waiting} to confirm.`;
 };
 
-// ─────────────────────────────────────────────────────────────
 // Pure helper — validates and applies the mark for one role
 // Extracted to reduce cognitive complexity of markSlotComplete
-// ─────────────────────────────────────────────────────────────
 
 const applyMark = ({ slot, slotRef, isMentee, isMentor }) => {
     if (isMentee) {
@@ -259,9 +246,7 @@ const applyMark = ({ slot, slotRef, isMentee, isMentor }) => {
     }
 };
 
-// ─────────────────────────────────────────────────────────────
 // GET /api/sessions/:connectRequestId/slots
-// ─────────────────────────────────────────────────────────────
 
 const getSlots = async (connectRequestId, userId) => {
     const connectRequest = await sessionRepo.findSessionForRead(connectRequestId);
@@ -280,9 +265,7 @@ const getSlots = async (connectRequestId, userId) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
-// ─────────────────────────────────────────────────────────────
 
 const setMeetingLink = async ({ connectRequestId, slotIndex, meetingLink, userId }) => {
     if (!meetingLink?.trim()) {
@@ -322,9 +305,7 @@ const setMeetingLink = async ({ connectRequestId, slotIndex, meetingLink, userId
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
-// ─────────────────────────────────────────────────────────────
 
 const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
     const mongoSession = await mongoose.startSession();
@@ -417,9 +398,7 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
     }
 };
 
-// ─────────────────────────────────────────────────────────────
 // POST /api/sessions/:connectRequestId/add-slot
-// ─────────────────────────────────────────────────────────────
 
 const addSlot = async (connectRequestId, body, userId) => {
     let { day, date, startTime, endTime } = body;
@@ -506,9 +485,7 @@ const addSlot = async (connectRequestId, body, userId) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
-// ─────────────────────────────────────────────────────────────
 
 // FIX: moved `reason` default param to last position
 const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) => {
@@ -540,7 +517,7 @@ const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) 
     let refundResult = null;
     try {
         if (connectRequest.paymentStatus === "paid") {
-            refundResult = await escrowService.refundSlot({
+            refundResult = await refundSlot({
                 connectRequestId,
                 slotIndex: idx,
                 cancelledBy,
@@ -550,10 +527,7 @@ const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) 
             );
         }
     } catch (refundErr) {
-        logger.error(
-            "❌ Slot refund failed (slot still cancelled):",
-            refundErr.message
-        );
+        logger.error("Slot refund failed — slot still cancelled", { error: refundErr.message });
     }
 
     const trimmedReason = reason.trim();
@@ -594,9 +568,7 @@ const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) 
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
-// ─────────────────────────────────────────────────────────────
 
 const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => {
     const { date, startTime, endTime } = body;
@@ -687,9 +659,7 @@ const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => 
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // GET /api/sessions/:connectRequestId/mentor-availability
-// ─────────────────────────────────────────────────────────────
 
 const getMentorAvailability = async (connectRequestId, userId, duration = 60) => {
     const connectRequest = await sessionRepo.findSessionForRead(connectRequestId);
@@ -723,7 +693,6 @@ const getMentorAvailability = async (connectRequestId, userId, duration = 60) =>
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 module.exports = {
     getSlots,
     setMeetingLink,

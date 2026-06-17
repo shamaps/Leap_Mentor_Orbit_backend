@@ -1,6 +1,6 @@
 // backend/models/SlotLock.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const slotLockSchema = new mongoose.Schema({
   mentorId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -12,11 +12,11 @@ const slotLockSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  date:      { type: String, required: true }, // "YYYY-MM-DD"
-  startTime: { type: String, required: true }, // "09:00"
-  endTime:   { type: String, required: true }, // "10:00"
+  date: { type: String, required: true, match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"] },
+  startTime: { type: String, required: true, match: [/^\d{2}:\d{2}$/, "Time must be HH:MM"] },
+  endTime: { type: String, required: true, match: [/^\d{2}:\d{2}$/, "Time must be HH:MM"] },
   expiresAt: { type: Date,   required: true }, // TTL field
-});
+}, BASE_SCHEMA_OPTIONS);
 
 // ✅ MongoDB auto-deletes document when expiresAt is reached
 slotLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

@@ -1,6 +1,6 @@
 // controllers/changePassword.controller.js
 const changePasswordService = require("../services/changePassword.service");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
 const changePassword = async (req, res) => {
   try {
@@ -11,7 +11,7 @@ const changePassword = async (req, res) => {
       newPassword
     );
     logger.info("changePassword completed successfully");
-    return res.json(data);
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "changePassword.changePassword");
   }

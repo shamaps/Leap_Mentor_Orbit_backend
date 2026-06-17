@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 const leapRequestSchema = new mongoose.Schema(
   {
@@ -15,6 +16,7 @@ const leapRequestSchema = new mongoose.Schema(
     currentBalance: {
       type: Number,
       default: 0,
+      min: [0, "Balance cannot be negative"],
     },
     reviewedAt: Date,
     reviewedBy: {
@@ -22,7 +24,7 @@ const leapRequestSchema = new mongoose.Schema(
       ref: "AdminUser",
     },
   },
-  { timestamps: true }
+    BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("LeapRequest", leapRequestSchema);

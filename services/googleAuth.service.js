@@ -1,13 +1,13 @@
 // services/googleAuth.service.js
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/googleAuth.repository");
-const { googleClient, sanitizeUser, validateRoles,mergeRoles } = require("../utils/auth.utils");
+const { googleClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet")
 const logger = require("../utils/logger");
-const AppError = require("../utils/AppError");
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
+const AppError = require("../utils/appError");
+const { withTimeout } = require("../utils/withTimeout");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
+
 
 /**
  * Verify the Google credential and return the token payload.
@@ -24,10 +24,10 @@ const verifyGoogleCredential = async (credential) => {
     if (!envAudience)
         throw new AppError(500, "GOOGLE_CLIENT_ID is undefined in .env");
 
-    const ticket = await googleClient.verifyIdToken({
+    const ticket = await withTimeout(googleClient.verifyIdToken({
         idToken: credential,
-        audience: [envAudience, tokenAudience],
-    });
+        audience: [envAudience, tokenAudience]
+    }), 8000, "Google token verification");
 
     const payload = ticket.getPayload();
 
@@ -60,7 +60,7 @@ const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerifie
     const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
     if (!valid)
         throw new AppError(400, message);
-    
+
     const user = await repo.createUser({
         name,
         email,
@@ -70,7 +70,7 @@ const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerifie
         termsAcceptedAt: new Date(),
     });
 
-    
+
     await provisionWallet(user._id, uniqueRoles);
     return user;
 };
@@ -139,7 +139,7 @@ const googleAuth = async ({ credential, roles, termsAccepted }) => {
     await ensureOAuthAccount(user._id, googleSub);
 
     // 4 — sign and return token
-    return { user: sanitizeUser(user), isNewUser };
+    return { user: toUserDTO(user), isNewUser };
 };
 
 module.exports = { googleAuth };

@@ -1,7 +1,8 @@
 // backend/controllers/admin/adminPayments.controller.js
 const adminPaymentsService = require("../../services/adminPayments.service");
-const { handleError } = require("../../utils/AppError");
+const { handleError } = require("../../utils/appError");
 const logger = require("../../utils/logger");
+const { ok } = require("../../utils/response");
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/payments/stats
 // ─────────────────────────────────────────────────────────────
@@ -9,7 +10,7 @@ const getPaymentStats = async (req, res) => {
   try {
     const data = await adminPaymentsService.fetchPaymentStats(req.admin._id);
     logger.info("getPaymentStats completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "adminPayments.getPaymentStats");
   }
@@ -22,7 +23,7 @@ const getRevenueChart = async (_req, res) => {
   try {
     const data = await adminPaymentsService.fetchRevenueChart();
     logger.info("getRevenueChart completed successfully");
-    return res.json({ success: true, data });
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "adminPayments.getRevenueChart");
   }
@@ -40,7 +41,7 @@ const getTransactions = async (req, res) => {
 
     const data = await adminPaymentsService.fetchTransactions({ page, limit, search, type });
     logger.info("getTransactions completed successfully");
-    return res.json({ success: true, ...data });
+    return ok(res, data);
   } catch (err) {
     return handleError(res, err, "adminPayments.getTransactions");
   }

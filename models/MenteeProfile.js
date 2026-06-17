@@ -1,5 +1,6 @@
 // models/MenteeProfile.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS, applySoftDelete } = require("../utils/baseSchema");
 
 const menteeProfileSchema = new mongoose.Schema(
   {
@@ -99,7 +100,7 @@ const menteeProfileSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
-
+applySoftDelete(menteeProfileSchema);
 module.exports = mongoose.model("MenteeProfile", menteeProfileSchema);

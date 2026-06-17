@@ -1,6 +1,6 @@
 // backend/services/mentorSearch.service.js
 const repo = require("../repositories/mentorSearch.repository");
-
+const { toMentorProfileSummary } = require("../utils/mappers/mentorProfile.mapper");
 const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Pure helpers — extracted to reduce cognitive complexity

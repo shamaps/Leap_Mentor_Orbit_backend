@@ -1,7 +1,7 @@
 // backend/models/AdminUser.js
 const mongoose = require("mongoose");
 const bcrypt   = require("bcryptjs");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const adminUserSchema = new mongoose.Schema(
   {
     name: {
@@ -52,7 +52,8 @@ const adminUserSchema = new mongoose.Schema(
       min:     0,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
+  
 );
 
 // ── Hash password before save ─────────────────────────────────

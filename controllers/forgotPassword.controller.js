@@ -1,7 +1,8 @@
 // controllers/forgotPassword.controller.js
 const service = require("../services/forgotPassword.service");
-const { handleError } = require("../utils/AppError");
+const { handleError } = require("../utils/appError");
 const logger = require("../utils/logger");
+const { ok } = require("../utils/response");
 /**
  * POST /api/auth/forgot-password
  * Body: { email }
@@ -14,7 +15,7 @@ const sendForgotPasswordOTP = async (req, res, next) => {
 
     // ✅ Always return the same message — don't reveal if email exists
     logger.info("sendForgotPasswordOTP completed successfully");
-    return res.json({ message: "If this email exists, an OTP has been sent." });
+    return ok(res, { message: "If this email exists, an OTP has been sent." });
   } catch (err) {
     return handleError(res, err, "forgotPassword.sendForgotPasswordOTP");
   }
@@ -32,10 +33,10 @@ const verifyResetOTP = async (req, res, next) => {
     const normalizedEmail = await service.verifyResetOTP(email, otp);
 
     logger.info("verifyResetOTP completed successfully");
-    return res.json({ message: "OTP verified", email: normalizedEmail });
+    return ok(res, { message: "OTP verified", email: normalizedEmail });
   } catch (err) {
     return handleError(res, err, "forgotPassword.verifyResetOTP");
-}
+  }
 };
 
 /**
@@ -50,7 +51,7 @@ const resetPassword = async (req, res, next) => {
     await service.resetPassword(email, otp, newPassword);
 
     logger.info("resetPassword completed successfully");
-    return res.json({ message: "Password reset successfully. You can now login." });
+    return ok(res, { message: "Password reset successfully. You can now login." });
   } catch (err) {
     return handleError(res, err, "forgotPassword.resetPassword");
   }

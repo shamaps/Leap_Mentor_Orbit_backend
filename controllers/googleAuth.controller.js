@@ -2,7 +2,7 @@
 const service = require("../services/googleAuth.service");
 const logger = require("../utils/logger");
 const { issueTokens } = require("../utils/auth.utils");   // ← ADD
-
+const { ok } = require("../utils/response");
 const googleAuth = async (req, res, next) => {
   try {
     const { credential, roles, termsAccepted } = req.body;
@@ -13,7 +13,7 @@ const googleAuth = async (req, res, next) => {
     const accessToken = await issueTokens(res, user._id);  // ← ADD
 
     logger.info("googleAuth completed successfully");
-    return res.json({
+    return ok(res, {
       message: "Google login successful",
       accessToken,    // ← was "token"
       user,
