@@ -5,7 +5,7 @@ const logger = require("../utils/logger");
 const submitReport = async (req, res) => {
   try {
     const { connectRequestId, complaintType, description } = req.body;
-    const { status, body } = await reportService.submitReport({
+    const {  body } = await reportService.submitReport({
       connectRequestId,
       complaintType,
       description,
@@ -23,7 +23,7 @@ const submitReport = async (req, res) => {
 const getMyReport = async (req, res) => {
   try {
     const { connectRequestId } = req.params;
-    const { status, body } = await reportService.getMyReport({
+    const {  body } = await reportService.getMyReport({
       connectRequestId,
       userId: req.user._id,
     });
@@ -37,7 +37,7 @@ const getMyReport = async (req, res) => {
 const getAllReports = async (req, res) => {
   try {
     const { status: filterStatus, page, limit } = req.query;
-    const { status, body } = await reportService.getAllReports({
+    const { body } = await reportService.getAllReports({
       status: filterStatus,
       page,
       limit,
@@ -53,7 +53,7 @@ const updateReportStatus = async (req, res) => {
   try {
     const { reportId } = req.params;
     const { status: newStatus, adminNote } = req.body;
-    const { status, body } = await reportService.updateReportStatus({
+    const {  body } = await reportService.updateReportStatus({
       reportId,
       status: newStatus,
       adminNote,

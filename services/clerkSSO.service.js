@@ -2,13 +2,12 @@
 const jwt = require("jsonwebtoken");
 const repo = require("../repositories/clerkSSO.repository");
 const AppError = require("../utils/appError");
-const { clerkClient, signToken,  validateRoles, mergeRoles } = require("../utils/auth.utils");
+const { clerkClient,  validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
 const logger = require("../utils/logger");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
-// ─────────────────────────────────────────────────────────────
+
 // Pure helpers
-// ─────────────────────────────────────────────────────────────
 
 const extractClerkMeta = (clerkUser) => {
     const email = clerkUser.emailAddresses?.[0]?.emailAddress?.toLowerCase().trim();
@@ -20,9 +19,8 @@ const extractClerkMeta = (clerkUser) => {
     return { email, name, provider, providerId };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Step helpers — extracted to reduce cognitive complexity
-// ─────────────────────────────────────────────────────────────
 
 /**
  * Decodes the Clerk token and fetches the full user from Clerk API.
@@ -100,11 +98,11 @@ const linkOAuthAccount = async (userId, provider, providerId) => {
     logger.info("🔗 OAuthAccount linked | Provider:", provider);
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Main service function
 // Cognitive complexity reduced from 31 → well under 15 by
 // extracting resolveClerkUser / createNewUser / mergeRolesIfNeeded / linkOAuthAccount
-// ─────────────────────────────────────────────────────────────
+
 
 const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     // 1) Validate token + fetch Clerk user
@@ -120,8 +118,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     let user = await repo.findUserByEmail(email);
     let isNewUser = false;
 
-    logger.info("🔍 User found in DB:", !!user, "| Email:", email);
-
+    logger.debug("User found in DB:", !!user, "| Email:", email);
     if (user) {
         logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
         await mergeRoles(user, roles, repo.saveUser);

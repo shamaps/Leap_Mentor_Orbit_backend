@@ -8,7 +8,7 @@ const express = require("express");
 const http       = require("node:http");
 const { Server } = require("socket.io");
 const mongoose   = require("mongoose");
-
+const logger = require("./utils/logger");
 const app                  = require("./app");
 const socketAuth           = require("./socket/socketAuth");
 const socketHandler        = require("./socket/socketHandler");
@@ -20,10 +20,10 @@ const { verifyConnection } = require("./config/cloudinary");
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("✅ MongoDB Connected");
+    logger.info("MongoDB connected");
     verifyConnection();
   })
-  .catch((err) => console.error("❌ MongoDB Error:", err.message));
+  .catch((err) => logger.error("MongoDB connection failed", { error: err.message }));
 
 /* ===========================
    🔹 CRON JOBS
@@ -61,7 +61,7 @@ socketHandler(io);
 =========================== */
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
-  console.log(`🔥 Server running on port ${PORT}`);
-  console.log(`🔌 Socket.io ready`);
-  console.log(`📡 Using Client ID: ${process.env.GOOGLE_CLIENT_ID ? "LOADED" : "NOT FOUND"}`);
+  logger.info(`🔥 Server running on port ${PORT}`);
+  logger.info(`🔌 Socket.io ready`);
+  logger.info(`📡 Using Client ID: ${process.env.GOOGLE_CLIENT_ID ? "LOADED" : "NOT FOUND"}`);
 });

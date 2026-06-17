@@ -1,12 +1,13 @@
 // backend/app.js
-// ✅ Pure Express app — no DB connection, no server start, no cron jobs
+// Pure Express app — no DB connection, no server start, no cron jobs
 // This is what Jest imports for testing
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const Sentry = require("@sentry/node");
-
+const { randomUUID } = require("node:crypto");
+const logger = require("./utils/logger");
 const app = express();
 
 const cookieParser = require("cookie-parser");
@@ -39,7 +40,18 @@ app.use((req, res, next) => {
     next();
   });
 });
-
+// Request ID — ties all logs for one request together in Logtail
+app.use((req, res, next) => {
+  req.requestId = randomUUID();
+  res.setHeader("X-Request-Id", req.requestId);
+  logger.info("Incoming request", {
+    requestId: req.requestId,
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+  });
+  next();
+});
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 

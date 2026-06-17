@@ -3,9 +3,8 @@ const repo = require("../repositories/feedback.repository");
 const AppError = require("../utils/appError");
 const { toFeedbackDTO } = require("../utils/mappers/feedback.mapper");
 const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
+
 // Pure helpers
-// ─────────────────────────────────────────────────────────────
 
 const getParticipantRole = (connectRequest, userId) => {
     const uid = userId.toString();
@@ -39,7 +38,7 @@ const assertCompletionEligible = (connectRequest, fromRole, slotIndex) => {
         const slot = connectRequest.selectedSlots?.[slotIndex];
         const myMark = fromRole === "mentee" ? slot?.menteeMarked : slot?.mentorMarked;
 
-        logger.info("fromRole:", fromRole, "myMark:", myMark, "slot:", slot);
+        logger.debug("fromRole:", fromRole, "myMark:", myMark, "slot:", slot);
 
         if (!slot || !myMark)
             throw new AppError(400, "Feedback can only be submitted for completed sessions");
@@ -63,11 +62,9 @@ const refreshMentorAvgRating = async (mentorUserId) => {
     logger.info(`⭐ Updated avgRating for mentor: ${newAvgRating}`);
 };
 
-// ─────────────────────────────────────────────────────────────
 // SUBMIT FEEDBACK
-// Cognitive complexity reduced from 22 → under 15 by extracting
 // parseSlotIndex / hasSlotIndex / assertCompletionEligible / refreshMentorAvgRating
-// ─────────────────────────────────────────────────────────────
+
 
 const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: rawSlotIndex, userId }) => {
     if (!connectRequestId)
@@ -78,14 +75,14 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
     // FIX: parseSlotIndex() eliminates the negated-condition warning
     const slotIndex = parseSlotIndex(rawSlotIndex);
 
-    logger.info("feedback body received:", { connectRequestId, rating, comment, slotIndex });
+    logger.debug("feedback body received:", { connectRequestId, rating, comment, slotIndex });
 
     const connectRequest = await repo.findSessionById(connectRequestId);
     if (!connectRequest)
         throw new AppError(404, "Session not found");
 
     logger.info("slot at index", slotIndex, ":", connectRequest.selectedSlots?.[slotIndex]);
-    logger.info("all slots:", connectRequest.selectedSlots?.map((s, i) => ({
+    logger.debug("all slots:", connectRequest.selectedSlots?.map((s, i) => ({
         i,
         menteeMarked: s.menteeMarked,
         mentorMarked: s.mentorMarked,
@@ -132,9 +129,9 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
     return toFeedbackDTO(populated);
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET FEEDBACK
-// ─────────────────────────────────────────────────────────────
+
 
 const getFeedback = async ({ connectRequestId, userId }) => {
     const connectRequest = await repo.findSessionForRead(connectRequestId);

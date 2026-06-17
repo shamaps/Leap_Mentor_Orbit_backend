@@ -5,7 +5,7 @@ const router = express.Router();
 const { adminAuthenticate } = require("../middleware/adminAuth");
 const {
   adminLogin,
-  adminLogout,   // ← ADD
+  adminLogout,   
   adminMe,
   getStats,
   getUsers,
@@ -26,30 +26,30 @@ const {
   rejectRequest,
 } = require("../controllers/leapRequest.controller");
 const { adminLoginLimiter } = require("../middleware/rateLimiter");
-// ── Auth (public) ─────────────────────────────────────────────
+// Auth (public)
 router.post("/auth/login", adminLoginLimiter, adminLogin);
-router.post("/auth/logout", adminAuthenticate, adminLogout);  // ← ADD: clears httpOnly cookie
+router.post("/auth/logout", adminAuthenticate, adminLogout);  
 router.get("/auth/me", adminAuthenticate, adminMe);
 
-// ── Stats ─────────────────────────────────────────────────────
+// Stats
 router.get("/stats", adminAuthenticate, getStats);
 
 router.get("/user-growth", adminAuthenticate, getUserGrowth);
-// ── User management ───────────────────────────────────────────
+// User management 
 router.get("/users", adminAuthenticate, getUsers);
 router.get("/users/:userId", adminAuthenticate, getUserDetail);
 router.delete("/users/:userId", adminAuthenticate, deleteUser);
 
-// NEW: Block and Unblock routes
+// Block and Unblock routes
 router.patch("/users/:userId/block", adminAuthenticate, blockUser);
 router.patch("/users/:userId/unblock", adminAuthenticate, unblockUser);
 
-//engagements
+// engagements
 router.get("/engagements/stats", adminAuthenticate, getEngagementStats);
 router.get("/stats/mentor-industries", adminAuthenticate, getMentorIndustryStats);
 router.get("/engagements", adminAuthenticate, getEngagements);
 
-// ── Leap / Wallet Requests ─────────────────────────────────────
+// Leap / Wallet Requests
 router.get("/leap-requests", adminAuthenticate, getAllRequests);
 router.get("/leap-requests/pending-count", adminAuthenticate, getPendingCount);
 router.patch("/leap-requests/:id/approve", adminAuthenticate, approveRequest);

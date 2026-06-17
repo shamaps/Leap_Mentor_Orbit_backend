@@ -5,13 +5,13 @@ const logger = require("../utils/logger");
 // GET /api/notifications
 const getNotifications = async (userId) => {
     // Debug logs preserved from original
-    logger.info("🔍 Getting notifications for user ID:", userId.toString());
+    logger.debug("Getting notifications for user ID:", userId.toString());
     const all = await notificationRepo.findAllNotifications();
-    logger.info("🔍 Total notifications in DB:", all.length);
-    logger.info("🔍 All recipient IDs in DB:", all.map((n) => n.recipient.toString()));
+    logger.debug("Total notifications in DB:", all.length);
+    logger.debug("All recipient IDs in DB:", all.map((n) => n.recipient.toString()));
 
     const notifications = await notificationRepo.findNotificationsByUser(userId);
-    logger.info("🔍 Matched notifications for this user:", notifications.length);
+    logger.debug("Matched notifications for this user:", notifications.length);
 
     return { notifications: toNotificationList(notifications) };
 };
