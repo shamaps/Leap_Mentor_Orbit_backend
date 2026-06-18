@@ -1,8 +1,6 @@
-const pushSubscriptionService = require("../services/PushSubscription.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok, noContent } = require("../utils/response"); 
-
+const createPushSubscriptionController = (pushSubscriptionService, { logger }) => {
 // POST /api/push/subscribe
 const subscribe = async (req, res) => {
   try {
@@ -38,4 +36,7 @@ const getVapidPublicKey = (req, res) => {
   return ok(res, body);
 };
 
-module.exports = { subscribe, unsubscribe, getVapidPublicKey };
+  return { subscribe, unsubscribe, getVapidPublicKey };
+};
+
+module.exports = createPushSubscriptionController;

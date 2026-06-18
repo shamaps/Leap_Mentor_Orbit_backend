@@ -2,8 +2,8 @@
 const express  = require("express");
 const router   = express.Router();
 const { authenticate }                  = require("../middleware/authenticate");
-const { submitFeedback, getFeedback }   = require("../controllers/feedback.controller");
-
+const { feedbackController } = require("../config/container");
+const { submitFeedback, getFeedback } = feedbackController;
 // POST /api/feedback                        — submit feedback for a completed session
 router.post("/",                      authenticate, submitFeedback);
 

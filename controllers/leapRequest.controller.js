@@ -1,9 +1,8 @@
 // controllers/leapRequest.controller.js
-const leapRequestService = require("../services/leapRequest.service");
-const logger = require("../utils/logger");
-const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
-// ── MENTEE: Check my latest request ──────────────────────────
+const { ok, created } = require("../utils/response");
+const createLeapRequestController = (leapRequestService, { logger }) => {
+// MENTEE: Check my latest request 
 const getMyRequest = async (req, res) => {
   try {
     const data = await leapRequestService.getMyRequest(req.user._id);
@@ -15,7 +14,7 @@ const getMyRequest = async (req, res) => {
   }
 };
 
-// ── MENTEE: Create a new request ─────────────────────────────
+//MENTEE: Create a new request 
 const createRequest = async (req, res) => {
   try {
     const data = await leapRequestService.createRequest(req.user._id);
@@ -27,7 +26,7 @@ const createRequest = async (req, res) => {
   }
 };
 
-// ── ADMIN: Get all requests ───────────────────────────────────
+// ADMIN: Get all requests
 const getAllRequests = async (req, res) => {
   try {
     const data = await leapRequestService.getAllRequests();
@@ -39,7 +38,7 @@ const getAllRequests = async (req, res) => {
   }
 };
 
-// ── ADMIN: Get pending count (for sidebar badge) ──────────────
+// ADMIN: Get pending count (for sidebar badge) 
 const getPendingCount = async (req, res) => {
   try {
     const data = await leapRequestService.getPendingCount();
@@ -51,7 +50,7 @@ const getPendingCount = async (req, res) => {
   }
 };
 
-// ── ADMIN: Approve — add 500 LP ──────────────────────────────
+// ADMIN: Approve — add 500 LP 
 const approveRequest = async (req, res) => {
   try {
     const data = await leapRequestService.approveRequest(req.params.id, req.admin?._id);
@@ -63,7 +62,7 @@ const approveRequest = async (req, res) => {
   }
 };
 
-// ── ADMIN: Reject ─────────────────────────────────────────────
+//  ADMIN: Reject 
 const rejectRequest = async (req, res) => {
   try {
     const data = await leapRequestService.rejectRequest(req.params.id, req.admin?._id);
@@ -75,11 +74,6 @@ const rejectRequest = async (req, res) => {
   }
 };
 
-module.exports = {
-  getMyRequest,
-  createRequest,
-  getAllRequests,
-  getPendingCount,
-  approveRequest,
-  rejectRequest,
+  return { getMyRequest, createRequest, getAllRequests, getPendingCount, approveRequest, rejectRequest };
 };
+module.exports = createLeapRequestController;

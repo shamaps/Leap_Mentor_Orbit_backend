@@ -1,10 +1,8 @@
 // controllers/notification.controller.js
-const notificationService = require("../services/notification.service");
 const { ok,noContent } = require("../utils/response");
-const logger = require("../utils/logger");
 const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
-
+const createNotificationController = (notificationService, { logger }) => {
 // GET /api/notifications
 const getNotifications = async (req, res) => {
   try {
@@ -65,10 +63,6 @@ const clearAll = async (req, res) => {
   }
 };
 
-module.exports = {
-  getNotifications,
-  markAllRead,
-  markOneRead,
-  deleteNotification,
-  clearAll,
+  return { getNotifications, markAllRead, markOneRead, deleteNotification, clearAll };
 };
+module.exports = createNotificationController;

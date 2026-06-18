@@ -1,8 +1,6 @@
 // backend/controllers/upload.controller.js
-const uploadService = require("../services/upload.service");
-const logger = require("../utils/logger");
 const { ok, fail } = require("../utils/response");
-
+const createUploadController = (uploadService, { logger }) => {
 const uploadProfilePicture = async (req, res) => {
   try {
     const {  body } = await uploadService.uploadProfilePicture({ file: req.file });
@@ -28,4 +26,6 @@ const uploadVerificationDocuments = async (req, res) => {
   }
 };
 
-module.exports = { uploadProfilePicture, uploadVerificationDocuments };
+  return { uploadProfilePicture, uploadVerificationDocuments };
+};
+module.exports = createUploadController;

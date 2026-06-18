@@ -1,15 +1,14 @@
 const AppError = require("../utils/appError");
-const loginService = require("../services/login.service");
 const { issueTokens } = require("../utils/auth.utils");
-const logger = require("../utils/logger");
 const { ok, fail } = require("../utils/response");
+const createLoginController = (loginService, { logger }) => {
 const login = async (req, res) => {
   try {
     const result = await loginService.login(req.body.email, req.body.password);
 
     const accessToken = await issueTokens(res, result.user._id);
 
-    // ✅ Successful login
+    //  Successful login
     logger.info("User logged in successfully", {
       userId: result.user._id,
       role: result.user.role,
@@ -49,4 +48,6 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { login };
+  return { login };
+};
+module.exports = createLoginController;

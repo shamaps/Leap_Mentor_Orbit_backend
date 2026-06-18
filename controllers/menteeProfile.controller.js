@@ -1,9 +1,7 @@
 // controllers/menteeProfile.controller.js
-const menteeProfileService = require("../services/menteeProfile.service");
-const logger = require("../utils/logger");
 const { ok, created, fail } = require("../utils/response");
 const { handleError } = require("../utils/appError");
-
+const createMenteeProfileController = (menteeProfileService, { logger }) => {
 // ── Local helper — eliminates the repeated catch pattern ─────
 const catchError = (res, err, context) => {
   logger.error(`Unhandled error in menteeProfile.controller`, { error: err.message, stack: err.stack });
@@ -57,4 +55,6 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
-module.exports = { createProfile, getMyProfile, updateProfile, getPublicProfile };
+  return { createProfile, getMyProfile, updateProfile, getPublicProfile };
+};
+module.exports = createMenteeProfileController;

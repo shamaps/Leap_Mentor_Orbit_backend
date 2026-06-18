@@ -1,9 +1,9 @@
 // services/adminVerification.service.js
-const adminVerificationRepo = require("../repositories/adminVerification.repository");
 const { sendMentorVerifiedEmail } = require("../utils/emails");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 
-const logger = require("../utils/logger");
+const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
+
 const getAllMentorVerifications = async () => {
     const mentorProfiles = await adminVerificationRepo.findAllMentorProfiles();
 
@@ -88,9 +88,6 @@ const revokeMentorVerification = async (mentorProfileId) => {
     };
 };
 
-module.exports = {
-    getAllMentorVerifications,
-    getMentorVerificationById,
-    verifyMentor,
-    revokeMentorVerification,
+    return { getAllMentorVerifications, getMentorVerificationById, verifyMentor, revokeMentorVerification };
 };
+module.exports = createAdminVerificationService;

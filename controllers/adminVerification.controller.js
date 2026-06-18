@@ -1,8 +1,7 @@
 // controllers/adminVerification.controller.js
-const adminVerificationService = require("../services/adminVerification.service");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
 const { handleError } = require("../utils/appError");
+const createAdminVerificationController = (adminVerificationService, { logger }) => {
 const getAllMentorVerifications = async (req, res) => {
   try {
     const data = await adminVerificationService.getAllMentorVerifications();
@@ -53,9 +52,6 @@ const revokeMentorVerification = async (req, res) => {
   }
 };
 
-module.exports = {
-  getAllMentorVerifications,
-  getMentorVerificationById,
-  verifyMentor,
-  revokeMentorVerification,
+  return { getAllMentorVerifications, getMentorVerificationById, verifyMentor, revokeMentorVerification };
 };
+module.exports = createAdminVerificationController;

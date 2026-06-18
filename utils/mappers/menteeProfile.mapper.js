@@ -7,12 +7,19 @@ const toMenteeProfileDTO = (doc) => {
         profilePicture: doc.profilePicture || "",
         currentRole: doc.currentRole || "",
         company: doc.company || "",
+        industry: doc.industry || "",
+        yearsOfExperience: doc.yearsOfExperience || "",
         bio: doc.bio || "",
         skills: doc.skills || [],
         interestedFields: doc.interestedFields || [],
+        communicationPreferences: doc.communicationPreferences || [],
+        languages: doc.languages || [],
+        linkedInUrl: doc.linkedInUrl || "",
+        portfolioUrl: doc.portfolioUrl || "",
         isProfileComplete: doc.isProfileComplete,
+        isProfilePublished: doc.isProfilePublished,
     };
-};
+}; 
 
 const toMenteeProfileSummary = (doc) => {
     if (!doc) return null;

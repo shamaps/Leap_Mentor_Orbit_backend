@@ -1,10 +1,8 @@
 // backend/controllers/earnings.controller.js
-const earningsService = require("../services/earnings.service");
-const walletWithdrawalService = require("../services/walletWithdrawal.service");
-const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
-const { ok } = require("../utils/response");
 
+const { handleError } = require("../utils/appError");
+const { ok } = require("../utils/response");
+const createEarningsController = (earningsService, walletWithdrawalService, { logger }) => {
 // GET /api/mentor/earnings
 // Stat cards — totalEarnings, sessionsThisMonth, avgRating, pendingPayout
 
@@ -59,9 +57,6 @@ const withdrawEarnings = async (req, res) => {
   }
 };
 
-module.exports = {
-  getEarningsSummary,
-  getEarningsChart,
-  getPayoutHistory,
-  withdrawEarnings,
+  return { getEarningsSummary, getEarningsChart, getPayoutHistory, withdrawEarnings };
 };
+module.exports = createEarningsController;

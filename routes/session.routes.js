@@ -2,16 +2,11 @@
 const express = require("express");
 const router  = express.Router();
 const { authenticate } = require("../middleware/authenticate");
+const { sessionController } = require("../config/container");
 const {
-  getSlots,
-  setMeetingLink,
-  markSlotComplete,
-  addSlot,
-  cancelSlot,
-  rescheduleSlot,
-  getMentorAvailability,
-} = require("../controllers/session.controller");
-
+  getSlots, setMeetingLink, markSlotComplete, addSlot,
+  cancelSlot, rescheduleSlot, getMentorAvailability,
+} = sessionController;
 // GET  /api/sessions/:connectRequestId/slots
 router.get("/:connectRequestId/slots", authenticate, getSlots);
 

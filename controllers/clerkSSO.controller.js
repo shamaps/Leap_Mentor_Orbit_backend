@@ -1,9 +1,8 @@
 // controllers/clerkSSO.controller.js
 const AppError = require("../utils/appError");
-const clerkSSOService = require("../services/clerkSSO.service");
-const logger = require("../utils/logger");
 const { issueTokens } = require("../utils/auth.utils");   
 const { ok, fail } = require("../utils/response");
+const createClerkSSOController = (clerkSSOService, { logger }) => {
 const clerkSSO = async (req, res) => {
   try {
     // Service must return { user } — remove signToken from clerkSSO.service.js too
@@ -25,4 +24,6 @@ const clerkSSO = async (req, res) => {
   }
 };
 
-module.exports = { clerkSSO };
+  return { clerkSSO };
+};
+module.exports = createClerkSSOController;

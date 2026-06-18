@@ -1,13 +1,9 @@
 // backend/services/adminReports.service.js
-const repo = require("../repositories/adminReports.repository");
 const createNotification = require("../utils/createNotification");
 const { sendReportResolvedEmail } = require("../utils/emails");
 const AppError = require("../utils/appError");
-
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
 // Pure helpers — fix nested ternaries + nested template literals
-// ─────────────────────────────────────────────────────────────
+const createAdminReportsService = (repo, { logger }) => {
 
 /**
  * Appends an admin note suffix if one exists.
@@ -36,9 +32,9 @@ const buildReportNotification = (status, otherPerson, adminNote) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // STATS
-// ─────────────────────────────────────────────────────────────
+
 
 const fetchReportStats = async () => {
     const today = new Date();
@@ -53,9 +49,9 @@ const fetchReportStats = async () => {
     return { totalReports, pendingResolution, resolvedToday };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // LIST
-// ─────────────────────────────────────────────────────────────
+
 
 const fetchReports = async ({ page, limit, search, status }) => {
     const skip = (page - 1) * limit;
@@ -112,9 +108,9 @@ const fetchReports = async ({ page, limit, search, status }) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // HANDLE (resolve / dismiss)
-// ─────────────────────────────────────────────────────────────
+
 
 const handleReport = async (reportId, { status, adminNote }, adminId) => {
     const report = await repo.findReportById(reportId);
@@ -164,9 +160,9 @@ const handleReport = async (reportId, { status, adminNote }, adminId) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PROCESS REFUND
-// ─────────────────────────────────────────────────────────────
+
 
 const processRefund = async (reportId, { adminNote }, adminId) => {
     const report = await repo.findReportByIdWithSession(reportId);
@@ -247,9 +243,9 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
     return { refundAmount };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE SESSION
-// ─────────────────────────────────────────────────────────────
+
 
 const deleteSession = async (reportId, { adminNote }, adminId) => {
     const report = await repo.findReportByIdWithSessionAndParticipants(reportId);
@@ -310,10 +306,6 @@ const deleteSession = async (reportId, { adminNote }, adminId) => {
     }
 };
 
-module.exports = {
-    fetchReportStats,
-    fetchReports,
-    handleReport,
-    processRefund,
-    deleteSession,
+    return { fetchReportStats, fetchReports, handleReport, processRefund, deleteSession };
 };
+module.exports = createAdminReportsService;

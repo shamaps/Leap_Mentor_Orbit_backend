@@ -1,10 +1,10 @@
 // backend/services/adminPayments.service.js
-const repo = require("../repositories/adminPayments.repository");
 const { DEFAULT_COMMISSION_RATE } = require("../config/constants");
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
+
+const createAdminPaymentsService = (repo, { logger }) => {
+
 // Pure helper — resolves transaction status without nested ternaries
-// ─────────────────────────────────────────────────────────────
+
 const resolveTransactionStatus = (type) => {
     if (type === "escrow_refund") return "refunded";
     if (type === "escrow_hold") return "pending";
@@ -12,9 +12,8 @@ const resolveTransactionStatus = (type) => {
     return "completed";
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // STATS
-// ─────────────────────────────────────────────────────────────
 
 const fetchPaymentStats = async (adminId) => {
     const adminUser = await repo.findAdminCommissionRate(adminId);
@@ -46,9 +45,7 @@ const fetchPaymentStats = async (adminId) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
 // CHART
-// ─────────────────────────────────────────────────────────────
 
 // AFTER — 1 DB query
 const fetchRevenueChart = async () => {
@@ -77,9 +74,7 @@ const fetchRevenueChart = async () => {
     return data;
 };
 
-// ─────────────────────────────────────────────────────────────
 // TRANSACTIONS
-// ─────────────────────────────────────────────────────────────
 
 const fetchTransactions = async ({ page, limit, search, type }) => {
     const skip = (page - 1) * limit;
@@ -130,8 +125,6 @@ const fetchTransactions = async ({ page, limit, search, type }) => {
     };
 };
 
-module.exports = {
-    fetchPaymentStats,
-    fetchRevenueChart,
-    fetchTransactions,
+    return { fetchPaymentStats, fetchRevenueChart, fetchTransactions };
 };
+module.exports = createAdminPaymentsService;

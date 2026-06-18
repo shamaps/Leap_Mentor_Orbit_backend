@@ -1,7 +1,6 @@
 // controllers/invoice.controller.js
-const service = require("../services/invoice.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
+const createInvoiceController = (service, { logger }) => {
 /**
  * GET /api/invoices/:connectRequestId
  * Downloads a PDF invoice for a paid session.
@@ -29,4 +28,6 @@ const downloadInvoice = async (req, res, next) => {
   }
 };
 
-module.exports = { downloadInvoice };
+  return { downloadInvoice };
+};
+module.exports = createInvoiceController;

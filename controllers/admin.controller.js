@@ -1,12 +1,10 @@
 // backend/controllers/admin.controller.js
 const AppError = require("../utils/appError");
-const adminService = require("../services/admin.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 
 const { ok, fail, noContent } = require("../utils/response");
 
-
+const createAdminController = (adminService, { logger }) => {
 // AUTH
 
 const adminLogin = async (req, res) => {
@@ -156,22 +154,10 @@ const getEngagements = async (req, res) => {
   }
 };
 
-module.exports = {
-  // auth
-  adminLogin,
-  adminLogout,
-  adminMe,
-  // stats
-  getStats,
-  getUserGrowth,
-  getMentorIndustryStats,
-  // users
-  getUsers,
-  getUserDetail,
-  deleteUser,
-  blockUser,
-  unblockUser,
-  // engagements
-  getEngagementStats,
-  getEngagements,
+  return {
+    adminLogin, adminLogout, adminMe, getStats, getUserGrowth,
+    getMentorIndustryStats, getUsers, getUserDetail, deleteUser,
+    blockUser, unblockUser, getEngagementStats, getEngagements,
+  };
 };
+module.exports = createAdminController;

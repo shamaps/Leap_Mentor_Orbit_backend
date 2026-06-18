@@ -1,9 +1,7 @@
 // controllers/mentorRefer.controller.js
-const mentorReferService = require("../services/mentorRefer.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
-
+const createMentorReferController = (mentorReferService, { logger }) => {
  //GET /api/connect-requests/:id/similar-mentors
 
 const getSimilarMentors = async (req, res) => {
@@ -16,4 +14,6 @@ const getSimilarMentors = async (req, res) => {
   }
 };
 
-module.exports = { getSimilarMentors };
+  return { getSimilarMentors };
+};
+module.exports = createMentorReferController;

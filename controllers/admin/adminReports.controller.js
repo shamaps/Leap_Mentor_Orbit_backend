@@ -1,13 +1,10 @@
 // backend/controllers/admin/adminReports.controller.js
-
-const adminReportsService = require("../../services/adminReports.service");
 const { ok, fail, noContent } = require("../../utils/response");
-const logger = require("../../utils/logger");
 const { handleError } = require("../../utils/appError");
+const createAdminReportsController = (adminReportsService, { logger }) => {
 
-// ─────────────────────────────────────────────────────────────
 // GET /api/admin/reports/stats
-// ─────────────────────────────────────────────────────────────
+
 const getReportStats = async (_req, res) => {
   try {
     const data = await adminReportsService.fetchReportStats();
@@ -19,9 +16,9 @@ const getReportStats = async (_req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/admin/reports
-// ─────────────────────────────────────────────────────────────
+
 const getReports = async (req, res) => {
   try {
     const page = Math.max(1, Number.parseInt(req.query.page) || 1);
@@ -38,9 +35,9 @@ const getReports = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/admin/reports/:id
-// ─────────────────────────────────────────────────────────────
+
 const handleReport = async (req, res) => {
   try {
     const { status, adminNote } = req.body;
@@ -63,9 +60,9 @@ const handleReport = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/admin/reports/:id/refund
-// ─────────────────────────────────────────────────────────────
+
 const processRefund = async (req, res) => {
   try {
     const { refundAmount } = await adminReportsService.processRefund(
@@ -85,9 +82,9 @@ const processRefund = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/admin/reports/:id/session
-// ─────────────────────────────────────────────────────────────
+
 const deleteSession = async (req, res) => {
   try {
     await adminReportsService.deleteSession(
@@ -104,4 +101,6 @@ const deleteSession = async (req, res) => {
   }
 };
 
-module.exports = { getReportStats, getReports, handleReport, processRefund, deleteSession };
+  return { getReportStats, getReports, handleReport, processRefund, deleteSession };
+};
+module.exports = createAdminReportsController;

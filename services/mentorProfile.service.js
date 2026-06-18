@@ -1,7 +1,6 @@
 // services/mentorProfile.service.js
-const mentorProfileRepo = require("../repositories/mentorProfile.repository");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
-const logger = require("../utils/logger");
+const createMentorProfileService = (mentorProfileRepo, { logger }) => {
 /**
  * POST /api/mentor-profile
  */
@@ -95,9 +94,6 @@ const getPublicProfile = async (userId) => {
     return toMentorProfileDTO(profile);
 };
 
-module.exports = {
-    createProfile,
-    getMyProfile,
-    updateProfile,
-    getPublicProfile,
+    return { createProfile, getMyProfile, updateProfile, getPublicProfile };
 };
+module.exports = createMentorProfileService;

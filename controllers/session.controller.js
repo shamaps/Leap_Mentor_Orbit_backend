@@ -1,12 +1,10 @@
 // controllers/session.controller.js
-const sessionService = require("../services/session.service");
-const logger = require("../utils/logger");
 const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
 const { ok, created } = require("../utils/response"); 
-// ─────────────────────────────────────────────────────────────
+const createSessionController = (sessionService, { logger }) => {
 // GET /api/sessions/:connectRequestId/slots
-// ─────────────────────────────────────────────────────────────
+
 const getSlots = async (req, res) => {
   try {
     const data = await sessionService.getSlots(
@@ -21,9 +19,9 @@ const getSlots = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
-// ─────────────────────────────────────────────────────────────
+
 const setMeetingLink = async (req, res) => {
   try {
     const data = await sessionService.setMeetingLink({  // ← was positional, now object
@@ -40,9 +38,9 @@ const setMeetingLink = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
-// ─────────────────────────────────────────────────────────────
+
 const markSlotComplete = async (req, res) => {
   try {
     const data = await sessionService.markSlotComplete(
@@ -58,9 +56,9 @@ const markSlotComplete = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/sessions/:connectRequestId/add-slot
-// ─────────────────────────────────────────────────────────────
+
 const addSlot = async (req, res) => {
   try {
     const data = await sessionService.addSlot(
@@ -79,9 +77,9 @@ const addSlot = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
-// ─────────────────────────────────────────────────────────────
+
 const cancelSlot = async (req, res) => {
   try {
     const data = await sessionService.cancelSlot({  // ← was positional, now object
@@ -98,9 +96,9 @@ const cancelSlot = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
-// ─────────────────────────────────────────────────────────────
+
 const rescheduleSlot = async (req, res) => {
   try {
     const data = await sessionService.rescheduleSlot({  // ← was positional, now object
@@ -117,9 +115,9 @@ const rescheduleSlot = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/sessions/:connectRequestId/mentor-availability
-// ─────────────────────────────────────────────────────────────
+
 const getMentorAvailability = async (req, res) => {
   try {
     const duration = Number.parseInt(req.query.duration) || 60;
@@ -136,12 +134,6 @@ const getMentorAvailability = async (req, res) => {
   }
 };
 
-module.exports = {
-  getSlots,
-  setMeetingLink,
-  markSlotComplete,
-  addSlot,
-  cancelSlot,
-  rescheduleSlot,
-  getMentorAvailability,
+  return { getSlots, setMeetingLink, markSlotComplete, addSlot, cancelSlot, rescheduleSlot, getMentorAvailability };
 };
+module.exports = createSessionController;

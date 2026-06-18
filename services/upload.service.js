@@ -1,11 +1,7 @@
 
 const { sendDocumentsSubmittedEmail } = require("../utils/emails");
-const repo = require("../repositories/upload.repository");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
-const logger = require("../utils/logger");
-
-// ─────────────────────────────────────────────────────────────
-
+const createUploadService = (repo, { logger }) => {
 const uploadProfilePicture = async ({ file }) => {
     if (!file) {
         return { status: 400, body: { message: "No file uploaded" } };
@@ -100,4 +96,6 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
     };
 };
 
-module.exports = { uploadProfilePicture, uploadVerificationDocuments };
+    return { uploadProfilePicture, uploadVerificationDocuments };
+};
+module.exports = createUploadService;

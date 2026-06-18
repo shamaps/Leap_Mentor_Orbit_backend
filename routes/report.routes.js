@@ -4,12 +4,10 @@ const router  = express.Router();
 
 const { authenticate, requireRole } = require("../middleware/authenticate");
 const { upload }                    = require("../middleware/upload.middleware");
+const { reportController } = require("../config/container");
 const {
-  submitReport,
-  getMyReport,
-  getAllReports,
-  updateReportStatus,
-} = require("../controllers/report.controller");
+  submitReport, getMyReport, getAllReports, updateReportStatus,
+} = reportController;
 const { reportLimiter } = require("../middleware/rateLimiter");
 // ── User routes (mentor / mentee) ─────────────────────────────
 

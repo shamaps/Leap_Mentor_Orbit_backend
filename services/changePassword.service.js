@@ -1,8 +1,6 @@
 // services/changePassword.service.js
 const bcrypt = require("bcryptjs");
-const changePasswordRepo = require("../repositories/changePassword.repository");
-
-const logger = require("../utils/logger");
+const createChangePasswordService = (changePasswordRepo, { logger }) => {
 const changePassword = async (userId, currentPassword, newPassword) => {
     if (!currentPassword || !newPassword) {
         const err = new Error("All fields are required");
@@ -37,4 +35,6 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     return { message: "Password changed successfully" };
 };
 
-module.exports = { changePassword };
+    return { changePassword };
+};
+module.exports = createChangePasswordService;

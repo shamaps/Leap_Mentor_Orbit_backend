@@ -2,7 +2,8 @@
 const express = require("express");
 const router  = express.Router();
 const { authenticate } = require("../middleware/authenticate");
-const { getMessages, getUnreadCount } = require("../controllers/message.controller");
+const { messageController } = require("../config/container");
+const { getMessages, getUnreadCount } = messageController;
 
 // GET /api/messages/:connectRequestId         — paginated history
 router.get("/:connectRequestId",              authenticate, getMessages);

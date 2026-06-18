@@ -1,17 +1,15 @@
 // services/session.service.js
 const mongoose = require("mongoose");
-const sessionRepo = require("../repositories/session.repository");
 const releaseEscrow = require("../utils/releaseEscrow");
 const refundSlot = require("../utils/refundSlot");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
-const logger = require("../utils/logger");
 const {
     sendSlotCancelledEmail,
     sendSlotRescheduledEmail,
     sendAdditionalSlotEmail,
 } = require("../utils/emails");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
-
+const createSessionService = (sessionRepo, { logger }) => {
 // Pure helpers (no I/O — easy to unit-test in isolation)
 const ALLOWED_MEETING_DOMAINS = [
     "meet.google.com",
@@ -693,14 +691,9 @@ const getMentorAvailability = async (connectRequestId, userId, duration = 60) =>
     };
 };
 
-module.exports = {
-    getSlots,
-    setMeetingLink,
-    markSlotComplete,
-    addSlot,
-    cancelSlot,
-    rescheduleSlot,
-    getMentorAvailability,
-    // Exported for unit tests
-    _helpers: { isValidMeetingLink, isParticipant, parseSlotIndex, computeProgress, dayFromDate },
+    return {
+        getSlots, setMeetingLink, markSlotComplete, addSlot, cancelSlot, rescheduleSlot, getMentorAvailability,
+        _helpers: { isValidMeetingLink, isParticipant, parseSlotIndex, computeProgress, dayFromDate },
+    };
 };
+module.exports = createSessionService;

@@ -1,28 +1,23 @@
 // services/leapRequest.service.js
-const leapRequestRepo = require("../repositories/leapRequest.repository");
 const { LEAP_REFILL_THRESHOLD, LEAP_REFILL_AMOUNT } = require("../config/constants");
-
-const logger = require("../utils/logger");
-// ── MENTEE: Check my latest request ──────────────────────────
+const AppError =require("../utils/appError")
+const createLeapRequestService = (leapRequestRepo, { logger }) => {
+// MENTEE: Check my latest request 
 const getMyRequest = async (menteeId) => {
     const request = await leapRequestRepo.findPendingByMentee(menteeId);
 
     if (!request) {
-        const err = new Error("No pending request");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "No pending request");
     }
 
     return request;
 };
 
-// ── MENTEE: Create a new request ─────────────────────────────
+//  MENTEE: Create a new request
 const createRequest = async (menteeId) => {
     const existing = await leapRequestRepo.findPendingByMenteeOne(menteeId);
     if (existing) {
-        const err = new Error("A pending request already exists.");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "A pending request already exists.");
     }
 
     // Fetch current wallet balance to snapshot it
@@ -31,40 +26,35 @@ const createRequest = async (menteeId) => {
 
     // Only allow if balance is below threshold
     if (currentBalance >= LEAP_REFILL_THRESHOLD) {
-        const err = new Error("You still have Leap Points remaining.");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "You still have Leap Points remaining.");
     }
+
 
     const request = await leapRequestRepo.createRequest({ mentee: menteeId, currentBalance });
 
     return { message: "Request submitted successfully.", request };
 };
 
-// ── ADMIN: Get all requests ───────────────────────────────────
+// ADMIN: Get all requests 
 const getAllRequests = async () => {
     const requests = await leapRequestRepo.findAllRequests();
     return { requests };
 };
 
-// ── ADMIN: Get pending count (for sidebar badge) ──────────────
+// ADMIN: Get pending count (for sidebar badge)
 const getPendingCount = async () => {
     const count = await leapRequestRepo.countPendingRequests();
     return { count };
 };
 
-// ── ADMIN: Approve — add 500 LP ──────────────────────────────
+// ADMIN: Approve — add 500 LP 
 const approveRequest = async (id, adminId) => {
     const request = await leapRequestRepo.findRequestById(id);
     if (!request) {
-        const err = new Error("Request not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Request not found");
     }
     if (request.status !== "pending") {
-        const err = new Error("Request already processed");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Request already processed");
     }
 
     // Add refill amount LP to the mentee's wallet
@@ -82,18 +72,14 @@ const approveRequest = async (id, adminId) => {
     };
 };
 
-// ── ADMIN: Reject ─────────────────────────────────────────────
+//  ADMIN: Reject
 const rejectRequest = async (id, adminId) => {
     const request = await leapRequestRepo.findRequestById(id);
     if (!request) {
-        const err = new Error("Request not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Request not found");
     }
     if (request.status !== "pending") {
-        const err = new Error("Request already processed");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Request already processed");
     }
 
     request.status = "rejected";
@@ -104,11 +90,6 @@ const rejectRequest = async (id, adminId) => {
     return { message: "Request rejected.", request };
 };
 
-module.exports = {
-    getMyRequest,
-    createRequest,
-    getAllRequests,
-    getPendingCount,
-    approveRequest,
-    rejectRequest,
+    return { getMyRequest, createRequest, getAllRequests, getPendingCount, approveRequest, rejectRequest };
 };
+module.exports = createLeapRequestService;

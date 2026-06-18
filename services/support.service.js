@@ -1,7 +1,5 @@
 const { sendSupportResolvedEmail } = require("../utils/emails");
-const repo = require("../repositories/support.repository");
-
-const logger = require("../utils/logger");
+const createSupportService = (repo, { logger }) => {
 const createMessage = async ({ email, subject, message, role }) => {
     if (!email || !subject || !message) {
         return { status: 400, body: { error: "All fields are required" } };
@@ -49,8 +47,6 @@ const resolveMessage = async (id) => {
     return { status: 200, body: msg };
 };
 
-module.exports = {
-    createMessage,
-    getMessages,
-    resolveMessage,
+    return { createMessage, getMessages, resolveMessage };
 };
+module.exports = createSupportService;

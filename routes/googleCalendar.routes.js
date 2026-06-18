@@ -1,13 +1,10 @@
 // routes/googleCalendar.routes.js
 const express = require("express");
 const router = express.Router();
+const { googleCalendarController } = require("../config/container");
 const {
-  getAuthUrl,
-  handleCallback,
-  disconnect,
-  getBusySlots,
-  getEvents,
-} = require("../controllers/googleCalendar.controller");
+  getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents,
+} = googleCalendarController;
 const { authenticate: protect } = require("../middleware/authenticate");
 
 // Get OAuth URL to open in popup

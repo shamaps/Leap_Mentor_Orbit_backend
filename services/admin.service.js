@@ -1,24 +1,23 @@
 // backend/services/admin.service.js
 const jwt = require("jsonwebtoken");
-const repo = require("../repositories/admin.repository");
 const AppError = require("../utils/appError");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
-const logger = require("../utils/logger");
-// ── Token helper ──────────────────────────────────────────────
+const createAdminService = (repo, { logger }) => {
+//Token helper 
 const signToken = (id) =>
     jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_ADMIN_EXPIRES_IN || "7d",
     });
 
-// ── Set admin token as httpOnly cookie ────────────────────────
+// Set admin token as httpOnly cookie 
 // Same pattern as regular user auth — token never goes in response body
 const setAdminCookie = (res, token) => {
     res.cookie("adminAccessToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,   // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,   
         path: "/",
     });
 };
@@ -242,20 +241,10 @@ const fetchEngagements = async ({ status, search, dateFrom, dateTo, page = 1, li
     };
 };
 
-module.exports = {
-    // auth
-    loginAdmin,
-    // stats
-    fetchStats,
-    fetchUserGrowth,
-    fetchMentorIndustryStats,
-    // users
-    fetchUsers,
-    fetchUserDetail,
-    removeUser,
-    blockUser,
-    unblockUser,
-    // engagements
-    fetchEngagementStats,
-    fetchEngagements,
+    return {
+        loginAdmin, fetchStats, fetchUserGrowth, fetchMentorIndustryStats,
+        fetchUsers, fetchUserDetail, removeUser, blockUser, unblockUser,
+        fetchEngagementStats, fetchEngagements,
+    };
 };
+module.exports = createAdminService;

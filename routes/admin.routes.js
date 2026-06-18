@@ -3,28 +3,18 @@ const express = require("express");
 const router = express.Router();
 
 const { adminAuthenticate } = require("../middleware/adminAuth");
-const {
-  adminLogin,
-  adminLogout,   
-  adminMe,
-  getStats,
-  getUsers,
-  getUserDetail,
-  deleteUser,
-  blockUser,
-  unblockUser,
-  getEngagementStats,
-  getEngagements,
-  getUserGrowth,
-  getMentorIndustryStats,
-} = require("../controllers/admin.controller");
+const { adminController, leapRequestController } = require("../config/container");
 
 const {
-  getAllRequests,
-  getPendingCount,
-  approveRequest,
-  rejectRequest,
-} = require("../controllers/leapRequest.controller");
+  adminLogin, adminLogout, adminMe, getStats, getUsers, getUserDetail,
+  deleteUser, blockUser, unblockUser, getEngagementStats, getEngagements,
+  getUserGrowth, getMentorIndustryStats,
+} = adminController;
+
+const {
+  getAllRequests, getPendingCount, approveRequest, rejectRequest,
+} = leapRequestController;
+
 const { adminLoginLimiter } = require("../middleware/rateLimiter");
 // Auth (public)
 router.post("/auth/login", adminLoginLimiter, adminLogin);

@@ -1,9 +1,6 @@
-const repo = require("../repositories/slotLock.repository");
-
-const logger = require("../utils/logger");
 const LOCK_DURATION_MINUTES = 10;
-
-// ── Helpers ───────────────────────────────────────────────────
+const createSlotLockService = (repo, { logger }) => {
+// Helpers
 const timeToMinutes = (time) => {
     const [h, m] = time.split(":").map(Number);
     return h * 60 + m;
@@ -11,8 +8,6 @@ const timeToMinutes = (time) => {
 
 const hasOverlap = (aStart, aEnd, bStart, bEnd) =>
     aStart < bEnd && aEnd > bStart;
-
-// ─────────────────────────────────────────────────────────────
 
 const lockSlot = async ({ mentorId, date, startTime, endTime, menteeId }) => {
     if (!mentorId || !date || !startTime || !endTime) {
@@ -93,9 +88,6 @@ const getActiveLocks = async ({ mentorId, userId }) => {
     return { status: 200, body: { locks } };
 };
 
-module.exports = {
-    lockSlot,
-    unlockSlot,
-    unlockAllByMentee,
-    getActiveLocks,
+    return { lockSlot, unlockSlot, unlockAllByMentee, getActiveLocks };
 };
+module.exports = createSlotLockService;

@@ -1,7 +1,7 @@
-const supportService = require("../services/support.service");
 const { ok, fail } = require("../utils/response");
-const logger = require("../utils/logger");
-exports.createMessage = async (req, res) => {
+const createSupportController = (supportService, { logger }) => {
+
+ const createMessage = async (req, res) => {
   try {
     const { email, subject, message, role } = req.body;
     const {  body } = await supportService.createMessage({ email, subject, message, role });
@@ -12,7 +12,7 @@ exports.createMessage = async (req, res) => {
   }
 };
 
-exports.getMessages = async (req, res) => {
+const getMessages = async (req, res) => {
   try {
     const {  body } = await supportService.getMessages();
     return ok(res, body);
@@ -22,7 +22,7 @@ exports.getMessages = async (req, res) => {
   }
 };
 
-exports.resolveMessage = async (req, res) => {
+const resolveMessage = async (req, res) => {
   try {
     const {  body } = await supportService.resolveMessage(req.params.id);
     return ok(res, body);
@@ -31,3 +31,7 @@ exports.resolveMessage = async (req, res) => {
     return fail(res, "Server error", 500);
   }
 };
+
+  return { createMessage, getMessages, resolveMessage };
+};
+module.exports = createSupportController;

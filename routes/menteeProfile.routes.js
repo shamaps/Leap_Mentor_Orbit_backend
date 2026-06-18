@@ -1,12 +1,10 @@
 // routes/menteeProfile.routes.js
 const express = require("express");
 const { authenticate, requireRole } = require("../middleware/authenticate");
+const { menteeProfileController } = require("../config/container");
 const {
-  createProfile,
-  getMyProfile,
-  updateProfile,
-  getPublicProfile,
-} = require("../controllers/menteeProfile.controller");
+  createProfile, getMyProfile, updateProfile, getPublicProfile,
+} = menteeProfileController;
 
 const router = express.Router();
 

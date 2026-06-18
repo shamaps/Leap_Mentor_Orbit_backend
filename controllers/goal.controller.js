@@ -1,11 +1,10 @@
 // controllers/goal.controller.js
-const goalService = require("../services/goal.service");
-const logger = require("../utils/logger");
 const { handleError } = require("../utils/appError");
 const { ok, created, noContent } = require("../utils/response");
-// ─────────────────────────────────────────────────────────────
+const createGoalController = (goalService, { logger }) => {
+
 // POST /api/goals
-// ─────────────────────────────────────────────────────────────
+
 const createGoal = async (req, res) => {
   try {
     const data = await goalService.createGoal(req.body, req.user._id);
@@ -17,9 +16,9 @@ const createGoal = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/goals/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getGoal = async (req, res) => {
   try {
     const data = await goalService.getGoal(req.params.connectRequestId, req.user._id);
@@ -31,9 +30,9 @@ const getGoal = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/goals/:goalId
-// ─────────────────────────────────────────────────────────────
+
 const updateGoal = async (req, res) => {
   try {
     const data = await goalService.updateGoal(req.params.goalId, req.body, req.user._id);
@@ -45,9 +44,9 @@ const updateGoal = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/goals/:goalId/milestones
-// ─────────────────────────────────────────────────────────────
+
 const addMilestone = async (req, res) => {
   try {
     const data = await goalService.addMilestone(req.params.goalId, req.body, req.user._id);
@@ -59,9 +58,9 @@ const addMilestone = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/milestones/:milestoneId
-// ─────────────────────────────────────────────────────────────
+
 const updateMilestone = async (req, res) => {
   try {
     const data = await goalService.updateMilestone(req.params.milestoneId, req.body, req.user._id);
@@ -73,9 +72,9 @@ const updateMilestone = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/milestones/:milestoneId
-// ─────────────────────────────────────────────────────────────
+
 const deleteMilestone = async (req, res) => {
   try {
     await goalService.deleteMilestone(req.params.milestoneId, req.user._id);
@@ -87,11 +86,6 @@ const deleteMilestone = async (req, res) => {
   }
 };
 
-module.exports = {
-  createGoal,
-  getGoal,
-  updateGoal,
-  addMilestone,
-  updateMilestone,
-  deleteMilestone,
+  return { createGoal, getGoal, updateGoal, addMilestone, updateMilestone, deleteMilestone };
 };
+module.exports = createGoalController;

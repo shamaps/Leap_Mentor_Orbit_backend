@@ -7,12 +7,10 @@
 // GET    /api/mentor-profile/:id    ← public profile (no auth)
 const express = require("express");
 const { authenticate, requireRole } = require("../middleware/authenticate");
+const { mentorProfileController } = require("../config/container");
 const {
-  createProfile,
-  getMyProfile,
-  updateProfile,
-  getPublicProfile,
-} = require("../controllers/mentorProfile.controller");
+  createProfile, getMyProfile, updateProfile, getPublicProfile,
+} = mentorProfileController;
 
 const router = express.Router();
 

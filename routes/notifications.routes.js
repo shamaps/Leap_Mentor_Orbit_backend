@@ -2,13 +2,10 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authenticate");
+const { notificationController } = require("../config/container");
 const {
-  getNotifications,
-  markAllRead,
-  markOneRead,
-  deleteNotification,
-  clearAll,
-} = require("../controllers/notification.controller");
+  getNotifications, markAllRead, markOneRead, deleteNotification, clearAll,
+} = notificationController;
 
 router.get("/",                    authenticate, getNotifications);
 router.patch("/mark-all-read",     authenticate, markAllRead);

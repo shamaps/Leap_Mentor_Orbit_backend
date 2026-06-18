@@ -1,10 +1,8 @@
 // services/adminSettings.service.js
-const adminSettingsRepo = require("../repositories/adminSettings.repository");
+const createAdminSettingsService = (adminSettingsRepo, { logger }) => {
 
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
 // GET /api/admin/settings/overview
-// ─────────────────────────────────────────────────────────────
+
 
 const getOverview = async () => {
     const [totalUsers, activeSessions] = await Promise.all([
@@ -14,9 +12,9 @@ const getOverview = async () => {
     return { totalUsers, activeSessions };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PUT /api/admin/settings/change-password
-// ─────────────────────────────────────────────────────────────
+
 
 const changePassword = async (adminId, currentPassword, newPassword) => {
     if (!currentPassword || !newPassword) {
@@ -57,9 +55,9 @@ const changePassword = async (adminId, currentPassword, newPassword) => {
     return { message: "Password changed successfully." };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/admin/settings/add-admin
-// ─────────────────────────────────────────────────────────────
+
 
 const addAdmin = async (name, email) => {
     if (!name?.trim() || !email?.trim()) {
@@ -99,9 +97,9 @@ const addAdmin = async (name, email) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/admin/settings/commission
-// ─────────────────────────────────────────────────────────────
+
 
 const getCommission = async (adminId) => {
     // commissionRate lives directly on AdminUser model
@@ -109,9 +107,9 @@ const getCommission = async (adminId) => {
     return { commissionRate: admin?.commissionRate ?? 20 };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PUT /api/admin/settings/commission
-// ─────────────────────────────────────────────────────────────
+
 
 const updateCommission = async (adminId, commissionRate) => {
     const rate = Number.parseFloat(commissionRate);
@@ -130,10 +128,6 @@ const updateCommission = async (adminId, commissionRate) => {
     };
 };
 
-module.exports = {
-    getOverview,
-    changePassword,
-    addAdmin,
-    getCommission,
-    updateCommission,
+    return { getOverview, changePassword, addAdmin, getCommission, updateCommission };
 };
+module.exports = createAdminSettingsService;

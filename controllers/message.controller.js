@@ -1,9 +1,7 @@
 // controllers/message.controller.js
-const messageService = require("../services/message.service");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
 const { handleError } = require("../utils/appError");
-
+const createMessageController = (messageService, { logger }) => {
 // GET /api/messages/:connectRequestId
 
 const getMessages = async (req, res) => {
@@ -38,4 +36,6 @@ const getUnreadCount = async (req, res) => {
   }
 };
 
-module.exports = { getMessages, getUnreadCount };
+  return { getMessages, getUnreadCount };
+};
+module.exports = createMessageController;

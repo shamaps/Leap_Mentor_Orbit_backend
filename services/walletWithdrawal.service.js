@@ -1,7 +1,6 @@
 // services/walletWithdrawal.service.js
-const earningsRepo = require("../repositories/earnings.repository");
 const AppError = require("../utils/appError");
-
+const createWalletWithdrawalService = (earningsRepo, { logger }) => {
 /**
  * Withdraws the mentor's full available wallet balance.
  * @param {string} mentorId
@@ -37,4 +36,6 @@ const withdrawEarnings = async (mentorId) => {
     };
 };
 
-module.exports = { withdrawEarnings };
+    return { withdrawEarnings };
+};
+module.exports = createWalletWithdrawalService;

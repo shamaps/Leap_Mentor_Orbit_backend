@@ -1,8 +1,7 @@
 // backend/services/feedback.service.js
-const repo = require("../repositories/feedback.repository");
 const AppError = require("../utils/appError");
 const { toFeedbackDTO } = require("../utils/mappers/feedback.mapper");
-const logger = require("../utils/logger");
+const createFeedbackService = (repo, { logger }) => {
 
 // Pure helpers
 
@@ -155,4 +154,6 @@ const getFeedback = async ({ connectRequestId, userId }) => {
     };
 };
 
-module.exports = { submitFeedback, getFeedback };
+    return { submitFeedback, getFeedback };
+};
+module.exports = createFeedbackService;

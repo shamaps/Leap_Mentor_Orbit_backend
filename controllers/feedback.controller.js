@@ -1,9 +1,7 @@
 // backend/controllers/feedback.controller.js
 const { handleError } = require("../utils/appError");
-const feedbackService = require("../services/feedback.service");
-const logger = require("../utils/logger");
 const { ok, created } = require("../utils/response");
-
+const createFeedbackController = (feedbackService, { logger }) => {
 // POST /api/feedback
 const submitFeedback = async (req, res) => {
   try {
@@ -35,4 +33,6 @@ const getFeedback = async (req, res) => {
   }
 };
 
-module.exports = { submitFeedback, getFeedback };
+  return { submitFeedback, getFeedback };
+};
+module.exports = createFeedbackController;

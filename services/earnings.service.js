@@ -1,8 +1,6 @@
 // services/earnings.service.js
-const earningsRepo = require("../repositories/earnings.repository");
 const { buildMonthlyBuckets, buildWeeklyBuckets } = require("../utils/earningsChart");
-const logger = require("../utils/logger");
-
+const createEarningsService = (earningsRepo, { logger }) => {
 
 /**
  * Returns earnings summary stat cards for a mentor.
@@ -107,4 +105,6 @@ const getPayoutHistory = async (mentorId, { page, limit, search }) => {
     };
 };
 
-module.exports = { getEarningsSummary, getEarningsChart, getPayoutHistory };
+    return { getEarningsSummary, getEarningsChart, getPayoutHistory };
+};
+module.exports = createEarningsService;

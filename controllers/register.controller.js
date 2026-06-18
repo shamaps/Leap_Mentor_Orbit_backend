@@ -1,8 +1,7 @@
 // controllers/register.controller.js
-const registerService = require("../services/register.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { created } = require("../utils/response");
+const createRegisterController = (registerService, { logger }) => {
 const register = async (req, res) => {
   try {
     // res is passed through because issueTokens sets a cookie on it
@@ -14,4 +13,6 @@ const register = async (req, res) => {
   }
 };
 
-module.exports = { register };
+  return { register };
+};
+module.exports = createRegisterController;

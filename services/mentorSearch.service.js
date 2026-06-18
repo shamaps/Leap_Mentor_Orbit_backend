@@ -1,11 +1,10 @@
 // backend/services/mentorSearch.service.js
-const repo = require("../repositories/mentorSearch.repository");
 const { toMentorProfileSummary } = require("../utils/mappers/mentorProfile.mapper");
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
-// Pure helpers — extracted to reduce cognitive complexity
-// ─────────────────────────────────────────────────────────────
 
+
+// Pure helpers — extracted to reduce cognitive complexity
+
+const createMentorSearchService = (repo, { logger }) => {
 const emptyPage = (pageNum) => ({
     mentors: [],
     pagination: { totalCount: 0, totalPages: 0, currentPage: pageNum, hasMore: false },
@@ -137,9 +136,9 @@ const mergeNameMatches = async ({results, nameMatchedProfileUserIds, skill, expM
     return results;
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PLAIN LIST — no query, no filters
-// ─────────────────────────────────────────────────────────────
+
 
 const plainList = async (pageNum, limitNum, skip) => {
     const [totalCount, mentors] = await Promise.all([
@@ -153,11 +152,11 @@ const plainList = async (pageNum, limitNum, skip) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // FALLBACK SEARCH — regex, used when Atlas is unavailable
 // Cognitive complexity reduced from 16 → under 15 by extracting
 // buildFallbackFilter() and fixing the empty catch.
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Builds the Mongoose filter for the regex fallback path.
@@ -215,12 +214,12 @@ const fallbackSearch = async (params) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // MAIN SEARCH
 // Cognitive complexity reduced from 34 → under 15 by extracting:
 //   isPriceRangeInvalid / buildAtlasCompound / buildExpMatch /
 //   buildAtlasPipeline / mergeNameMatches / plainList
-// ─────────────────────────────────────────────────────────────
+
 
 const searchMentors = async (params) => {
     const {
@@ -274,9 +273,9 @@ const searchMentors = async (params) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // AUTOCOMPLETE
-// ─────────────────────────────────────────────────────────────
+
 
 const autocompleteMentors = async ({ q }) => {
     if (!q?.trim()) return [];
@@ -305,8 +304,6 @@ const autocompleteMentors = async ({ q }) => {
     return repo.runAtlasPipeline(pipeline);
 };
 
-module.exports = {
-    searchMentors,
-    fallbackSearch,
-    autocompleteMentors,
+    return { searchMentors, fallbackSearch, autocompleteMentors };
 };
+module.exports = createMentorSearchService;

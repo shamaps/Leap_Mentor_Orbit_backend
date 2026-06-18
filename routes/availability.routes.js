@@ -1,14 +1,11 @@
 // routes/availability.routes.js
 const express = require("express");
 const router = express.Router();
+const { availabilityController } = require("../config/container");
 const {
-  getMyAvailability,
-  createAvailability,
-  updateAvailability,
-  getMentorAvailability,
-  deleteAvailability,
-  getAvailableSlots,
-} = require("../controllers/availability.controller");
+  getMyAvailability, createAvailability, updateAvailability,
+  getMentorAvailability, deleteAvailability, getAvailableSlots,
+} = availabilityController;
 
 const { authenticate } = require("../middleware/authenticate");
 

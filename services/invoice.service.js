@@ -1,8 +1,7 @@
 // services/invoice.service.js
-const repo = require("../repositories/invoice.repository");
 const generateInvoice = require("../utils/generateInvoice");
 const AppError = require("../utils/appError");
-const logger = require("../utils/logger");
+const createInvoiceService = (repo, { logger }) => {
 /**
  * Generate and return a PDF invoice buffer for a paid session.
  * Only the mentee who paid can download the invoice.
@@ -54,4 +53,6 @@ const downloadInvoice = async (connectRequestId, userId) => {
     return { pdfBuffer, invoiceNumber };
 };
 
-module.exports = { downloadInvoice };
+    return { downloadInvoice };
+};
+module.exports = createInvoiceService;

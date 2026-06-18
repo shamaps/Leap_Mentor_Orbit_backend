@@ -1,11 +1,9 @@
 // controllers/admin/adminSettings.controller.js
-const adminSettingsService = require("../../services/adminSettings.service");
-const logger = require("../../utils/logger");
 const { ok, created } = require("../../utils/response");
 const { handleError } = require("../../utils/appError");
-// ─────────────────────────────────────────────────────────────
+const createAdminSettingsController = (adminSettingsService, { logger }) => {
 // GET /api/admin/settings/overview
-// ─────────────────────────────────────────────────────────────
+
 const getOverview = async (req, res) => {
   try {
     const data = await adminSettingsService.getOverview();
@@ -17,9 +15,9 @@ const getOverview = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Patch /api/admin/settings/Password
-// ─────────────────────────────────────────────────────────────
+
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -37,9 +35,9 @@ const changePassword = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/admin/settings/add-admin
-// ─────────────────────────────────────────────────────────────
+
 const addAdmin = async (req, res) => {
   try {
     const { name, email } = req.body;
@@ -52,9 +50,9 @@ const addAdmin = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/admin/settings/commission
-// ─────────────────────────────────────────────────────────────
+
 const getCommission = async (req, res) => {
   try {
     const data = await adminSettingsService.getCommission(req.admin._id);
@@ -66,9 +64,9 @@ const getCommission = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Patch /api/admin/settings/commission
-// ─────────────────────────────────────────────────────────────
+
 const updateCommission = async (req, res) => {
   try {
     const data = await adminSettingsService.updateCommission(
@@ -83,10 +81,6 @@ const updateCommission = async (req, res) => {
   }
 };
 
-module.exports = {
-  getOverview,
-  changePassword,
-  addAdmin,
-  getCommission,
-  updateCommission,
+  return { getOverview, changePassword, addAdmin, getCommission, updateCommission };
 };
+module.exports = createAdminSettingsController;

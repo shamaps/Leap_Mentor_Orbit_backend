@@ -1,12 +1,10 @@
 // services/privateNote.service.js
-const privateNoteRepo = require("../repositories/privateNote.repository");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
-const logger = require("../utils/logger");
 const { validateSessionAccess } = require("../utils/sessionAccess");
+const createPrivateNoteService = (privateNoteRepo, { logger }) => {
 
-// ─────────────────────────────────────────────────────────────
 // POST /api/private-notes
-// ─────────────────────────────────────────────────────────────
+
 const createNote = async (userId, body) => {
     const { connectRequestId, title, content } = body;
 
@@ -33,9 +31,9 @@ const createNote = async (userId, body) => {
     return { note };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/private-notes/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getNotes = async (connectRequestId, userId) => {
     const access = await validateSessionAccess(privateNoteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
@@ -48,9 +46,9 @@ const getNotes = async (connectRequestId, userId) => {
     return { notes };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/private-notes/:id
-// ─────────────────────────────────────────────────────────────
+
 const updateNote = async (noteId, userId, body) => {
     const note = await privateNoteRepo.findNoteById(noteId);
 
@@ -72,9 +70,9 @@ const updateNote = async (noteId, userId, body) => {
     return { note };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/private-notes/:id
-// ─────────────────────────────────────────────────────────────
+
 const deleteNote = async (noteId, userId) => {
     const note = await privateNoteRepo.findNoteById(noteId);
 
@@ -93,4 +91,6 @@ const deleteNote = async (noteId, userId) => {
     return { message: "Note deleted" };
 };
 
-module.exports = { createNote, getNotes, updateNote, deleteNote };
+    return { createNote, getNotes, updateNote, deleteNote };
+};
+module.exports = createPrivateNoteService;

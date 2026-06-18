@@ -1,11 +1,9 @@
 // routes/adminVerification.routes.js
 const express = require("express");
+const { adminVerificationController } = require("../config/container");
 const {
-  getAllMentorVerifications,
-  getMentorVerificationById,
-  verifyMentor,
-  revokeMentorVerification,
-} = require("../controllers/adminVerification.controller.js");
+  getAllMentorVerifications, getMentorVerificationById, verifyMentor, revokeMentorVerification,
+} = adminVerificationController;
 const { adminAuthenticate } = require("../middleware/adminAuth.js");
 
 const router = express.Router();

@@ -1,7 +1,8 @@
 const express = require("express");
 const router  = express.Router();
 const { authenticate } = require("../middleware/authenticate"); // ✅ fixed
-const { subscribe, unsubscribe, getVapidPublicKey } = require("../controllers/pushSubscription.controller");
+const { pushSubscriptionController } = require("../config/container");
+const { subscribe, unsubscribe, getVapidPublicKey } = pushSubscriptionController;
 
 router.get("/vapid-public-key", getVapidPublicKey);
 router.post("/subscribe",       authenticate, subscribe);

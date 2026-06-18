@@ -3,12 +3,10 @@ const {
     sendReportSubmittedEmail,
     sendReportResolvedEmail,
 } = require("../utils/emails");
-const repo = require("../repositories/report.repository");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 
-const logger = require("../utils/logger");
 const VALID_STATUSES = new Set(["open", "under_review", "resolved", "dismissed"]);
-
+const createReportService = (repo, { logger }) => {
 const submitReport = async ({ connectRequestId, complaintType, description, reportedById, file, user }) => {
     if (!connectRequestId || !complaintType || !description) {
         return { status: 400, body: { message: "connectRequestId, complaintType, and description are required" } };
@@ -136,9 +134,6 @@ const updateReportStatus = async ({ reportId, status, adminNote, userId }) => {
     return { status: 200, body: { success: true, report } };
 };
 
-module.exports = {
-    submitReport,
-    getMyReport,
-    getAllReports,
-    updateReportStatus,
+    return { submitReport, getMyReport, getAllReports, updateReportStatus };
 };
+module.exports = createReportService;

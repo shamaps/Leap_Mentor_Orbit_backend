@@ -2,16 +2,12 @@ const express          = require("express");
 const router           = express.Router();
 const { authenticate } = require("../middleware/authenticate");
 
-const controllers = require("../controllers/goal.controller"); // ✅ assign first
-
+const { goalController } = require("../config/container");
 const {
-  createGoal,
-  getGoal,
-  updateGoal,
-  addMilestone,
-  updateMilestone,
-  deleteMilestone,
-} = controllers;
+  createGoal, getGoal, updateGoal, addMilestone, updateMilestone, deleteMilestone,
+} = goalController;
+
+
 
 // Goal routes
 router.post(  "/",                        authenticate, createGoal);

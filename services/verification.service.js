@@ -1,12 +1,9 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
-const repo = require("../repositories/verification.repository");
 const transporter = require("../utils/mailer");
-const logger = require("../utils/logger");
 const { makeOtp } = require("../utils/auth.utils");
-
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
-
+const createVerificationService = (repo, { logger }) => {
 /**
  * Generates OTP + magic link, saves BOTH to DB, sends ONE email with both options.
  */
@@ -64,7 +61,6 @@ ${otpPlain}
     });
 };
 
-// ─────────────────────────────────────────────────────────────
 
 const sendVerification = async ({ email }) => {
     if (!email) return { status: 400, body: { message: "email is required" } };
@@ -132,9 +128,6 @@ const verifyLink = async ({ token, email }) => {
     return { status: 200, body: { message: "Email verified successfully", role: user.role } };
 };
 
-module.exports = {
-    sendVerification,
-    resendVerification,
-    verifyOtp,
-    verifyLink,
+    return { sendVerification, resendVerification, verifyOtp, verifyLink };
 };
+module.exports = createVerificationService;

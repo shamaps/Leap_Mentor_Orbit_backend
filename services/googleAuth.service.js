@@ -1,14 +1,12 @@
 // services/googleAuth.service.js
 const jwt = require("jsonwebtoken");
-const repo = require("../repositories/googleAuth.repository");
 const { googleClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet")
-const logger = require("../utils/logger");
 const AppError = require("../utils/appError");
 const { withTimeout } = require("../utils/withTimeout");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 
-
+const createGoogleAuthService = (repo, { logger }) => {
 /**
  * Verify the Google credential and return the token payload.
  * Throws typed errors on failure.
@@ -92,9 +90,9 @@ const ensureOAuthAccount = async (userId, googleSub) => {
     }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // MAIN — googleAuth
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Handle Google OAuth login/registration.
@@ -142,4 +140,6 @@ const googleAuth = async ({ credential, roles, termsAccepted }) => {
     return { user: toUserDTO(user), isNewUser };
 };
 
-module.exports = { googleAuth };
+    return { googleAuth };
+};
+module.exports = createGoogleAuthService;

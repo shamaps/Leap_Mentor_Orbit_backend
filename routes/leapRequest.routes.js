@@ -3,14 +3,10 @@ const router  = express.Router();
 
 const { authenticate }      = require("../middleware/authenticate");
 const { adminAuthenticate } = require("../middleware/adminAuth");
+const { leapRequestController } = require("../config/container");
 const {
-  getMyRequest,
-  createRequest,
-  getAllRequests,
-  approveRequest,
-  rejectRequest,
-} = require("../controllers/leapRequest.controller");
-
+  getMyRequest, createRequest, getAllRequests, getPendingCount, approveRequest, rejectRequest,
+} = leapRequestController;
 // Mentee routes
 router.get ("/my-request", authenticate,      getMyRequest);
 router.post("/",           authenticate,      createRequest);

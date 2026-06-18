@@ -1,8 +1,7 @@
 // controllers/mentorProfile.controller.js
-const mentorProfileService = require("../services/mentorProfile.service");
-const logger = require("../utils/logger");
 const { ok, created, fail } = require("../utils/response");
 const { handleError } = require("../utils/appError");
+const createMentorProfileController = (mentorProfileService, { logger }) => {
 /**
  * POST /api/mentor-profile
  */
@@ -63,9 +62,6 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
-module.exports = {
-  createProfile,
-  getMyProfile,
-  updateProfile,
-  getPublicProfile,
+  return { createProfile, getMyProfile, updateProfile, getPublicProfile };
 };
+module.exports = createMentorProfileController;

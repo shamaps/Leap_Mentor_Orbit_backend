@@ -1,11 +1,9 @@
-const slotLockService = require("../services/slotLock.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
-// ─────────────────────────────────────────────────────────────
+const createSlotLockController = (slotLockService, { logger }) => {
 // POST /api/slot-locks/lock
 // Called when mentee selects a slot in the UI
-// ─────────────────────────────────────────────────────────────
+
 const lockSlot = async (req, res) => {
   try {
     const { mentorId, date, startTime, endTime } = req.body;
@@ -22,10 +20,10 @@ const lockSlot = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/slot-locks/lock
 // Called when mentee deselects a slot
-// ─────────────────────────────────────────────────────────────
+
 const unlockSlot = async (req, res) => {
   try {
     const { mentorId, date, startTime, endTime } = req.body;
@@ -42,10 +40,10 @@ const unlockSlot = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/slot-locks/locks
 // Called when mentee closes modal or cancels
-// ─────────────────────────────────────────────────────────────
+
 const unlockAllByMentee = async (req, res) => {
   try {
     const { mentorId } = req.body;
@@ -59,10 +57,10 @@ const unlockAllByMentee = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/slot-locks/:mentorId
 // Returns active locks for a mentor (excluding requester's own)
-// ─────────────────────────────────────────────────────────────
+
 const getActiveLocks = async (req, res) => {
   try {
     const { body } = await slotLockService.getActiveLocks({
@@ -75,9 +73,6 @@ const getActiveLocks = async (req, res) => {
   }
 };
 
-module.exports = {
-  lockSlot,
-  unlockSlot,
-  unlockAllByMentee,
-  getActiveLocks,
+  return { lockSlot, unlockSlot, unlockAllByMentee, getActiveLocks };
 };
+module.exports = createSlotLockController;

@@ -1,8 +1,7 @@
 // services/availability.service.js
-const availabilityRepository = require("../repositories/availability.repository");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
-const logger = require("../utils/logger");
+const createAvailabilityService = (availabilityRepository, { logger }) => {
 const getMyAvailability = async (mentorId) => {
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
 
@@ -137,11 +136,6 @@ const getAvailableSlots = async (mentorId, duration, userId) => {
   };
 };
 
-module.exports = {
-  getMyAvailability,
-  createAvailability,
-  updateAvailability,
-  getMentorAvailability,
-  deleteAvailability,
-  getAvailableSlots,
+  return { getMyAvailability, createAvailability, updateAvailability, getMentorAvailability, deleteAvailability, getAvailableSlots };
 };
+module.exports = createAvailabilityService;

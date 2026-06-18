@@ -3,7 +3,10 @@ const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authenticate");
 const { upload, uploadImage } = require("../middleware/upload.middleware");
-const { uploadProfilePicture, uploadVerificationDocuments } = require("../controllers/upload.controller");
+const { uploadController } = require("../config/container");
+const {
+  uploadProfilePicture, uploadVerificationDocuments,
+} = uploadController;
 const { uploadLimiter } = require("../middleware/rateLimiter");
 
 // POST /api/upload/profile-picture

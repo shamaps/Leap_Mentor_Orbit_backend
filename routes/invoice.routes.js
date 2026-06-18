@@ -1,6 +1,7 @@
 // backend/routes/invoice.routes.js
 const express = require("express");
-const { downloadInvoice } = require("../controllers/invoice.controller");
+const { invoiceController } = require("../config/container");
+const { downloadInvoice } = invoiceController;
 const {authenticate} = require("../middleware/authenticate"); // adjust path if different
 
 const router = express.Router();

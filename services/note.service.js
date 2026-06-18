@@ -1,16 +1,13 @@
 // services/note.service.js
 
 const { getFileType } = require("../middleware/upload.middleware");
-const noteRepo = require("../repositories/note.repository");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
-
-const logger = require("../utils/logger");
 const { validateSessionAccess } = require("../utils/sessionAccess");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
+const createNoteService = (noteRepo, { logger }) => {
 
-// ─────────────────────────────────────────────────────────────
 // POST /api/notes/upload
-// ─────────────────────────────────────────────────────────────
+
 const uploadNote = async (userId, body, file) => {
     const { connectRequestId, title } = body;
     const isPrivate = body.isPrivate === "true" || body.isPrivate === true;
@@ -64,9 +61,9 @@ const uploadNote = async (userId, body, file) => {
     return { message: "Note uploaded successfully", note: populated };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/notes/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getNotes = async (connectRequestId, userId) => {
     const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
@@ -79,9 +76,9 @@ const getNotes = async (connectRequestId, userId) => {
     return { notes };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/notes/:connectRequestId/private
-// ─────────────────────────────────────────────────────────────
+
 const getPrivateNotes = async (connectRequestId, userId) => {
     const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
@@ -94,9 +91,9 @@ const getPrivateNotes = async (connectRequestId, userId) => {
     return { notes };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/notes/:id
-// ─────────────────────────────────────────────────────────────
+
 const deleteNote = async (noteId, userId) => {
     const note = await noteRepo.findNoteById(noteId);
 
@@ -122,5 +119,6 @@ const deleteNote = async (noteId, userId) => {
 
     return { message: "Note deleted successfully" };
 };
-
-module.exports = { uploadNote, getNotes, getPrivateNotes, deleteNote };
+    return { uploadNote, getNotes, getPrivateNotes, deleteNote };
+};
+module.exports = createNoteService;

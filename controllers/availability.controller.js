@@ -1,8 +1,7 @@
 // controllers/availability.controller.js
-const availabilityService = require("../services/availability.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok, created, noContent } = require("../utils/response");
+const createAvailabilityController = (availabilityService, { logger }) => {
 // GET /api/availability/me
 const getMyAvailability = async (req, res) => {
   try {
@@ -14,9 +13,9 @@ const getMyAvailability = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/availability
-// ─────────────────────────────────────────────────────────────
+
 const createAvailability = async (req, res) => {
   try {
     const availability = await availabilityService.createAvailability(req.user._id, req.body);
@@ -27,9 +26,9 @@ const createAvailability = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/availability/me
-// ─────────────────────────────────────────────────────────────
+
 const updateAvailability = async (req, res) => {
   try {
     const availability = await availabilityService.updateAvailability(req.user._id, req.body);
@@ -41,9 +40,9 @@ const updateAvailability = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/availability/:mentorId  (public)
-// ─────────────────────────────────────────────────────────────
+
 const getMentorAvailability = async (req, res) => {
   try {
     const data = await availabilityService.getMentorAvailability(req.params.mentorId);
@@ -54,9 +53,9 @@ const getMentorAvailability = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/availability/me
-// ─────────────────────────────────────────────────────────────
+
 const deleteAvailability = async (req, res) => {
   try {
     await availabilityService.deleteAvailability(req.user._id);
@@ -68,9 +67,9 @@ const deleteAvailability = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/availability/:mentorId/slots?duration=60
-// ─────────────────────────────────────────────────────────────
+
 const getAvailableSlots = async (req, res) => {
   try {
     const duration = Number.parseInt(req.query.duration) || 60;
@@ -86,11 +85,6 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
-module.exports = {
-  getMyAvailability,
-  createAvailability,
-  updateAvailability,
-  getMentorAvailability,
-  deleteAvailability,
-  getAvailableSlots,
+  return { getMyAvailability, createAvailability, updateAvailability, getMentorAvailability, deleteAvailability, getAvailableSlots };
 };
+module.exports = createAvailabilityController;

@@ -1,7 +1,6 @@
 // services/menteeProfile.service.js
-const menteeProfileRepo = require("../repositories/menteeProfile.repository");
 const { toMenteeProfileDTO } = require("../utils/mappers/menteeProfile.mapper");
-const logger = require("../utils/logger");
+const createMenteeProfileService = (menteeProfileRepo, { logger }) => {
 /**
  * POST /api/mentee-profile
  */
@@ -95,9 +94,6 @@ const getPublicProfile = async (userId) => {
     return toMenteeProfileDTO(profile);
 };
 
-module.exports = {
-    createProfile,
-    getMyProfile,
-    updateProfile,
-    getPublicProfile,
+    return { createProfile, getMyProfile, updateProfile, getPublicProfile };
 };
+module.exports = createMenteeProfileService;

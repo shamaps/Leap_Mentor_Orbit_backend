@@ -1,7 +1,6 @@
 // services/notification.service.js
-const notificationRepo = require("../repositories/notification.repository");
 const { toNotificationList } = require("../utils/mappers/notification.mapper");
-const logger = require("../utils/logger");
+const createNotificationService = (notificationRepo, { logger }) => {
 // GET /api/notifications
 const getNotifications = async (userId) => {
     // Debug logs preserved from original
@@ -40,10 +39,6 @@ const clearAll = async (userId) => {
     return { message: "All notifications cleared" };
 };
 
-module.exports = {
-    getNotifications,
-    markAllRead,
-    markOneRead,
-    deleteNotification,
-    clearAll,
+    return { getNotifications, markAllRead, markOneRead, deleteNotification, clearAll };
 };
+module.exports = createNotificationService;

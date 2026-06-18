@@ -1,8 +1,8 @@
 // controllers/forgotPassword.controller.js
-const service = require("../services/forgotPassword.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
+const createForgotPasswordController = (service, { logger }) => {
+
 /**
  * POST /api/auth/forgot-password
  * Body: { email }
@@ -57,4 +57,6 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { sendForgotPasswordOTP, verifyResetOTP, resetPassword };
+  return { sendForgotPasswordOTP, verifyResetOTP, resetPassword };
+};
+module.exports = createForgotPasswordController;

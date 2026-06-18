@@ -1,10 +1,8 @@
 // backend/controllers/mentorSearch.controller.js
-const mentorSearchService = require("../services/mentorSearch.service");
 const { ok, fail } = require("../utils/response");
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
+const createMentorSearchController = (mentorSearchService, { logger }) => {
 // GET /api/mentors/search
-// ─────────────────────────────────────────────────────────────
+
 const searchMentors = async (req, res) => {
   try {
     const result = await mentorSearchService.searchMentors(req.query);
@@ -32,9 +30,9 @@ const searchMentors = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/mentors/autocomplete
-// ─────────────────────────────────────────────────────────────
+
 const autocompleteMentors = async (req, res) => {
   try {
     const suggestions = await mentorSearchService.autocompleteMentors(req.query);
@@ -46,4 +44,6 @@ const autocompleteMentors = async (req, res) => {
   }
 };
 
-module.exports = { searchMentors, autocompleteMentors };
+  return { searchMentors, autocompleteMentors };
+};
+module.exports = createMentorSearchController;

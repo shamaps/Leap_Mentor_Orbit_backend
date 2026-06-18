@@ -1,11 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const {
-  sendVerification,
-  resendVerification,
-  verifyOtp,
-  verifyLink,
-} = require("../controllers/verification.controller");
+  verificationController,
+} = require("../config/container");
+const { sendVerification, resendVerification, verifyOtp, verifyLink } = verificationController;
 const { otpLimiter, resendLimiter } = require("../middleware/rateLimiter");
 router.post("/send", otpLimiter, sendVerification);       // POST /api/verification/send
 router.post("/resend", resendLimiter, resendVerification);   // POST /api/verification/resend

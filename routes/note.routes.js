@@ -4,12 +4,10 @@ const router  = express.Router();
 
 const { authenticate } = require("../middleware/authenticate");
 const { upload }       = require("../middleware/upload.middleware");
+const { noteController } = require("../config/container");
 const {
-  uploadNote,
-  getNotes,
-  getPrivateNotes,
-  deleteNote,
-} = require("../controllers/note.controller");
+  uploadNote, getNotes, getPrivateNotes, deleteNote,
+} = noteController;
 
 // POST /api/notes/upload — upload a note (shared or private)
 router.post(

@@ -17,11 +17,21 @@ const {
     forgotPasswordLimiter,
     otpLimiter,
 } = require("../middleware/rateLimiter");
-const { register } = require("../controllers/register.controller");
-const { login } = require("../controllers/login.controller");
-const { googleAuth } = require("../controllers/googleAuth.controller");
-const { clerkSSO } = require("../controllers/clerkSSO.controller");
-const { changePassword } = require("../controllers/changePassword.controller");
+const {
+    registerController,
+    loginController,
+    googleAuthController,
+    clerkSSOController,
+    changePasswordController,
+    forgotPasswordController,
+} = require("../config/container");
+
+const { register } = registerController;
+const { login } = loginController;
+const { googleAuth } = googleAuthController;
+const { clerkSSO } = clerkSSOController;
+const { changePassword } = changePasswordController;
+const { sendForgotPasswordOTP, verifyResetOTP, resetPassword } = forgotPasswordController;
 const { authenticate } = require("../middleware/authenticate");
 
 // Existing routes
@@ -83,13 +93,6 @@ router.post("/logout", async (req, res) => {
         return res.status(500).json({ message: err.message });
     }
 });
-
-// Forgot password routes
-const {
-    sendForgotPasswordOTP,
-    verifyResetOTP,
-    resetPassword,
-} = require("../controllers/forgotPassword.controller");
 
 router.post("/forgot-password", forgotPasswordLimiter, sendForgotPasswordOTP);
 router.post("/verify-reset-otp", otpLimiter, verifyResetOTP);

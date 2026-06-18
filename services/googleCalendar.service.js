@@ -1,11 +1,8 @@
 // services/googleCalendar.service.js
 const { google } = require("googleapis");
-const repo = require("../repositories/googleCalendar.repository");
-
-const logger = require("../utils/logger");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 const { withTimeout } = require("../utils/withTimeout");
-// HELPERS
+const createGoogleCalendarService = (repo, { logger }) => {
 
 /**
  * Create a base OAuth2 client using env credentials.
@@ -52,9 +49,9 @@ const parseTokens = (tokenJson) => {
     }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // getAuthUrl
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Generate Google OAuth URL with userId encoded in state param.
@@ -73,9 +70,9 @@ const getAuthUrl = async (userId) => {
     });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // handleCallback
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Exchange Google OAuth code for tokens and persist them.
@@ -93,9 +90,9 @@ const handleCallback = async (code, state) => {
     await repo.saveCalendarToken(userId, tokenJson);
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // disconnect
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Disconnect Google Calendar for a mentor.
@@ -106,9 +103,9 @@ const disconnect = async (mentorId) => {
     await repo.disconnectCalendar(mentorId);
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // getBusySlots
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Fetch busy time slots from Google Calendar freebusy API.
@@ -141,9 +138,9 @@ const getBusySlots = async (mentorId, startDate, endDate) => {
     return freeBusy.data.calendars.primary.busy;
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // getEvents
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Normalize a raw Google Calendar event into a simplified shape.
@@ -235,10 +232,6 @@ const getEvents = async (mentorId, startDate, endDate) => {
     return deduplicateEvents(eventArrays.flat());
 };
 
-module.exports = {
-    getAuthUrl,
-    handleCallback,
-    disconnect,
-    getBusySlots,
-    getEvents,
+    return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };
 };
+module.exports = createGoogleCalendarService;

@@ -1,9 +1,7 @@
 // backend/controllers/escrow.controller.js
-const AppError = require("../utils/appError");
-const escrowService = require("../services/escrow.service");
-const logger = require("../utils/logger");
 const { handleError } = require("../utils/appError");
 const { ok } = require("../utils/response");
+const createEscrowController = (escrowService, { logger }) => {
 // POST /api/escrow/pay
 const pay = async (req, res) => {
   try {
@@ -126,4 +124,6 @@ const getCommissionRate = async (_req, res) => {
   }
 };
 
-module.exports = { pay, payAdditional, release, refund, getStatus, getMyWallet, getCommissionRate };
+  return { pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate };
+};
+module.exports = createEscrowController;

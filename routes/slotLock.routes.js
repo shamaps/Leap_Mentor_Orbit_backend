@@ -3,12 +3,10 @@ const express = require("express");
 const router  = express.Router();
 
 const { authenticate } = require("../middleware/authenticate");
+const { slotLockController } = require("../config/container");
 const {
-  lockSlot,
-  unlockSlot,
-  unlockAllByMentee,
-  getActiveLocks,
-} = require("../controllers/slotLock.controller");
+  lockSlot, unlockSlot, unlockAllByMentee, getActiveLocks,
+} = slotLockController;
 
 // Lock a slot (mentee selects a slot)
 router.post("/lock", authenticate, lockSlot);

@@ -2,9 +2,11 @@
 const express = require("express");
 const router  = express.Router();
 
-const { authenticate }                          = require("../middleware/authenticate");
-const { createNote, getNotes, updateNote, deleteNote } = require("../controllers/privateNote.controller");
-
+const { authenticate } = require("../middleware/authenticate");
+const { privateNoteController } = require("../config/container");
+const {
+    createNote, getNotes, updateNote, deleteNote,
+} = privateNoteController;
 // POST   /api/private-notes                    — create a note
 router.post("/",                authenticate, createNote);
 

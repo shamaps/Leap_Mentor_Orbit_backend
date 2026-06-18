@@ -1,7 +1,5 @@
 // services/mentorRefer.service.js
-const mentorReferRepo = require("../repositories/mentorRefer.repository");
-
-const logger = require("../utils/logger");
+const createMentorReferService = (mentorReferRepo, { logger }) => {
 const getSimilarMentors = async (requestId, userId) => {
     const request = await mentorReferRepo.findRequestWithMentor(requestId);
     if (!request) {
@@ -39,4 +37,6 @@ const getSimilarMentors = async (requestId, userId) => {
     return { mentors: scored, mySkills: myProfile.skills };
 };
 
-module.exports = { getSimilarMentors };
+    return { getSimilarMentors };
+};
+module.exports = createMentorReferService;

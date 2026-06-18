@@ -1,8 +1,7 @@
 // controllers/connectRequest.controller.js
-const service = require("../services/connectRequest.service");
-const logger = require("../utils/logger");
 const { handleError } = require("../utils/appError");
 const { ok, created, fail, noContent } = require("../utils/response");
+const createConnectRequestController = (service, { logger }) => {
 const sendConnectRequest = async (req, res, next) => {
   try {
     const { mentorId, message, selectedSlots, sessionRate, sessionCount } = req.body;
@@ -141,13 +140,6 @@ const getConnectDetail = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  sendConnectRequest,
-  getMyRequests,
-  getIncomingRequests,
-  respondToRequest,
-  cancelRequest,
-  referRequest,
-  getOngoingConnects,
-  getConnectDetail,
+  return { sendConnectRequest, getMyRequests, getIncomingRequests, respondToRequest, cancelRequest, referRequest, getOngoingConnects, getConnectDetail };
 };
+module.exports = createConnectRequestController;

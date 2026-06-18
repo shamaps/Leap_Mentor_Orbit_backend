@@ -1,11 +1,9 @@
 // backend/controllers/admin/adminPayments.controller.js
-const adminPaymentsService = require("../../services/adminPayments.service");
 const { handleError } = require("../../utils/appError");
-const logger = require("../../utils/logger");
 const { ok } = require("../../utils/response");
-// ─────────────────────────────────────────────────────────────
+const createAdminPaymentsController = (adminPaymentsService, { logger }) => {
 // GET /api/admin/payments/stats
-// ─────────────────────────────────────────────────────────────
+
 const getPaymentStats = async (req, res) => {
   try {
     const data = await adminPaymentsService.fetchPaymentStats(req.admin._id);
@@ -16,9 +14,9 @@ const getPaymentStats = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/admin/payments/chart
-// ─────────────────────────────────────────────────────────────
+
 const getRevenueChart = async (_req, res) => {
   try {
     const data = await adminPaymentsService.fetchRevenueChart();
@@ -29,9 +27,9 @@ const getRevenueChart = async (_req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/admin/payments/transactions
-// ─────────────────────────────────────────────────────────────
+
 const getTransactions = async (req, res) => {
   try {
     const page = Math.max(1, Number.parseInt(req.query.page) || 1);
@@ -47,4 +45,6 @@ const getTransactions = async (req, res) => {
   }
 };
 
-module.exports = { getPaymentStats, getRevenueChart, getTransactions };
+  return { getPaymentStats, getRevenueChart, getTransactions };
+};
+module.exports = createAdminPaymentsController;

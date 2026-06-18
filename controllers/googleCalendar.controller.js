@@ -1,10 +1,9 @@
 // controllers/googleCalendar.controller.js
-const service = require("../services/googleCalendar.service");
 const { ok, noContent } = require("../utils/response");
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
+const createGoogleCalendarController = (service, { logger }) => {
+
 // GET /api/google-calendar/auth-url
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Returns the Google OAuth URL for the logged-in mentor.
@@ -22,9 +21,9 @@ const getAuthUrl = async (req, res, next) => {
 }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/google-calendar/callback  (no auth — Google redirects here)
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Handles Google OAuth callback.
@@ -68,9 +67,9 @@ const handleCallback = async (req, res, next) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/google-calendar/disconnect
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Disconnects Google Calendar for the logged-in mentor.
@@ -86,9 +85,9 @@ const disconnect = async (req, res, next) => {
 }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/google-calendar/busy?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Returns busy slots from the mentor's primary Google Calendar.
@@ -105,9 +104,9 @@ const getBusySlots = async (req, res, next) => {
 }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/google-calendar/events?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Returns events from all accessible Google Calendars, deduplicated.
@@ -126,4 +125,6 @@ const getEvents = async (req, res, next) => {
 }
 };
 
-module.exports = { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };
+  return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };
+};
+module.exports = createGoogleCalendarController;

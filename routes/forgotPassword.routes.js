@@ -1,10 +1,10 @@
 // backend/routes/forgotPassword.routes.js
 const express = require("express");
 const {
-  sendForgotPasswordOTP,
-  verifyResetOTP,
-  resetPassword,
-} = require("../controllers/forgotPassword.controller");
+  forgotPasswordController,
+} = require("../config/container");
+
+const { sendForgotPasswordOTP, verifyResetOTP, resetPassword } = forgotPasswordController;
 
 const router = express.Router();
 

@@ -1,11 +1,10 @@
 // services/register.service.js
 const bcrypt = require("bcryptjs");
-const registerRepo = require("../repositories/register.repository");
 const { issueTokens,  validateRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
-const logger = require("../utils/logger");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const AppError = require("../utils/appError");
+const createRegisterService = (registerRepo, { logger }) => {
 const validateInput = (name, email, password, roles, termsAccepted) => {
     if (roles?.length !== 1)
         throw Object.assign(new Error("Exactly one role is required."), { statusCode: 400 });
@@ -78,4 +77,6 @@ const register = async (res, body) => {
     };
 };
 
-module.exports = { register };
+    return { register };
+};
+module.exports = createRegisterService;

@@ -1,9 +1,7 @@
 // controllers/privateNote.controller.js
-const privateNoteService = require("../services/privateNote.service");
-const logger = require("../utils/logger");
 const { handleError } = require("../utils/appError");
 const { ok, created, noContent } = require("../utils/response");
-
+const createPrivateNoteController = (privateNoteService, { logger }) => {
 // POST /api/private-notes
 
 const createNote = async (req, res) => {
@@ -59,4 +57,6 @@ const deleteNote = async (req, res) => {
   }
 };
 
-module.exports = { createNote, getNotes, updateNote, deleteNote };
+  return { createNote, getNotes, updateNote, deleteNote };
+};
+module.exports = createPrivateNoteController;

@@ -1,11 +1,9 @@
 // services/goal.service.js
-const goalRepo = require("../repositories/goal.repository");
 const socketHandler = require("../socket/socketHandler");
 const { VALID_GOAL_STATUSES } = require("../config/constants");
 const { toGoalDTO, toMilestoneDTO } = require("../utils/mappers/goal.mapper");
-
-const logger = require("../utils/logger");
-// ── Socket helper ─────────────────────────────────────────────
+const createGoalService = (goalRepo, { logger }) => {
+//  Socket helper 
 const emitToRoom = (connectRequestId, event, data) => {
     try {
         if (socketHandler.io) {
@@ -16,7 +14,7 @@ const emitToRoom = (connectRequestId, event, data) => {
     }
 };
 
-// ── Auth guard helper ─────────────────────────────────────────
+// Auth guard helper
 const assertParticipant = (session, userId) => {
     const uid = userId.toString();
     return (
@@ -25,9 +23,9 @@ const assertParticipant = (session, userId) => {
     );
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/goals
-// ─────────────────────────────────────────────────────────────
+
 const createGoal = async (body, userId) => {
     const { connectRequestId, title, description, startDate, endDate } = body;
 
@@ -82,9 +80,9 @@ const createGoal = async (body, userId) => {
     return { goal: toGoalDTO(goal) };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/goals/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getGoal = async (connectRequestId, userId) => {
     const session = await goalRepo.findSessionById(connectRequestId);
     if (!session) {
@@ -108,9 +106,9 @@ const getGoal = async (connectRequestId, userId) => {
     return { goal: toGoalDTO(goal), milestones: milestones.map(toMilestoneDTO) };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/goals/:goalId
-// ─────────────────────────────────────────────────────────────
+
 const updateGoal = async (goalId, body, userId) => {
     const goal = await goalRepo.findGoalById(goalId);
     if (!goal) {
@@ -155,9 +153,9 @@ const updateGoal = async (goalId, body, userId) => {
     return { goal: toGoalDTO(goal) };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // POST /api/goals/:goalId/milestones
-// ─────────────────────────────────────────────────────────────
+
 const addMilestone = async (goalId, body, userId) => {
     const goal = await goalRepo.findGoalByIdLean(goalId);
     if (!goal) {
@@ -197,9 +195,9 @@ const addMilestone = async (goalId, body, userId) => {
     return { milestone: toMilestoneDTO(milestone) };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // PATCH /api/milestones/:milestoneId
-// ─────────────────────────────────────────────────────────────
+
 const updateMilestone = async (milestoneId, body, userId) => {
     const milestone = await goalRepo.findMilestoneById(milestoneId);
     if (!milestone) {
@@ -240,9 +238,9 @@ const updateMilestone = async (milestoneId, body, userId) => {
     return { milestone: toMilestoneDTO(milestone) };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/milestones/:milestoneId
-// ─────────────────────────────────────────────────────────────
+
 const deleteMilestone = async (milestoneId, userId) => {
     const milestone = await goalRepo.findMilestoneById(milestoneId);
     if (!milestone) {
@@ -268,11 +266,6 @@ const deleteMilestone = async (milestoneId, userId) => {
     return { message: "Milestone deleted" };
 };
 
-module.exports = {
-    createGoal,
-    getGoal,
-    updateGoal,
-    addMilestone,
-    updateMilestone,
-    deleteMilestone,
+    return { createGoal, getGoal, updateGoal, addMilestone, updateMilestone, deleteMilestone };
 };
+module.exports = createGoalService;

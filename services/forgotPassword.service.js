@@ -2,13 +2,10 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const transporter = require("../utils/mailer");
-const repo = require("../repositories/forgotPassword.repository");
 const AppError = require("../utils/appError");
-const logger = require("../utils/logger");
 const { makeOtp } = require("../utils/auth.utils");
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
+
+const createForgotPasswordService = (repo, { logger }) => {
 
 /**
  * Normalize an email address — lowercase + trim.
@@ -58,9 +55,9 @@ const buildOtpEmailHtml = (otpPlain) => `
   </div>
 `;
 
-// ─────────────────────────────────────────────────────────────
+
 // sendForgotPasswordOTP
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Step 1 — Generate and email a 6-digit OTP to the user.
@@ -96,9 +93,9 @@ const sendForgotPasswordOTP = async (email) => {
     });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // verifyResetOTP
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Step 2 — Verify the OTP submitted by the user.
@@ -126,9 +123,9 @@ const verifyResetOTP = async (email, otp) => {
     return normalizedEmail;
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // resetPassword
-// ─────────────────────────────────────────────────────────────
+
 
 /**
  * Step 3 — Reset the user's password after re-verifying the OTP.
@@ -159,8 +156,6 @@ const resetPassword = async (email, otp, newPassword) => {
     await repo.deleteTokensByUser(user._id);
 };
 
-module.exports = {
-    sendForgotPasswordOTP,
-    verifyResetOTP,
-    resetPassword,
+    return { sendForgotPasswordOTP, verifyResetOTP, resetPassword };
 };
+module.exports = createForgotPasswordService;

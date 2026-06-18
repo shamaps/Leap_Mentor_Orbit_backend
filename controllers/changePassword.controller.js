@@ -1,7 +1,6 @@
 // controllers/changePassword.controller.js
-const changePasswordService = require("../services/changePassword.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
+const createChangePasswordController = (changePasswordService, { logger }) => {
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -17,4 +16,6 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { changePassword };
+  return { changePassword };
+};
+module.exports = createChangePasswordController;

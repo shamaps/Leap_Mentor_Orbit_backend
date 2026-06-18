@@ -2,8 +2,10 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authenticate");
-const { pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate } = require("../controllers/escrow.controller");
-
+const { escrowController } = require("../config/container");
+const {
+    pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate,
+} = escrowController;
 // All escrow routes are protected
 router.use(authenticate);
 

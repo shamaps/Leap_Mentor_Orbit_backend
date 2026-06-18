@@ -1,17 +1,15 @@
 // routes/connectRequest.routes.js
 const express = require("express");
 const router = express.Router();
+const { connectRequestController, mentorReferController } = require("../config/container");
+
 const {
-  sendConnectRequest,
-  getMyRequests,
-  getIncomingRequests,
-  respondToRequest,
-  cancelRequest,
-  referRequest,
-  getOngoingConnects,
-  getConnectDetail,
-} = require("../controllers/connectRequest.controller");
-const { getSimilarMentors } = require("../controllers/mentorRefer.controller");
+  sendConnectRequest, getMyRequests, getIncomingRequests,
+  respondToRequest, cancelRequest, referRequest,
+  getOngoingConnects, getConnectDetail,
+} = connectRequestController;
+const { getSimilarMentors } = mentorReferController;
+
 const { authenticate, requireRole } = require("../middleware/authenticate");
 
 // ✅ Mentee routes

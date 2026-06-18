@@ -1,12 +1,10 @@
 // controllers/note.controller.js
-const noteService = require("../services/note.service");
-const logger = require("../utils/logger");
 const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
 const { ok, created, fail, noContent } = require("../utils/response"); 
-// ─────────────────────────────────────────────────────────────
+const createNoteController = (noteService, { logger }) => {
 // POST /api/notes/upload
-// ─────────────────────────────────────────────────────────────
+
 const uploadNote = async (req, res) => {
   try {
     const data = await noteService.uploadNote(req.user._id, req.body, req.file);
@@ -24,9 +22,9 @@ const uploadNote = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/notes/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getNotes = async (req, res) => {
   try {
     const data = await noteService.getNotes(req.params.connectRequestId, req.user._id);
@@ -38,9 +36,9 @@ const getNotes = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/notes/:connectRequestId/private
-// ─────────────────────────────────────────────────────────────
+
 const getPrivateNotes = async (req, res) => {
   try {
     const data = await noteService.getPrivateNotes(req.params.connectRequestId, req.user._id);
@@ -52,9 +50,9 @@ const getPrivateNotes = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // DELETE /api/notes/:id
-// ─────────────────────────────────────────────────────────────
+
 const deleteNote = async (req, res) => {
   try {
     await noteService.deleteNote(req.params.id, req.user._id);
@@ -65,5 +63,6 @@ const deleteNote = async (req, res) => {
     return handleError(res, err, "note.deleteNote");
   }
 };
-
-module.exports = { uploadNote, getNotes, getPrivateNotes, deleteNote };
+  return { uploadNote, getNotes, getPrivateNotes, deleteNote };
+};
+module.exports = createNoteController;

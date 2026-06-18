@@ -1,13 +1,11 @@
 // backend/services/escrow.service.js
 const mongoose = require("mongoose");
-const repo = require("../repositories/escrow.repository");
 const AppError = require("../utils/appError");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
 const { sendPaymentReceivedEmail } = require("../utils/emails");
-const logger = require("../utils/logger");
 const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("../config/constants");
-
+const createEscrowService = (repo, { logger }) => {
 const requireAdmin = async () => {
   const admin = await repo.findActiveAdmin();
   if (!admin) throw new AppError(500, "Platform admin not found. Contact support.");
@@ -410,4 +408,6 @@ const payAdditional = async ({ connectRequestId, sessionRate, slotId, menteeId }
   }
 };
 
-module.exports = { pay, payAdditional, release, refund, getStatus, getMyWallet, getCommissionRate };
+  return { pay, payAdditional, release, refund, getStatus, getMyWallet, getCommissionRate };
+};
+module.exports = createEscrowService;

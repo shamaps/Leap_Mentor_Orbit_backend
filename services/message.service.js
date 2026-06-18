@@ -1,10 +1,8 @@
 // services/message.service.js
-const messageRepo = require("../repositories/message.repository");
 
-const logger = require("../utils/logger");
-// ─────────────────────────────────────────────────────────────
+const createMessageService = (messageRepo, { logger }) => {
 // GET /api/messages/:connectRequestId
-// ─────────────────────────────────────────────────────────────
+
 const getMessages = async (connectRequestId, userId, query) => {
     const page = Math.max(1, Number.parseInt(query.page) || 1);
     const limit = Math.min(50, Number.parseInt(query.limit) || 30);
@@ -42,12 +40,14 @@ const getMessages = async (connectRequestId, userId, query) => {
     };
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // GET /api/messages/:connectRequestId/unread-count
-// ─────────────────────────────────────────────────────────────
+
 const getUnreadCount = async (connectRequestId, userId) => {
     const count = await messageRepo.countUnreadMessages(connectRequestId, userId);
     return { unreadCount: count };
 };
 
-module.exports = { getMessages, getUnreadCount };
+return { getMessages, getUnreadCount };
+};
+module.exports = createMessageService;

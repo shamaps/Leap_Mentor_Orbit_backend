@@ -1,7 +1,6 @@
-const reportService = require("../services/report.service");
 const { ok, fail } = require("../utils/response"); 
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
+const createReportController = (reportService, { logger }) => {
 const submitReport = async (req, res) => {
   try {
     const { connectRequestId, complaintType, description } = req.body;
@@ -66,9 +65,6 @@ const updateReportStatus = async (req, res) => {
   }
 };
 
-module.exports = {
-  submitReport,
-  getMyReport,
-  getAllReports,
-  updateReportStatus,
+  return { submitReport, getMyReport, getAllReports, updateReportStatus };
 };
+module.exports = createReportController;

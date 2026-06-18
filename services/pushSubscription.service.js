@@ -1,5 +1,4 @@
-const repo = require("../repositories/PushSubscription.repository");
-
+const createPushSubscriptionService = (repo, { logger }) => {
 const subscribe = async ({ userId, subscription }) => {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         return { status: 400, body: { message: "Invalid subscription object" } };
@@ -19,4 +18,6 @@ const getVapidPublicKey = () => ({
     body: { publicKey: process.env.VAPID_PUBLIC_KEY },
 });
 
-module.exports = { subscribe, unsubscribe, getVapidPublicKey };
+    return { subscribe, unsubscribe, getVapidPublicKey };
+};
+module.exports = createPushSubscriptionService;

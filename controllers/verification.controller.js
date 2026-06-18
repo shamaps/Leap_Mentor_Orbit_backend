@@ -1,8 +1,8 @@
-const verificationService = require("../services/verification.service");
 const { handleError } = require("../utils/appError");
-const logger = require("../utils/logger");
 const { ok } = require("../utils/response");
-exports.sendVerification = async (req, res) => {
+
+const createVerificationController = (verificationService, { logger }) => {
+const sendVerification = async (req, res) => {
   try {
     const {  body } = await verificationService.sendVerification({ email: req.body.email });
     return ok(res, body);
@@ -11,7 +11,7 @@ exports.sendVerification = async (req, res) => {
   }
 };
 
-exports.resendVerification = async (req, res) => {
+const resendVerification = async (req, res) => {
   try {
     const {  body } = await verificationService.resendVerification({ email: req.body.email });
     return ok(res, body);
@@ -20,7 +20,7 @@ exports.resendVerification = async (req, res) => {
   }
 };
 
-exports.verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const {  body } = await verificationService.verifyOtp({ email, otp });
@@ -30,7 +30,7 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-exports.verifyLink = async (req, res) => {
+const verifyLink = async (req, res) => {
   try {
     const { token } = req.params;
     const { email } = req.query;
@@ -40,3 +40,6 @@ exports.verifyLink = async (req, res) => {
     return handleError(res, err, "verification.verifyLink");
   }
 };
+  return { sendVerification, resendVerification, verifyOtp, verifyLink };
+};
+module.exports = createVerificationController;
