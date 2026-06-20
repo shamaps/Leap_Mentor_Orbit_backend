@@ -3,12 +3,12 @@ const { ok, fail } = require("../utils/response");
 const createUploadController = (uploadService, { logger }) => {
 const uploadProfilePicture = async (req, res) => {
   try {
-    const {  body } = await uploadService.uploadProfilePicture({ file: req.file });
+    const { body } = await uploadService.uploadProfilePicture({ file: req.file, user: req.user });
     return ok(res, body);
-  } catch (err) {
-    logger.error("❌ uploadProfilePicture error:", err.message);
-    return fail(res, "Failed to upload image.", 500);
-  }
+     } catch (err) {
+      logger.error("❌ uploadProfilePicture error:", err.message || err);
+      return fail(res, "Failed to upload image.", 500);
+    }
 };
 
 const uploadVerificationDocuments = async (req, res) => {

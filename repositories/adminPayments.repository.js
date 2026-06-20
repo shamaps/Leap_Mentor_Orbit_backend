@@ -4,10 +4,9 @@ const Wallet = require("../models/Wallet");
 const ConnectRequest = require("../models/ConnectRequest");
 const AdminUser = require("../models/AdminUser");
 const User = require("../models/User");
+const { escapeRegex } = require("../utils/escapeRegex");
 
-// ─────────────────────────────────────────────────────────────
 // STATS
-// ─────────────────────────────────────────────────────────────
 
 const findAdminCommissionRate = (adminId) =>
     AdminUser.findById(adminId).select("commissionRate").lean();
@@ -27,9 +26,9 @@ const findAllWalletEscrows = () =>
 const countRefundedRequests = () =>
     ConnectRequest.countDocuments({ paymentStatus: "refunded" });
 
-// ─────────────────────────────────────────────────────────────
+
 // CHART
-// ─────────────────────────────────────────────────────────────
+
 
 const findCompletedSessionsInRange = (monthStart, monthEnd) =>
     ConnectRequest.find({
@@ -46,13 +45,13 @@ const findCompletedSessionsSince = (startDate) =>
     })
         .select("totalAmount completedAt")
         .lean();
-// ─────────────────────────────────────────────────────────────
+
 // TRANSACTIONS
-// ─────────────────────────────────────────────────────────────
+
 
 const findUserIdsByName = async (search) => {
     const users = await User.find({
-        name: { $regex: search, $options: "i" },
+        name: { $regex: escapeRegex(search), $options: "i" },
     })
         .select("_id")
         .lean();

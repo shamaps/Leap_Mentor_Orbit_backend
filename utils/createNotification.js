@@ -1,8 +1,7 @@
 // utils/createNotification.js
-const notifRepo = require("../repositories/notification.repository");
 const logger = require("./logger");
 
-const createNotification = async ({ recipient, type, title, message, metadata = {} }) => {
+const createNotification = (notifRepo)=> async ({ recipient, type, title, message, metadata = {} }) => {
   try {
     logger.info("createNotification called", { recipient, type, title });
     const notif = await notifRepo.createNotification({ recipient, type, title, message, metadata });

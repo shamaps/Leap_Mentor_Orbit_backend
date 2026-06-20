@@ -1,7 +1,6 @@
 // backend/services/mentorSearch.service.js
 const { toMentorProfileSummary } = require("../utils/mappers/mentorProfile.mapper");
-
-
+const { escapeRegex } = require("../utils/escapeRegex");
 // Pure helpers — extracted to reduce cognitive complexity
 
 const createMentorSearchService = (repo, { logger }) => {
@@ -172,11 +171,11 @@ const buildFallbackFilter = async ({ skill, name, industry, minPrice, maxPrice, 
         if (matchingUsers.length > 0) {
             orConditions.push({ user: { $in: matchingUsers.map((u) => u._id) } });
         }
-        orConditions.push({ skills: { $elemMatch: { $regex: query, $options: "i" } } });
+        orConditions.push({ skills: { $elemMatch: { $regex: escapeRegex(query), $options: "i" } } });
         filter.$or = orConditions;
     }
 
-    if (industry.trim()) filter.industry = { $regex: industry.trim(), $options: "i" };
+    if (industry.trim()) filter.industry = { $regex: escapeRegex(industry.trim()), $options: "i" };
     if (minRating !== undefined) filter.avgRating = { $gte: Number(minRating) };
 
     if (minPrice !== undefined || maxPrice !== undefined) {

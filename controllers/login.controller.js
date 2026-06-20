@@ -24,7 +24,7 @@ const login = async (req, res) => {
     });
   } catch (err) {
     if (err instanceof AppError) {
-      // ✅ Known errors — warn level
+      //  Known errors — warn level
       logger.warn("Login rejected", {
         email: req.body.email,
         reason: err.message,
@@ -38,7 +38,7 @@ const login = async (req, res) => {
       return res.status(err.status).json({ success: false, ...body });
     }
 
-    // ✅ Unexpected errors — error level
+    // Unexpected errors — error level
     logger.error("Unexpected error during login", {
       email: req.body.email,
       error: err.message,

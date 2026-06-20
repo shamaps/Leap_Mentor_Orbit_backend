@@ -4,12 +4,13 @@ const { ok, created } = require("../utils/response");
 const createFeedbackController = (feedbackService, { logger }) => {
 // POST /api/feedback
 const submitFeedback = async (req, res) => {
+  console.log("FEEDBACK BODY:", JSON.stringify(req.body));
   try {
     const feedback = await feedbackService.submitFeedback({
       connectRequestId: req.body.connectRequestId,
       rating: req.body.rating,
       comment: req.body.comment,
-      slotIndex: req.body.slotIndex,
+      slotIndex: req.body.slotIndex !== undefined && req.body.slotIndex !== null ? parseInt(req.body.slotIndex, 10) : undefined,
       userId: req.user._id,
     });
     logger.info("submitFeedback completed successfully");

@@ -1,13 +1,12 @@
 // services/note.service.js
-
 const { getFileType } = require("../middleware/upload.middleware");
-const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 const { validateSessionAccess } = require("../utils/sessionAccess");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
+const { signCloudinaryUrl } = require("../utils/cloudinarySign");
+const { noteId } = require("../utils/cloudinaryPublicId");
+const { cloudinary } = require("../config/cloudinary");
 const createNoteService = (noteRepo, { logger }) => {
-
-// POST /api/notes/upload
-
+  // POST /api/notes/upload
 const uploadNote = async (userId, body, file) => {
     const { connectRequestId, title } = body;
     const isPrivate = body.isPrivate === "true" || body.isPrivate === true;
@@ -35,14 +34,23 @@ const uploadNote = async (userId, body, file) => {
         err.statusCode = 400;
         throw err;
     }
+    const isImage = file.mimetype.startsWith("image/");
 
-    const result = await uploadToCloudinary(file.buffer, {
-        folder: `leapmentor/notes/${connectRequestId}`,
-        resource_type: "raw",
-        use_filename: true,
-        unique_filename: true,
-    });
+    const uploadOptions = {
+        resource_type: isImage ? "image" : "raw",
+        public_id: noteId(connectRequestId, userId, file.originalname),
+        type: "authenticated",
+        overwrite: false,
+    };
 
+    // Only generate thumbnail for image files
+    if (isImage) {
+        uploadOptions.eager = [
+            { width: 300, height: 200, crop: "fill", quality: "auto", fetch_format: "auto" },
+        ];
+        uploadOptions.eager_async = false;
+    }
+    const result = await uploadToCloudinary(file.buffer, uploadOptions);
     const note = await noteRepo.createNote({
         connectRequest: connectRequestId,
         uploadedBy: userId,
@@ -54,6 +62,7 @@ const uploadNote = async (userId, body, file) => {
         fileName: file.originalname,
         fileSize: file.size,
         isPrivate,
+        thumbnailUrl: result.eager?.[0]?.secure_url || "",
     });
 
     const populated = await noteRepo.findNoteByIdPopulated(note._id);
@@ -73,7 +82,15 @@ const getNotes = async (connectRequestId, userId) => {
     }
 
     const notes = await noteRepo.findSharedNotes(connectRequestId);
-    return { notes };
+    // Sign each file URL — valid for 15 minutes
+    const signedNotes = notes.map((note) => ({
+        ...note,
+        fileUrl: signCloudinaryUrl(note.publicId, note.fileType === "image" ? "image" : "raw"),
+        thumbnailUrl: note.thumbnailUrl
+            ? signCloudinaryUrl(note.publicId, "image")
+            : "",
+    }));
+    return { notes: signedNotes };
 };
 
 
@@ -88,7 +105,14 @@ const getPrivateNotes = async (connectRequestId, userId) => {
     }
 
     const notes = await noteRepo.findPrivateNotes(connectRequestId, userId);
-    return { notes };
+    const signedNotes = notes.map((note) => ({
+        ...note,
+        fileUrl: signCloudinaryUrl(note.publicId, note.fileType === "image" ? "image" : "raw"),
+        thumbnailUrl: note.thumbnailUrl
+            ? signCloudinaryUrl(note.publicId, "image")
+            : "",
+    }));
+    return { notes: signedNotes };
 };
 
 
@@ -109,7 +133,8 @@ const deleteNote = async (noteId, userId) => {
     }
 
     try {
-        await cloudinary.uploader.destroy(note.publicId, { resource_type: "raw" });
+        const resourceType = note.fileType === "image" ? "image" : "raw";
+        await cloudinary.uploader.destroy(note.publicId, { resource_type: resourceType });
         logger.info(`Cloudinary file deleted: ${note.publicId}`);
     } catch (cloudErr) {
         logger.warn("Cloudinary delete warning:", cloudErr.message);

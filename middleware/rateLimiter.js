@@ -136,6 +136,12 @@ exports.supportLimiter = makeIpLimiter({
     message: "Too many support messages. Try again after an hour.",
 });
 
+exports.aiLimiter = makeUserLimiter({  
+    prefix: "rl:ai:",
+    windowMs: 60 * 60 * 1000,  
+    max: 50,                   
+    message: "AI request limit reached. Try again in an hour.",
+});
 // AUTHENTICATED
 exports.uploadLimiter = makeUserLimiter({
     prefix: "rl:upload:",

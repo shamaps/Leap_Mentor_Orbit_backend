@@ -36,15 +36,16 @@ const feedbackSchema = new mongoose.Schema(
       maxlength: 1000,
       default: "",
     },
+    slotIndex: {                   
+      type: Number,
+      default: undefined,          
+    },
   },
   BASE_SCHEMA_OPTIONS
 );
 
 // ✅ One feedback per user per session
-feedbackSchema.index(
-  { connectRequest: 1, from: 1 },
-  { unique: true }
-);
+feedbackSchema.index({ connectRequest: 1, from: 1, slotIndex: 1 }, { unique: true, sparse: true });
 
 // ✅ Fast lookup for all feedback on a session
 feedbackSchema.index({ connectRequest: 1 });

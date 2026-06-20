@@ -1,10 +1,8 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER,BRAND_GRADIENT, LOGO_URL, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
-
-
-// ─────────────────────────────────────────────────────────────
+const { escapeHtml } = require("../escapeHtml");
 // Email 5: Both mentor and mentee notified when a slot is cancelled
-// ─────────────────────────────────────────────────────────────
+
 const sendSlotCancelledEmail = async ({
     connectRequestId,
     mentorName, mentorEmail,
@@ -15,12 +13,13 @@ const sendSlotCancelledEmail = async ({
 }) => {
     const cancelledByName = cancelledBy === "mentor" ? mentorName : menteeName;
     const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
-
+  const safeCancelledByName = escapeHtml(cancelledByName);
+  const safeReason = escapeHtml(reason);
     const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
         "Session Slot Cancelled",
-        `${cancelledByName} has cancelled a session slot`
+      `${safeCancelledByName}  has cancelled a session slot`
     )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -52,12 +51,12 @@ const sendSlotCancelledEmail = async ({
         <div style="font-size:11px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
           Reason
         </div>
-        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${reason}"</div>
+        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${safeReason}"</div>
       </div>` : ""}
 
       <div style="background:#fffbeb;border-radius:12px;padding:14px 16px;border:1px solid #fde68a;margin-bottom:18px;">
         <p style="font-size:13px;color:#92400e;margin:0;font-weight:500;">
-          Hi ${recipientName}, this slot has been cancelled by ${cancelledByName}. Please visit your dashboard to view your updated session schedule.
+          Hi ${escapeHtml(recipientName)}, this slot has been cancelled by ${safeCancelledByName}. Please visit your dashboard to view your updated session schedule.
         </p>
       </div>
 
@@ -92,9 +91,9 @@ const sendSlotCancelledEmail = async ({
     logger.info("Slot cancelled emails sent", { mentorEmail, menteeEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Email 6: Both mentor and mentee notified when a slot is rescheduled
-// ─────────────────────────────────────────────────────────────
+
 const sendSlotRescheduledEmail = async ({
     connectRequestId,
     mentorName, mentorEmail,
@@ -103,12 +102,12 @@ const sendSlotRescheduledEmail = async ({
     newSlot,
 }) => {
     const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
-
+  const safeMenteeName = escapeHtml(menteeName);
     const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
         "Session Rescheduled",
-        `${menteeName} has rescheduled a session slot`
+        `${safeMenteeName} has rescheduled a session slot`
     )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -150,7 +149,7 @@ const sendSlotRescheduledEmail = async ({
 
       <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;border-left:3px solid #2563eb;margin-bottom:18px;">
         <p style="font-size:13px;color:#1e40af;margin:0;font-weight:500;">
-          Hi ${recipientName}, your session has been rescheduled by ${menteeName}. Please check your dashboard to confirm the updated time.
+          Hi ${escapeHtml(recipientName)}, your session has been rescheduled by ${menteeName}. Please check your dashboard to confirm the updated time.
         </p>
       </div>
 
@@ -171,7 +170,7 @@ const sendSlotRescheduledEmail = async ({
         transporter.sendMail({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
-            subject: `Session rescheduled by ${menteeName} — ${formatDate(newSlot.date)}`,
+          subject: `Session rescheduled by ${menteeName.replace(/[\r\n]/g, "")} — ${formatDate(newSlot.date)}`,
             html: buildHtml(mentorName),
         }),
         transporter.sendMail({
@@ -185,22 +184,23 @@ const sendSlotRescheduledEmail = async ({
     logger.info("Slot rescheduled emails sent", { mentorEmail, menteeEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Email 7: Both mentor and mentee notified when mentee adds additional session
-// ─────────────────────────────────────────────────────────────
+
 const sendAdditionalSlotEmail = async ({
     connectRequestId,
     mentorName, mentorEmail,
     menteeName, menteeEmail,
     slot,
 }) => {
+  const safeMenteeName = escapeHtml(menteeName);
     const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
 
     const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
         "Additional Session Added",
-        `${menteeName} has added a new session slot`
+      `${safeMenteeName}has added a new session slot`
     )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -229,7 +229,7 @@ const sendAdditionalSlotEmail = async ({
 
       <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;border-left:3px solid #2563eb;margin-bottom:18px;">
         <p style="font-size:13px;color:#1e40af;margin:0;font-weight:500;">
-          Hi ${recipientName}, a new session slot has been added to your ongoing engagement. Visit your dashboard to view the updated schedule.
+          Hi ${escapeHtml(recipientName)}, a new session slot has been added to your ongoing engagement. Visit your dashboard to view the updated schedule.
         </p>
       </div>
 
@@ -250,7 +250,7 @@ const sendAdditionalSlotEmail = async ({
         transporter.sendMail({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
-            subject: `New session slot added by ${menteeName} — LeapMentor`,
+          subject: `New session slot added by ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
             html: buildHtml(mentorName),
         }),
         transporter.sendMail({

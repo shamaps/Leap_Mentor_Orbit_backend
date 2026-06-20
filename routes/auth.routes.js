@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const crypto = require("node:crypto");
+const { handleError } = require("../utils/appError");
 const RefreshToken = require("../models/RefreshToken");
 const {
     signToken,
@@ -74,7 +75,7 @@ router.post("/refresh", async (req, res) => {
             user: toUserDTO(stored.user),
         });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return handleError(res, err, "auth.refresh");
     }
 });
 
@@ -87,10 +88,9 @@ router.post("/logout", async (req, res) => {
             await RefreshToken.deleteOne({ tokenHash: hashed });
         }
         res.clearCookie("refreshToken", { path: "/" });  // only clear refreshToken cookie
-        res.clearCookie("refreshToken", { path: "/api/v1/auth/refresh" }); // old cookie with path has to be cleared
         return res.json({ message: "Logged out successfully" });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return handleError(res, err, "auth.logout");
     }
 });
 

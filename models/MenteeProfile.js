@@ -46,6 +46,22 @@ const menteeProfileSchema = new mongoose.Schema(
       type: String, // URL or base64
       default: "",
     },
+    profilePictureThumbnail: {   
+      type: String,
+      default: "",
+    },
+    profilePicture56: {
+      type: String,
+      default: ""
+    },  // 56×56  avatar
+    profilePicture80: {
+      type: String,
+      default: ""
+    },  // 80×80  card
+    profilePicture160: {
+      type: String,
+      default: ""
+    },  // 160×160 modal
 
     linkedInUrl: {
       type: String,

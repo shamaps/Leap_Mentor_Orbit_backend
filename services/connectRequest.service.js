@@ -1,6 +1,5 @@
 // services/connectRequest.service.js
 const mongoose = require("mongoose");
-const createNotification = require("../utils/createNotification");
 const {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
@@ -11,7 +10,7 @@ const { toConnectRequestList, toConnectRequestSummary, toConnectRequestDetail } 
 
 // Lazily require the socket handler to avoid circular-require issues at module load time
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
-const createConnectRequestService = (repo, { logger }) => {
+const createConnectRequestService = (repo, { logger, createNotification }) => {
 /**
  * Validates the payload for sending a new connect request.
  * Throws AppError(400) on the first rule that is violated.

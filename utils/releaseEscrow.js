@@ -1,9 +1,8 @@
 // backend/utils/releaseEscrow.js
-const repo = require("../repositories/escrow.repository");
 const logger = require("../utils/logger");
 
 const r = (n) => Math.round(n * 100) / 100;
-const releaseEscrow = async (connectRequestId, mongoSession) => {
+const releaseEscrow = async (repo,connectRequestId, mongoSession) => {
   const connectRequest = await repo.findConnectRequestRaw(connectRequestId, mongoSession);
 
   if (!connectRequest) throw new Error("Connect request not found");
@@ -62,7 +61,7 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
   await repo.saveConnectRequest(connectRequest, mongoSession);
 
   // ── Log 3 transactions ────────────────────────────────────
-  await repo.createTransaction(
+  await repo.createTransactions(
     [
       {
         user: menteeId,
@@ -89,7 +88,7 @@ const releaseEscrow = async (connectRequestId, mongoSession) => {
         balanceAfter: mentorWallet.balance,
       },
     ],
-    { session: mongoSession, ordered: true }
+    mongoSession
   );
 
   // ── Credit admin wallet after commit ──────────────────────

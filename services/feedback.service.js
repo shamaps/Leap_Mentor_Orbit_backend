@@ -72,21 +72,11 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
         throw new AppError(400, "rating must be between 1 and 5");
 
     // FIX: parseSlotIndex() eliminates the negated-condition warning
-    const slotIndex = parseSlotIndex(rawSlotIndex);
-
-    logger.debug("feedback body received:", { connectRequestId, rating, comment, slotIndex });
+    const slotIndex = parseSlotIndex(rawSlotIndex); 
 
     const connectRequest = await repo.findSessionById(connectRequestId);
     if (!connectRequest)
         throw new AppError(404, "Session not found");
-
-    logger.info("slot at index", slotIndex, ":", connectRequest.selectedSlots?.[slotIndex]);
-    logger.debug("all slots:", connectRequest.selectedSlots?.map((s, i) => ({
-        i,
-        menteeMarked: s.menteeMarked,
-        mentorMarked: s.mentorMarked,
-        status: s.status,
-    })));
 
     const fromRole = getParticipantRole(connectRequest, userId);
     if (!fromRole)
@@ -104,7 +94,6 @@ const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: ra
         from: userId,
         ...(hasSlotIndex(slotIndex) ? { slotIndex } : {}),
     };
-
     const existing = await repo.findExistingFeedback(duplicateQuery);
     if (existing)
         throw new AppError(409, "You have already submitted feedback for this session");
@@ -144,11 +133,20 @@ const getFeedback = async ({ connectRequestId, userId }) => {
 
     const allFeedback = await repo.findFeedbackBySession(connectRequestId);
 
-    const myFeedback = allFeedback.find((f) => f.from._id.toString() === userId.toString()) ?? null;
-    const theirFeedback = allFeedback.find((f) => f.from._id.toString() !== userId.toString()) ?? null;
+    
+    const myFeedback = allFeedback.find(
+        (f) => f.from._id.toString() === userId.toString() && f.slotIndex == null
+    ) ?? null;
+
+    const theirFeedback = allFeedback.find(
+        (f) => f.from._id.toString() !== userId.toString() && f.slotIndex == null
+    ) ?? null;
 
     return {
         myFeedback,
+        mySlotFeedback: allFeedback.filter(         
+            (f) => f.from._id.toString() === userId.toString() && f.slotIndex != null
+        ),
         theirFeedback: connectRequest.status === "completed" ? theirFeedback : null,
         sessionStatus: connectRequest.status,
     };

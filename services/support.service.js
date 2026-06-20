@@ -2,7 +2,7 @@ const { sendSupportResolvedEmail } = require("../utils/emails");
 const createSupportService = (repo, { logger }) => {
 const createMessage = async ({ email, subject, message, role }) => {
     if (!email || !subject || !message) {
-        return { status: 400, body: { error: "All fields are required" } };
+        return { status: 400, body: { success: false, message: "All fields are required" } };
     }
 
     const msg = await repo.createSupportMessage({
@@ -23,7 +23,7 @@ const getMessages = async () => {
 
 const resolveMessage = async (id) => {
     const msg = await repo.resolveMessageById(id);
-    if (!msg) return { status: 404, body: { error: "Not found" } };
+    if (!msg) return { status: 404, body: { success: false, message: "Not found" } };
 
     // ── Find user by email to send notification ──────────────
     const user = await repo.findUserByEmail(msg.email);

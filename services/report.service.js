@@ -1,10 +1,11 @@
-
+//report.service.js
 const {
     sendReportSubmittedEmail,
     sendReportResolvedEmail,
 } = require("../utils/emails");
+const { signCloudinaryUrl } = require("../utils/cloudinarySign");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
-
+const { reportScreenshotId } = require("../utils/cloudinaryPublicId");
 const VALID_STATUSES = new Set(["open", "under_review", "resolved", "dismissed"]);
 const createReportService = (repo, { logger }) => {
 const submitReport = async ({ connectRequestId, complaintType, description, reportedById, file, user }) => {
@@ -38,11 +39,24 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
 
     let screenshotUrl = "";
     let screenshotPublicId = "";
+    let screenshotOriginalName = "";
 
     if (file) {
-        const uploaded = await uploadToCloudinary(file.buffer, file.mimetype);
+        const uploaded = await uploadToCloudinary(file.buffer, {
+            resource_type: "image",
+            public_id: reportScreenshotId(connectRequestId, reportedById),
+            type: "authenticated",
+            overwrite: false,
+            eager: [
+                { width: 200, height: 150, crop: "fill", quality: "auto", fetch_format: "auto" },
+            ],
+            eager_async: false,
+        });
         screenshotUrl = uploaded.secure_url;
         screenshotPublicId = uploaded.public_id;
+        screenshotOriginalName = file.originalname;
+        screenshotThumbnailUrl = uploaded.eager?.[0]?.secure_url || "";
+        
     }
 
     const report = await repo.createReport({
@@ -54,6 +68,7 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
         description: description.trim(),
         screenshotUrl,
         screenshotPublicId,
+        screenshotOriginalName, 
     });
 
     // ── Send report submitted email (non-blocking) ──
@@ -77,6 +92,9 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
 
 const getMyReport = async ({ connectRequestId, userId }) => {
     const report = await repo.findReportByConnectAndUser(connectRequestId, userId);
+    if (report?.screenshotPublicId) {
+        report.screenshotUrl = signCloudinaryUrl(report.screenshotPublicId, "image");
+    }
     return { status: 200, body: { report: report || null } };
 };
 
@@ -88,11 +106,17 @@ const getAllReports = async ({ status, page = 1, limit = 20 }) => {
     const total = await repo.countReports(filter);
 
     const reports = await repo.findReports(filter, { skip, limit: Number(limit) });
+    const signedReports = reports.map((report) => {
+        if (report.screenshotPublicId) {
+            report.screenshotUrl = signCloudinaryUrl(report.screenshotPublicId, "image");
+        }
+        return report;
+    });
 
     return {
         status: 200,
         body: {
-            reports,
+            reports:signedReports,
             pagination: {
                 total,
                 page: Number(page),

@@ -43,7 +43,7 @@ const saveWallet = (wallet, session) =>
 
 // ─── Transaction ──────────────────────────────────────────────
 const createTransactions = (docs, session) =>
-  Transaction.create(docs, { session });
+  Transaction.insertMany(docs, { session, ordered: true });
 
 // ─── Availability ─────────────────────────────────────────────
 const findMentorTimezone = (mentorId) =>

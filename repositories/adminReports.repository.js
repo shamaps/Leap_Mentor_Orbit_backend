@@ -4,11 +4,9 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const ConnectRequest = require("../models/ConnectRequest");
+const { escapeRegex } = require("../utils/escapeRegex");
 
-// ─────────────────────────────────────────────────────────────
 // STATS
-// ─────────────────────────────────────────────────────────────
-
 const countAllReports = () =>
     Report.countDocuments();
 
@@ -18,13 +16,10 @@ const countPendingReports = () =>
 const countResolvedToday = (today) =>
     Report.countDocuments({ status: "resolved", resolvedAt: { $gte: today } });
 
-// ─────────────────────────────────────────────────────────────
 // LIST
-// ─────────────────────────────────────────────────────────────
-
 const findUserIdsByName = async (search) => {
     const users = await User.find({
-        name: { $regex: search, $options: "i" },
+        name: { $regex: escapeRegex(search), $options: "i" },
     })
         .select("_id")
         .lean();
@@ -44,10 +39,7 @@ const findReports = (filter, skip, limit) =>
         .limit(limit)
         .lean();
 
-// ─────────────────────────────────────────────────────────────
 // SINGLE REPORT
-// ─────────────────────────────────────────────────────────────
-
 const findReportById = (id) =>
     Report.findById(id)
         .populate("reportedBy", "name email")
@@ -74,10 +66,7 @@ const findReportByIdWithSessionAndParticipants = (id) =>
 const saveReport = (report) =>
     report.save();
 
-// ─────────────────────────────────────────────────────────────
 // REFUND
-// ─────────────────────────────────────────────────────────────
-
 const findMenteeWallet = (menteeId) =>
     Wallet.findOne({ user: menteeId });
 
@@ -90,10 +79,7 @@ const createRefundTransaction = (data) =>
 const saveConnectRequest = (connectRequest) =>
     connectRequest.save();
 
-// ─────────────────────────────────────────────────────────────
 // DELETE SESSION
-// ─────────────────────────────────────────────────────────────
-
 const deleteConnectRequestById = (id) =>
     ConnectRequest.findByIdAndDelete(id);
 

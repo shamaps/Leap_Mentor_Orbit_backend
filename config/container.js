@@ -1,6 +1,6 @@
 // config/container.js
 const logger = require("../utils/logger");
-
+const makeCreateNotification = require("../utils/createNotification");
 // ── Repositories
 const adminRepo = require("../repositories/admin.repository");
 const adminPaymentsRepo = require("../repositories/adminPayments.repository");
@@ -113,16 +113,18 @@ const createAdminPaymentsController = require("../controllers/admin/adminPayment
 const createAdminReportsController = require("../controllers/admin/adminReports.controller");
 const createAdminSettingsController = require("../controllers/admin/adminSettings.controller");
 
+
+const createNotification = makeCreateNotification(notificationRepo);
 // ── Wire services
 const adminService = createAdminService(adminRepo, { logger });
 const adminPaymentsService = createAdminPaymentsService(adminPaymentsRepo, { logger });
-const adminReportsService = createAdminReportsService(adminReportsRepo, { logger });
+const adminReportsService = createAdminReportsService(adminReportsRepo, { logger, createNotification });
 const adminSettingsService = createAdminSettingsService(adminSettingsRepo, { logger });
 const adminVerificationService = createAdminVerificationService(adminVerificationRepo, { logger });
 const availabilityService = createAvailabilityService(availabilityRepo, { logger });
 const changePasswordService = createChangePasswordService(changePasswordRepo, { logger });
 const clerkSSOService = createClerkSSOService(clerkSSORepo, { logger });
-const connectRequestService = createConnectRequestService(connectRequestRepo, { logger });
+const connectRequestService = createConnectRequestService(connectRequestRepo, { logger, createNotification });
 const earningsService = createEarningsService(earningsRepo, { logger });
 const escrowService = createEscrowService(escrowRepo, { logger });
 const feedbackService = createFeedbackService(feedbackRepo, { logger });
@@ -144,7 +146,7 @@ const privateNoteService = createPrivateNoteService(privateNoteRepo, { logger })
 const pushSubscriptionService = createPushSubscriptionService(pushSubscriptionRepo, { logger });
 const registerService = createRegisterService(registerRepo, { logger });
 const reportService = createReportService(reportRepo, { logger });
-const sessionService = createSessionService(sessionRepo, { logger });
+const sessionService = createSessionService(sessionRepo, escrowRepo, { logger });
 const slotLockService = createSlotLockService(slotLockRepo, { logger });
 const supportService = createSupportService(supportRepo, { logger });
 const uploadService = createUploadService(uploadRepo, { logger });

@@ -1,6 +1,7 @@
 // services/adminVerification.service.js
 const { sendMentorVerifiedEmail } = require("../utils/emails");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
+const { signCloudinaryUrl } = require("../utils/cloudinarySign");
 
 const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
 
@@ -23,10 +24,20 @@ const getMentorVerificationById = async (mentorProfileId) => {
         err.statusCode = 404;
         throw err;
     }
+    const mentorProfile = toMentorProfileDTO({ ...profile, user: undefined });
 
+    if (profile.resumeDocument?.publicId) {
+        profile.resumeDocument.url = signCloudinaryUrl(profile.resumeDocument.publicId, "raw");
+    }
+    if (profile.workExperienceDocuments?.length) {
+        profile.workExperienceDocuments = profile.workExperienceDocuments.map((doc) => ({
+            ...doc,
+            url: signCloudinaryUrl(doc.publicId, "raw"),
+        }));
+    }
     return {
         user: profile.user,
-        mentorProfile: toMentorProfileDTO({ ...profile, user: undefined }),
+        mentorProfile,
     };
 };
 

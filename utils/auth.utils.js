@@ -49,6 +49,7 @@ const setRefreshCookie = (res, refreshToken) => {
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: getRefreshMs(),
     path: "/",
+    domain: process.env.COOKIE_DOMAIN || undefined,
   });
 };
 

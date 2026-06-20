@@ -9,6 +9,9 @@ const Sentry = require("@sentry/node");
 const { randomUUID } = require("node:crypto");
 const logger = require("./utils/logger");
 const app = express();
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const imageRoutes = require("./routes/image.routes");
 
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
@@ -40,6 +43,8 @@ app.use((req, res, next) => {
     next();
   });
 });
+app.use(helmet());
+
 // Request ID — ties all logs for one request together in Logtail
 app.use((req, res, next) => {
   req.requestId = randomUUID();
@@ -54,10 +59,14 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
+app.use((req, res, next) => {
+  if (req.body) req.body = mongoSanitize.sanitize(req.body, { allowDots: true });
+  next();
+});
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/v1/google-calendar/callback")) {
     res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+    res.removeHeader("Content-Security-Policy");
   } else {
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   }
@@ -112,7 +121,7 @@ v1.use("/admin/settings", require("./routes/adminSettings.routes"));
 v1.use("/admin/payments", require("./routes/adminPayments.routes"));
 v1.use("/admin/reports", require("./routes/adminReports.routes"));
 v1.use("/admin/mentor-verifications", require("./routes/adminVerification.routes"));
-
+app.use("/api/v1/images", imageRoutes);
 /* ===========================
    🔹 MOUNT VERSIONED ROUTER
 =========================== */
@@ -121,5 +130,4 @@ app.use("/api/v1", v1);
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
 Sentry.setupExpressErrorHandler(app);
-
 module.exports = app;

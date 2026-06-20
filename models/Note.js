@@ -47,7 +47,8 @@ const noteSchema = new mongoose.Schema(
       type:    Number,
       default: 0,
     },
-    // ✅ NEW — private notes only visible to uploader
+    thumbnailUrl: { type: String, default: "" }, 
+    // NEW — private notes only visible to uploader
     isPrivate: {
       type:    Boolean,
       default: false,

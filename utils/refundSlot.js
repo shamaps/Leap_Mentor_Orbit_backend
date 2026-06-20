@@ -1,10 +1,9 @@
 // utils/refundSlot.js
 const mongoose = require("mongoose");
-const repo = require("../repositories/escrow.repository");
 const AppError = require("./appError");
 const logger = require("./logger");
 
-const refundSlot = async ({ connectRequestId, slotIndex, cancelledBy }) => {
+const refundSlot = async (repo,{ connectRequestId, slotIndex, cancelledBy }) => {
     const mongoSession = await mongoose.startSession();
     mongoSession.startTransaction();
 

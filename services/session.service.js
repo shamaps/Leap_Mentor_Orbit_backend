@@ -9,7 +9,7 @@ const {
     sendAdditionalSlotEmail,
 } = require("../utils/emails");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
-const createSessionService = (sessionRepo, { logger }) => {
+const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
 // Pure helpers (no I/O — easy to unit-test in isolation)
 const ALLOWED_MEETING_DOMAINS = [
     "meet.google.com",
@@ -355,7 +355,7 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
 
         let releaseResult = null;
         if (allComplete) {
-            releaseResult = await releaseEscrow(connectRequestId, mongoSession);
+            releaseResult = await releaseEscrow(escrowRepo, connectRequestId, mongoSession);
         }
 
         await mongoSession.commitTransaction();
@@ -515,7 +515,7 @@ const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) 
     let refundResult = null;
     try {
         if (connectRequest.paymentStatus === "paid") {
-            refundResult = await refundSlot({
+            refundResult = await refundSlot(sessionRepo, {
                 connectRequestId,
                 slotIndex: idx,
                 cancelledBy,

@@ -1,5 +1,6 @@
 // services/menteeProfile.service.js
 const { toMenteeProfileDTO } = require("../utils/mappers/menteeProfile.mapper");
+const AppError = require("../utils/appError");
 const createMenteeProfileService = (menteeProfileRepo, { logger }) => {
 /**
  * POST /api/mentee-profile
@@ -7,9 +8,7 @@ const createMenteeProfileService = (menteeProfileRepo, { logger }) => {
 const createProfile = async (userId, body) => {
     const existing = await menteeProfileRepo.findProfileByUser(userId);
     if (existing) {
-        const err = new Error("Profile already exists. Use update instead.");
-        err.statusCode = 409;
-        throw err;
+        throw new AppError(409, "Profile already exists");
     }
 
     const {
@@ -55,8 +54,7 @@ const getMyProfile = async (userId) => {
     const profile = await menteeProfileRepo.findProfileByUserPopulated(userId);
 
     if (!profile) {
-        const err = new Error("Profile not found");
-        err.statusCode = 404;
+        const err = new AppError(404, "Profile not found");
         err.isProfileComplete = false;
         throw err;
     }

@@ -1,12 +1,9 @@
-// utils/emails/index.js — barrel file, existing code imports from here
-const { sendConnectRequestEmail, sendRequestAcceptedEmail } = require("./connectRequestEmails");
-const { sendPaymentReceivedEmail, sendDocumentsSubmittedEmail, sendMentorVerifiedEmail } = require("./paymentEmails");
-const { sendSlotCancelledEmail, sendSlotRescheduledEmail, sendAdditionalSlotEmail } = require("./sessionEmails");
-const { sendSupportResolvedEmail, sendReportSubmittedEmail, sendReportResolvedEmail } = require("./adminEmails");
-
+// utils/emails/index.js
+// OCP-compliant barrel — to add a new email file, just add one spread line here.
+// No need to manually list individual function names.
 module.exports = {
-    sendConnectRequestEmail, sendRequestAcceptedEmail,
-    sendPaymentReceivedEmail, sendDocumentsSubmittedEmail, sendMentorVerifiedEmail,
-    sendSlotCancelledEmail, sendSlotRescheduledEmail, sendAdditionalSlotEmail,
-    sendSupportResolvedEmail, sendReportSubmittedEmail, sendReportResolvedEmail,
+    ...require("./connectRequestEmails"),
+    ...require("./paymentEmails"),
+    ...require("./sessionEmails"),
+    ...require("./adminEmails"),
 };

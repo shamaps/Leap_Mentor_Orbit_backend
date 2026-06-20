@@ -15,7 +15,8 @@ router.get("/callback",   handleCallback);
 
 // Disconnect Google Calendar
 router.delete("/connection", protect, disconnect);
-
+//status
+router.get("/status", protect , googleCalendarController.getStatus);
 // Fetch busy windows for a date range (used by slot busy badge)
 router.get("/busy",       protect, getBusySlots);
 

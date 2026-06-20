@@ -1,8 +1,9 @@
 
 const { sendDocumentsSubmittedEmail } = require("../utils/emails");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
+const { profilePictureId, resumeId, workExperienceId } = require("../utils/cloudinaryPublicId");
 const createUploadService = (repo, { logger }) => {
-const uploadProfilePicture = async ({ file }) => {
+    const uploadProfilePicture = async ({ file, user }) => {
     if (!file) {
         return { status: 400, body: { message: "No file uploaded" } };
     }
@@ -11,21 +12,36 @@ const uploadProfilePicture = async ({ file }) => {
         return { status: 400, body: { message: "Only image files are allowed for profile pictures" } };
     }
 
-    const result = await uploadToCloudinary(file.buffer, {
-        folder: "leapmentor/profiles",
-        resource_type: "image",
-        use_filename: false,
-        unique_filename: true,
-        transformation: [
-            { width: 400, height: 400, crop: "fill", gravity: "face" },
-            { quality: "auto", fetch_format: "auto" },
-        ],
-    });
+        const result = await uploadToCloudinary(file.buffer, {
+            resource_type: "image",
+            public_id: profilePictureId(user._id),
+            overwrite: true,
+            transformation: [
+                { width: 400, height: 400, crop: "fill", gravity: "face" },
+                { quality: "auto", fetch_format: "auto" },
+            ],
+            eager: [
+                // Avatar — used in chat, sidebar, cards
+                { width: 56, height: 56, crop: "fill", gravity: "face", quality: "auto", fetch_format: "auto" },
+                // Card — used in MentorCard, ConnectCard
+                { width: 80, height: 80, crop: "fill", gravity: "face", quality: "auto", fetch_format: "auto" },
+                // Profile modal — used in MentorProfileModal, ProfileHeroCard
+                { width: 160, height: 160, crop: "fill", gravity: "face", quality: "auto", fetch_format: "auto" },
+            ],
+            eager_async: false,
+        });
 
-    return {
-        status: 200,
-        body: { success: true, url: result.secure_url, publicId: result.public_id },
-    };
+        return {
+            status: 200,
+            body: {
+                success: true,
+                url: result.secure_url,                           // 400×400 full size
+                thumbnail56: result.eager?.[0]?.secure_url,      // 56×56  avatar
+                thumbnail80: result.eager?.[1]?.secure_url,      // 80×80  card
+                thumbnail160: result.eager?.[2]?.secure_url,      // 160×160 modal
+                publicId: result.public_id,
+            },
+        };
 };
 
 const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperienceFiles, user }) => {
@@ -38,17 +54,19 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
     }
 
     // ── Upload resume ──
+    // AFTER
     const resumeResult = await uploadToCloudinary(resumeFile.buffer, {
         resource_type: "raw",
-        folder: "leapmentor/verification-docs/resumes",
-        use_filename: true,
-        unique_filename: true,
+        public_id: resumeId(user._id, resumeFile.originalname),
+        type: "authenticated",
+        overwrite: false,
     });
 
     const resumeDocument = {
         url: resumeResult.secure_url,
         publicId: resumeResult.public_id,
-        uploadedAt: new Date(),
+        originalName: resumeFile.originalname,
+        uploadedAt: new Date(), 
     };
 
     // ── Upload work experience docs ──
@@ -59,16 +77,17 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
             workExperienceFiles.map((file) =>
                 uploadToCloudinary(file.buffer, {
                     resource_type: "raw",
-                    folder: "leapmentor/verification-docs/work-experience",
-                    use_filename: true,
-                    unique_filename: true,
+                    public_id: workExperienceId(user._id, file.originalname),
+                    type: "authenticated",
+                    overwrite: false,
                 })
             )
         );
 
-        workExperienceDocuments = workResults.map((result) => ({
+        workExperienceDocuments = workResults.map((result, index) => ({   
             url: result.secure_url,
             publicId: result.public_id,
+            originalName: workExperienceFiles[index].originalname,         
             uploadedAt: new Date(),
         }));
     }

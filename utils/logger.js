@@ -1,9 +1,11 @@
 // utils/logger.js
+// Log analysis: BetterStack alert configured for sensitive keyword detection
+// Alert: "Sensitive keyword in logs" — notifies on any accidental PII in logs
 const { createLogger, format, transports } = require("winston");
 const { Logtail } = require("@logtail/node");
 const { LogtailTransport } = require("@logtail/winston");
 const { logger: sentryLogger } = require("@sentry/node");
-
+const { sanitize } = require("./sanitize");
 const isProd = process.env.NODE_ENV === "production";
 
 const logtail = process.env.LOGTAIL_TOKEN
@@ -35,8 +37,8 @@ const winstonLogger = createLogger({
 });
 
 module.exports = {
-    info: (msg, meta = {}) => { winstonLogger.info(msg, meta); },
-    warn: (msg, meta = {}) => { winstonLogger.warn(msg, meta); sentryLogger.warn(msg, meta); },
-    error: (msg, meta = {}) => { winstonLogger.error(msg, meta); sentryLogger.error(msg, meta); },
-    debug: (msg, meta = {}) => { winstonLogger.debug(msg, meta); },
+    info: (msg, meta = {}) => { winstonLogger.info(msg, sanitize(meta)); },
+    warn: (msg, meta = {}) => { const s = sanitize(meta); winstonLogger.warn(msg, s); sentryLogger.warn(msg, s); },
+    error: (msg, meta = {}) => { const s = sanitize(meta); winstonLogger.error(msg, s); sentryLogger.error(msg, s); },
+    debug: (msg, meta = {}) => { winstonLogger.debug(msg, sanitize(meta)); },
 };

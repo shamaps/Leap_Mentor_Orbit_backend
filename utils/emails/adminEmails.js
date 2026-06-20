@@ -1,10 +1,11 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL, formatTime, formatDate } = require("../emailHelpers");
+const { escapeHtml } = require("../escapeHtml");
 
-// ─────────────────────────────────────────────────────────────
 // Email 4: User notified when admin resolves their support ticket
-// ─────────────────────────────────────────────────────────────
+
 const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
+  const safeSubject = escapeHtml(subject); 
   const html = wrapEmail(`
     ${buildHeader(
     BRAND_GRADIENT,
@@ -17,7 +18,7 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
           Your Request
         </div>
-        <div style="font-size:15px;font-weight:700;color:#1e293b;">${subject}</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeSubject}</div>
       </div>
 
       <div style="background:#f0fdf4;border-radius:12px;padding:14px 16px;border:1px solid #bbf7d0;margin-bottom:18px;">
@@ -45,12 +46,13 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
 
   logger.info("Support resolved email sent", { toEmail });
 };
-// ─────────────────────────────────────────────────────────────
+
 // Email 10: Reporter notified when they successfully submit a report
-// ─────────────────────────────────────────────────────────────
+
 const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaintType, description, reporterRole }) => {
     const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
-
+  const safeReporterName = escapeHtml(reporterName);
+  const safeDescription = escapeHtml(description);
     const formattedType = complaintType
         .replaceAll("_", " ")
         .replaceAll(/\b\w/g, (c) => c.toUpperCase());
@@ -67,7 +69,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
           Submitted By
         </div>
-        <div style="font-size:15px;font-weight:700;color:#1e293b;">${reporterName}</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeReporterName}</div>
       </div>
 
       <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:18px;border:1px solid #e2e8f0;">
@@ -80,7 +82,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
         </div>
         <div style="border-top:1px solid #e2e8f0;padding-top:10px;">
           <div style="font-size:11px;color:#94a3b8;margin-bottom:3px;">Description</div>
-          <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${description}"</div>
+          <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${safeDescription}"</div>
         </div>
       </div>
 
@@ -113,12 +115,12 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
     logger.info("Report submitted email sent", { reporterEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Email 11: Reporter notified when admin resolves/dismisses their report
-// ─────────────────────────────────────────────────────────────
+
 const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintType, status, adminNote, reporterRole }) => {
     const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
-
+  const safeAdminNote = escapeHtml(adminNote);
     const isResolved = status === "resolved";
 
     const formattedType = complaintType
@@ -166,7 +168,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
         <div style="font-size:11px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
           Note from Admin
         </div>
-        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${adminNote}"</div>
+        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${safeAdminNote}"</div>
       </div>` : ""}
 
       <div style="background:${bannerBg};border-radius:12px;padding:14px 16px;border:1px solid ${bannerBorder};margin-bottom:18px;">

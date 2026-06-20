@@ -107,7 +107,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     const clerkUser = await resolveClerkUser(clerkToken);
     const { email, name, provider, providerId } = extractClerkMeta(clerkUser);
 
-    logger.info("📧 Email:", email, "| Provider:", provider, "| Name:", name);
+    logger.info("Clerk SSO identity resolved", { provider, name });
 
     if (!email) throw new AppError(400, "No email returned from provider");
 
@@ -116,7 +116,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
     let user = await repo.findUserByEmail(email);
     let isNewUser = false;
 
-    logger.debug("User found in DB:", !!user, "| Email:", email);
+    logger.debug("User found in DB", { found: !!user });
     if (user) {
         logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
         await mergeRoles(user, roles, repo.saveUser);

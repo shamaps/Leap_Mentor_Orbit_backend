@@ -49,7 +49,10 @@ const parseTokens = (tokenJson) => {
     }
 };
 
-
+    const getStatus = async (userId) => {
+        const avail = await repo.findAvailabilityWithToken(userId);
+        return !!(avail?.googleCalendarConnected && avail?.googleCalendarToken);
+    };
 // getAuthUrl
 
 
@@ -232,6 +235,6 @@ const getEvents = async (mentorId, startDate, endDate) => {
     return deduplicateEvents(eventArrays.flat());
 };
 
-    return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };
+    return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents, getStatus };
 };
 module.exports = createGoogleCalendarService;

@@ -1,9 +1,8 @@
 // backend/services/adminReports.service.js
-const createNotification = require("../utils/createNotification");
 const { sendReportResolvedEmail } = require("../utils/emails");
 const AppError = require("../utils/appError");
 // Pure helpers — fix nested ternaries + nested template literals
-const createAdminReportsService = (repo, { logger }) => {
+const createAdminReportsService = (repo, { logger, createNotification }) => {
 
 /**
  * Appends an admin note suffix if one exists.

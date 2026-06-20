@@ -6,5 +6,6 @@ const toFeedbackDTO = (doc) => ({
     createdAt: doc.createdAt,
     from: doc.from ? { id: doc.from._id, name: doc.from.name } : null,
     to: doc.to ? { id: doc.to._id, name: doc.to.name } : null,
+    slotIndex: doc.slotIndex,
 });
 module.exports = { toFeedbackDTO };

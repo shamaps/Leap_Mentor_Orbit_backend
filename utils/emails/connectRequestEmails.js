@@ -1,8 +1,7 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL, buildSlotRows, formatTime, formatDate,BRAND_GRADIENT } = require("../emailHelpers");
-// ─────────────────────────────────────────────────────────────
+const { escapeHtml } = require("../escapeHtml");
 // Email 1: Mentor notified when mentee sends a connect request
-// ─────────────────────────────────────────────────────────────
 const sendConnectRequestEmail = async ({
   mentorName,
   mentorEmail,
@@ -10,6 +9,8 @@ const sendConnectRequestEmail = async ({
   slots = [],
   message = "",
 }) => {
+  const safeMenteeName = escapeHtml(menteeName);
+  const safeMessage = escapeHtml(message);
   const slotCount = slots.length;
   const slotRowsHtml = buildSlotRows(slots);
   const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
@@ -18,7 +19,7 @@ const sendConnectRequestEmail = async ({
     ${buildHeader(
     BRAND_GRADIENT,
     "New Connect Request",
-    `${menteeName} wants to book a session with you`
+      `${safeMenteeName}wants to book a session with you`
   )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -26,7 +27,7 @@ const sendConnectRequestEmail = async ({
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
           Mentee
         </div>
-        <div style="font-size:15px;font-weight:700;color:#1e293b;">${menteeName}</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeMenteeName}</div>
       </div>
 
       <div style="margin-bottom:18px;">
@@ -39,9 +40,9 @@ const sendConnectRequestEmail = async ({
       ${message ? `
       <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;margin-bottom:18px;border-left:3px solid #2563eb;">
         <div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
-          Message from ${menteeName}
+          Message from${safeMenteeName}
         </div>
-        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${message}"</div>
+        <div style="font-size:13px;color:#334155;line-height:1.6;font-style:italic;">"${safeMessage}"</div>
       </div>` : ""}
 
       <div style="background:#f0fdf4;border-radius:12px;padding:14px 16px;border:1px solid #bbf7d0;margin-bottom:18px;">
@@ -69,16 +70,14 @@ const sendConnectRequestEmail = async ({
   await transporter.sendMail({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: mentorEmail,
-    subject: `New Connect Request from ${menteeName} — LeapMentor`,
+    subject: `New Connect Request from ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
     html,
   });
 
   logger.info("Connect request email sent", { mentorEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
 // Email 2: Mentee notified when mentor accepts the request
-// ─────────────────────────────────────────────────────────────
 const sendRequestAcceptedEmail = async ({
   menteeName,
   menteeEmail,
@@ -86,15 +85,17 @@ const sendRequestAcceptedEmail = async ({
   confirmedSlot,
   slots = [],
 }) => {
+  const safeMentorName = escapeHtml(mentorName);
+
   const displaySlots = confirmedSlot ? [confirmedSlot] : slots;
   const slotRowsHtml = buildSlotRows(displaySlots);
   const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentee?tab=history`;
 
   const html = wrapEmail(`
     ${buildHeader(
-    "BRAND_GRADIENT",
+    BRAND_GRADIENT,
     "Your request was accepted!",
-    `${mentorName} has accepted your connect request`
+    `${safeMentorName} has accepted your connect request`
   )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -102,7 +103,7 @@ const sendRequestAcceptedEmail = async ({
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
           Your Mentor
         </div>
-        <div style="font-size:15px;font-weight:700;color:#1e293b;">${mentorName}</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeMentorName}</div>
       </div>
 
       <div style="margin-bottom:18px;">
@@ -137,7 +138,7 @@ const sendRequestAcceptedEmail = async ({
   await transporter.sendMail({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: menteeEmail,
-    subject: `${mentorName} accepted your request — Complete your payment`,
+    subject: `${mentorName.replace(/[\r\n]/g, "")}accepted your request — Complete your payment`,
     html,
   });
 

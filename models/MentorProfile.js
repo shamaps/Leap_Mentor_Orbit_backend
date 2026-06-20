@@ -12,6 +12,10 @@ const documentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    originalName: { 
+      type: String,
+       default: "" 
+      }, 
     uploadedAt: {
       type: Date,
       default: Date.now,
@@ -29,7 +33,7 @@ const mentorProfileSchema = new mongoose.Schema(
       unique: true,
     },
 
-    // ✅ Core Identity
+    // Core Identity
     currentRole: {
       type: String,
       trim: true,
@@ -58,8 +62,22 @@ const mentorProfileSchema = new mongoose.Schema(
     profilePicture: {
       type: String,
       default: "",
+    },// 400×400 — existing
+    profilePictureThumbnail: {   
+      type: String,
+      default: "",
     },
-
+     
+    profilePicture56: {
+       type: String,
+       default: "" },  // 56×56  avatar
+    profilePicture80: { 
+      type: String, 
+      default: "" },  // 80×80  card
+    profilePicture160: {
+       type: String,
+       default: "" },  // 160×160 modal
+       
     yearsOfExperience: {
       type: Number,
       min: 0,

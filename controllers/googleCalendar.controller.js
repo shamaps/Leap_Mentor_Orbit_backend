@@ -1,10 +1,9 @@
 // controllers/googleCalendar.controller.js
 const { ok, noContent } = require("../utils/response");
+const crypto = require("crypto");
 const createGoogleCalendarController = (service, { logger }) => {
-
+  const { escapeHtml } = require("../utils/escapeHtml"); 
 // GET /api/google-calendar/auth-url
-
-
 /**
  * Returns the Google OAuth URL for the logged-in mentor.
  */
@@ -16,56 +15,62 @@ const getAuthUrl = async (req, res, next) => {
   } catch (err) {
     logger.error("Unhandled error in googleCalendar.controller", { error: err.message, stack: err.stack });
     next(err);
-  
-    
 }
 };
 
-
+  const getStatus = async (req, res, next) => {
+    try {
+      const connected = await service.getStatus(req.user._id);
+      return ok(res, { connected });
+    } catch (err) {
+      next(err);
+    }
+  };
+ 
 // GET /api/google-calendar/callback  (no auth — Google redirects here)
-
-
 /**
  * Handles Google OAuth callback.
  * Responds with an inline script that postMessages to the opener window.
  */
-const handleCallback = async (req, res, next) => {
-  const { code, state, error } = req.query;
+  const handleCallback = async (req, res, next) => {
+    const { code, state, error } = req.query;
+    const nonce = crypto.randomBytes(16).toString("base64");
 
-  // Google denied access
-  if (error) {
-    logger.error("❌ Google OAuth denied:", error);
-    logger.info("handleCallback completed successfully");
-    return res.send(`
-      <script>
-        window.opener?.postMessage({ type: "GOOGLE_CALENDAR_ERROR", error: "${error}" }, "*");
+    res.setHeader("Content-Security-Policy", `script-src 'nonce-${nonce}'`);
+
+    // Google denied access
+    if (error) {
+      logger.error("❌ Google OAuth denied:", error);
+      logger.info("handleCallback completed successfully");
+      return res.send(`
+      <script nonce="${nonce}">
+        window.opener?.postMessage({ type: "GOOGLE_CALENDAR_ERROR", error: "${escapeHtml(error)}"}, "*");
         window.close();
       </script>
     `);
-  }
-
-  try {
-    await service.handleCallback(code, state);
-
-    logger.info("handleCallback completed successfully");
-    return res.send(`
-      <script>
+    }
+    try {
+      await service.handleCallback(code, state);
+      logger.info("handleCallback completed successfully");
+      return res.send(`
+      <script nonce="${nonce}">
         window.opener?.postMessage({ type: "GOOGLE_CALENDAR_CONNECTED" }, "*");
         window.close();
       </script>
     `);
-  } catch (err) {
-    logger.error("❌ Google Calendar callback error:", err.message, err?.response?.data);
-    const safeError = encodeURIComponent(err.message);
-    logger.info("handleCallback completed successfully");
-    return res.send(`
-      <script>
+    } catch (err) {
+      logger.error("❌ Google Calendar callback error:", err.message, err?.response?.data);
+      logger.error("Google Calendar callback error", { error: err.message });
+      const safeError = encodeURIComponent("Google Calendar connection failed. Please try again.");
+      logger.info("handleCallback completed successfully");
+      return res.send(`
+      <script nonce="${nonce}">
         window.opener?.postMessage({ type: "GOOGLE_CALENDAR_ERROR", error: decodeURIComponent("${safeError}") }, "*");
         window.close();
       </script>
     `);
-  }
-};
+    }
+  };
 
 
 // POST /api/google-calendar/disconnect
@@ -125,6 +130,6 @@ const getEvents = async (req, res, next) => {
 }
 };
 
-  return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents };
+ return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents, getStatus };
 };
 module.exports = createGoogleCalendarController;

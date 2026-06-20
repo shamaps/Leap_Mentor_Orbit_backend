@@ -1,8 +1,9 @@
 // controllers/menteeProfile.controller.js
 const { ok, created, fail } = require("../utils/response");
 const { handleError } = require("../utils/appError");
+const AppError = require("../utils/appError");
 const createMenteeProfileController = (menteeProfileService, { logger }) => {
-// ── Local helper — eliminates the repeated catch pattern ─────
+// Local helper — eliminates the repeated catch pattern 
 const catchError = (res, err, context) => {
   logger.error(`Unhandled error in menteeProfile.controller`, { error: err.message, stack: err.stack });
   return handleError(res, err, context);
@@ -14,9 +15,6 @@ const createProfile = async (req, res) => {
     logger.info("createProfile completed successfully");
     return created(res, data);
   } catch (err) {
-    if (err.statusCode === 409) {
-      return res.status(409).json({ message: err.message });
-    }
     return catchError(res, err, "menteeProfile.createProfile");
   }
 };
@@ -29,7 +27,7 @@ const getMyProfile = async (req, res) => {
   } catch (err) {
     // Special case: preserve isProfileComplete flag on 404
     if (err.statusCode === 404) {
-      return res.status(404).json({ message: err.message, isProfileComplete: false });
+      return res.status(404).json({ success: false, message: err.message, isProfileComplete: false });
     }
     return catchError(res, err, "menteeProfile.getMyProfile");
   }

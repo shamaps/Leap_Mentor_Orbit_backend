@@ -1,8 +1,8 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL,BRAND_GRADIENT, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
-// ─────────────────────────────────────────────────────────────
+const { escapeHtml } = require("../escapeHtml");
 // Email 3: Mentor notified when mentee completes payment
-// ─────────────────────────────────────────────────────────────
+
 const sendPaymentReceivedEmail = async ({
     mentorName,
     mentorEmail,
@@ -13,6 +13,7 @@ const sendPaymentReceivedEmail = async ({
     mentorPayout,
     commissionRate,
 }) => {
+  const safeMenteeName = escapeHtml(menteeName);
     const slotCount = slots.length;
     const slotRowsHtml = buildSlotRows(slots);
     const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
@@ -21,7 +22,7 @@ const sendPaymentReceivedEmail = async ({
     ${buildHeader(
         BRAND_GRADIENT,
         "Payment Received",
-        `${menteeName} has paid for ${slotCount} session${slotCount > 1 ? "s" : ""} with you`
+      `${safeMenteeName}has paid for ${slotCount} session${slotCount > 1 ? "s" : ""} with you`
     )}
 
     <div class="email-body" style="padding:24px 32px;">
@@ -89,19 +90,19 @@ const sendPaymentReceivedEmail = async ({
     await transporter.sendMail({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: mentorEmail,
-        subject: `Payment received from ${menteeName} — ${mentorPayout} tokens in escrow`,
+      subject: `Payment received from ${menteeName.replace(/[\r\n]/g, "")} — ${mentorPayout} tokens in escrow`,
         html,
     });
 
     logger.info("Payment received email sent", { mentorEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Email 8: Mentor notified when they successfully upload verification documents
-// ─────────────────────────────────────────────────────────────
+
 const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
     const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
-
+  const safeMentorName = escapeHtml(mentorName);
     const html = wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
@@ -114,7 +115,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
           Applicant
         </div>
-        <div style="font-size:15px;font-weight:700;color:#1e293b;">${mentorName}</div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeMentorName}</div>
       </div>
 
       <div style="background:#eff6ff;border-radius:12px;padding:16px 18px;margin-bottom:18px;border-left:3px solid #2563eb;">
@@ -176,12 +177,12 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
     logger.info("Documents submitted email sent", { mentorEmail });
 };
 
-// ─────────────────────────────────────────────────────────────
+
 // Email 9: Mentor notified when admin verifies their profile
-// ─────────────────────────────────────────────────────────────
+
 const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
     const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
-
+    const safeMentorName = escapeHtml(mentorName);
     const html = wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
@@ -195,7 +196,7 @@ const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
           Verified Mentor
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:15px;font-weight:700;color:#1e293b;">${mentorName}</div>
+          <div style="font-size:15px;font-weight:700;color:#1e293b;">${safeMentorName}</div>
           <span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;
             padding:3px 8px;border-radius:6px;">VERIFIED</span>
         </div>
