@@ -2,6 +2,7 @@
 const { google } = require("googleapis");
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 const { withTimeout } = require("../utils/withTimeout");
+const { withRetry } = require("../utils/withRetry");
 const createGoogleCalendarService = (repo, { logger }) => {
 
 /**
@@ -87,7 +88,10 @@ const handleCallback = async (code, state) => {
     const { userId } = JSON.parse(Buffer.from(state, "base64").toString());
 
     const client = createOAuthClient();
-    const { tokens } = await withTimeout(client.getToken(code), 8000, "Google token exchange");
+    const { tokens } = await withRetry(
+        () => withTimeout(client.getToken(code), 8000, "Google token exchange"),
+        { retries: 2, label: "Google token exchange" }
+    );
     const tokenJson = JSON.stringify(tokens);
 
     await repo.saveCalendarToken(userId, tokenJson);

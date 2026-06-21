@@ -11,8 +11,7 @@ const createGoal = async (req, res) => {
     logger.info("createGoal completed successfully");
     return created(res, data );
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.createGoal");
+       return handleError(res, err, "goal.createGoal");
   }
 };
 
@@ -25,12 +24,10 @@ const getGoal = async (req, res) => {
     logger.info("getGoal completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.getGoal");
+       return handleError(res, err, "goal.getGoal");
   }
 };
-
-
+ 
 // PATCH /api/goals/:goalId
 
 const updateGoal = async (req, res) => {
@@ -39,8 +36,7 @@ const updateGoal = async (req, res) => {
     logger.info("updateGoal completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.updateGoal");
+       return handleError(res, err, "goal.updateGoal");
   }
 };
 
@@ -53,8 +49,7 @@ const addMilestone = async (req, res) => {
     logger.info("addMilestone completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.addMilestone");
+       return handleError(res, err, "goal.addMilestone");
   }
 };
 
@@ -67,8 +62,7 @@ const updateMilestone = async (req, res) => {
     logger.info("updateMilestone completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.updateMilestone");
+       return handleError(res, err, "goal.updateMilestone");
   }
 };
 
@@ -81,8 +75,7 @@ const deleteMilestone = async (req, res) => {
     logger.info("deleteMilestone completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in goal.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "goal.deleteMilestone");
+       return handleError(res, err, "goal.deleteMilestone");
   }
 };
 

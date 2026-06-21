@@ -147,7 +147,7 @@ const handleReport = async (reportId, { status, adminNote }, adminId) => {
             adminNote: adminNote?.trim() || "",
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            logger.error("❌ sendReportResolvedEmail failed:", err.message)
+            logger.warn("sendReportResolvedEmail failed", { error: err.message })
         );
     }
 
@@ -235,7 +235,7 @@ const processRefund = async (reportId, { adminNote }, adminId) => {
             adminNote: resolvedAdminNote,
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            logger.error("❌ sendReportResolvedEmail (refund) failed:", err.message)
+            logger.warn("sendReportResolvedEmail (refund) failed", { error: err.message })
         );
     }
 
@@ -300,7 +300,7 @@ const deleteSession = async (reportId, { adminNote }, adminId) => {
             adminNote: resolvedAdminNote,
             reporterRole: report.reporterRole,
         }).catch((err) =>
-            logger.error("❌ sendReportResolvedEmail (deleteSession) failed:", err.message)
+            logger.warn("sendReportResolvedEmail (deleteSession) failed", { error: err.message })
         );
     }
 };

@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("node:crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { createClerkClient } = require("@clerk/backend");
-
+const RefreshToken = require("../models/RefreshToken");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
@@ -54,20 +54,23 @@ const setRefreshCookie = (res, refreshToken) => {
 };
 
 const issueTokens = async (res, userId) => {
-  const RefreshToken = require("../models/RefreshToken");
-
   const accessToken = signToken(userId);
   const rawRefresh = generateRefreshToken();
   const hashedRefresh = crypto.createHash("sha256").update(rawRefresh).digest("hex");
 
-  await RefreshToken.create({
-    user: userId,
-    tokenHash: hashedRefresh,
-    expiresAt: new Date(Date.now() + getRefreshMs()),
-  });
+  await RefreshToken.create({ user: userId, tokenHash: hashedRefresh, expiresAt: new Date(Date.now() + getRefreshMs()) });
 
+  // Set BOTH tokens as httpOnly cookies
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 15 * 60 * 1000,  // 15 minutes
+    path: "/",
+  });
   setRefreshCookie(res, rawRefresh);
-  return accessToken;
+
+  return accessToken;  
 };
 
 

@@ -6,6 +6,7 @@ const { Logtail } = require("@logtail/node");
 const { LogtailTransport } = require("@logtail/winston");
 const { logger: sentryLogger } = require("@sentry/node");
 const { sanitize } = require("./sanitize");
+const { getTraceId } = require("./requestContext");
 const isProd = process.env.NODE_ENV === "production";
 
 const logtail = process.env.LOGTAIL_TOKEN
@@ -36,9 +37,11 @@ const winstonLogger = createLogger({
     transports: logTransports,
 });
 
+const withTrace = (meta) => ({ traceId: getTraceId(), ...sanitize(meta) });
+
 module.exports = {
-    info: (msg, meta = {}) => { winstonLogger.info(msg, sanitize(meta)); },
-    warn: (msg, meta = {}) => { const s = sanitize(meta); winstonLogger.warn(msg, s); sentryLogger.warn(msg, s); },
-    error: (msg, meta = {}) => { const s = sanitize(meta); winstonLogger.error(msg, s); sentryLogger.error(msg, s); },
-    debug: (msg, meta = {}) => { winstonLogger.debug(msg, sanitize(meta)); },
+    info: (msg, meta = {}) => { winstonLogger.info(msg, withTrace(meta)); },
+    warn: (msg, meta = {}) => { const s = withTrace(meta); winstonLogger.warn(msg, s); sentryLogger.warn(msg, s); },
+    error: (msg, meta = {}) => { const s = withTrace(meta); winstonLogger.error(msg, s); sentryLogger.error(msg, s); },
+    debug: (msg, meta = {}) => { winstonLogger.debug(msg, withTrace(meta)); },
 };

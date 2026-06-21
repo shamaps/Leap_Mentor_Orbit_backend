@@ -4,11 +4,13 @@ const { handleError } = require("../utils/appError");
 const createAdminVerificationController = (adminVerificationService, { logger }) => {
 const getAllMentorVerifications = async (req, res) => {
   try {
-    const data = await adminVerificationService.getAllMentorVerifications();
+    const data = await adminVerificationService.getAllMentorVerifications({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
     logger.info("getAllMentorVerifications completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getAllMentorVerifications");
   }
 };
@@ -21,7 +23,6 @@ const getMentorVerificationById = async (req, res) => {
     logger.info("getMentorVerificationById completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getMentorVerificationById");
   }
 };
@@ -34,7 +35,6 @@ const verifyMentor = async (req, res) => {
     logger.info("verifyMentor completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "verifyMentor");
   }
 };
@@ -47,7 +47,6 @@ const revokeMentorVerification = async (req, res) => {
     logger.info("revokeMentorVerification completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminVerification.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "revokeMentorVerification");
   }
 };

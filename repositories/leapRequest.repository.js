@@ -13,10 +13,15 @@ const findPendingByMenteeOne = (menteeId) =>
 const createRequest = (data) =>
     LeapRequest.create(data);
 
-const findAllRequests = () =>
+const findAllRequests = (skip = 0, limit = 50) =>
     LeapRequest.find()
         .populate("mentee", "name email profilePicture")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+const countAllRequests = () => LeapRequest.countDocuments();
 
 const countPendingRequests = () =>
     LeapRequest.countDocuments({ status: "pending" });
@@ -40,6 +45,7 @@ module.exports = {
     findPendingByMentee,
     findPendingByMenteeOne,
     createRequest,
+    countAllRequests,
     findAllRequests,
     countPendingRequests,
     findRequestById,

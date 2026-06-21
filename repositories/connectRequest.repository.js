@@ -3,11 +3,13 @@ const ConnectRequest = require("../models/ConnectRequest");
 const MentorProfile = require("../models/MentorProfile");
 const MenteeProfile = require("../models/MenteeProfile");
 const { ACTIVE_SESSION_STATUSES, VALID_REQUEST_STATUSES } = require("../config/constants");
-
+const logger = require("../utils/logger");
+const CONNECT_REQUEST_LIST_SELECT =
+  "_id status message requestedAt sessionRate sessionCount totalAmount " +
+  "paymentStatus paidAt selectedSlots confirmedSlot additionalSlots " +
+  "completedAt mentor mentee referredTo referredBy"
 // ─────────────────────────────────────────────────────────────
 // READ
-// ─────────────────────────────────────────────────────────────
-
 /**
  * Find a pending request between a specific mentee and mentor.
  */
@@ -64,6 +66,7 @@ const findRequestByIdLean = async (id) => {
  */
 const findMyRequests = async (menteeId) => {
   return await ConnectRequest.find({ mentee: menteeId })
+    .select(CONNECT_REQUEST_LIST_SELECT)
     .populate("mentor", "name email")
     .populate("referredTo", "name email")
     .sort({ requestedAt: -1 })
@@ -79,6 +82,7 @@ const findIncomingRequests = async (mentorId, status) => {
     filter.status = status;
   }
   return await ConnectRequest.find(filter)
+    .select(CONNECT_REQUEST_LIST_SELECT)
     .populate("mentee", "name email")
     .populate("referredBy", "name email")
     .sort({ requestedAt: -1 })
@@ -93,6 +97,7 @@ const findOngoingConnects = async (userId) => {
     status: { $in: ACTIVE_SESSION_STATUSES },
     $or: [{ mentee: userId }, { mentor: userId }],
   })
+    .select(CONNECT_REQUEST_LIST_SELECT)
     .populate("mentee", "name email")
     .populate("mentor", "name email")
     .sort({ paidAt: -1 })
@@ -130,6 +135,7 @@ const findMenteeProfile = async (userId) => {
  * Create a new connect request document.
  */
 const createConnectRequest = async (data) => {
+  logger.debug("createConnectRequest called", { mentorId: data.mentor?.toString(), menteeId: data.mentee?.toString() });
   return await ConnectRequest.create(data);
 };
 
@@ -137,6 +143,7 @@ const createConnectRequest = async (data) => {
  * Persist changes to an existing request document.
  */
 const saveRequest = async (request) => {
+  logger.debug("saveRequest called", { requestId: request._id?.toString(), status: request.status });
   return await request.save();
 };
 
@@ -145,6 +152,7 @@ const saveRequest = async (request) => {
  * that conflict with the newly confirmed slot.
  */
 const rejectConflictingSlots = async (requestId, mentorId, confirmedSlot) => {
+  logger.debug("rejectConflictingSlots called", { requestId: requestId?.toString(), mentorId: mentorId?.toString(), confirmedSlot });
   return await ConnectRequest.updateMany(
     {
       _id: { $ne: requestId },

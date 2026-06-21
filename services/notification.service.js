@@ -2,18 +2,14 @@
 const { toNotificationList } = require("../utils/mappers/notification.mapper");
 const createNotificationService = (notificationRepo, { logger }) => {
 // GET /api/notifications
-const getNotifications = async (userId) => {
-    // Debug logs preserved from original
-    logger.debug("Getting notifications for user ID:", userId.toString());
-    const all = await notificationRepo.findAllNotifications();
-    logger.debug("Total notifications in DB:", all.length);
-    logger.debug("All recipient IDs in DB:", all.map((n) => n.recipient.toString()));
+    const getNotifications = async (userId) => {
+        logger.debug("getNotifications called", { userId: userId.toString() });
 
-    const notifications = await notificationRepo.findNotificationsByUser(userId);
-    logger.debug("Matched notifications for this user:", notifications.length);
+        const notifications = await notificationRepo.findNotificationsByUser(userId);
+        logger.debug("Notifications fetched", { count: notifications.length });
 
-    return { notifications: toNotificationList(notifications) };
-};
+        return { notifications: toNotificationList(notifications) };
+    };
 
 // PATCH /api/notifications/mark-all-read
 const markAllRead = async (userId) => {

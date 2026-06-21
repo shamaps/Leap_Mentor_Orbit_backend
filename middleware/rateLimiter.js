@@ -18,8 +18,8 @@ const redisClient = new Redis({
     tls: process.env.REDIS_TLS === "true" ? {} : undefined,
 });
 
-redisClient.on("connect", () => logger.info("✅ Redis connected (rate limiter)"));
-redisClient.on("error", (err) => logger.error("❌ Redis error:", err.message));
+redisClient.on("connect", () => logger.info("Redis connected (rate limiter)"));
+redisClient.on("error", (err) => logger.error("Redis client error", { error: err.message, stack: err.stack }));
 
 // ─────────────────────────────────────────────────────────────
 // Factory — creates a Redis-backed store with a unique prefix

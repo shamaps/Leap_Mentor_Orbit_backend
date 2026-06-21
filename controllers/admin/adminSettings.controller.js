@@ -10,8 +10,7 @@ const getOverview = async (req, res) => {
     logger.info("getOverview completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "adminSettings.getOverview");
+        return handleError(res, err, "adminSettings.getOverview");
   }
 };
 
@@ -30,8 +29,7 @@ const changePassword = async (req, res) => {
     logger.info("changePassword completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "adminSettings.changePassword");
+        return handleError(res, err, "adminSettings.changePassword");
   }
 };
 
@@ -45,8 +43,7 @@ const addAdmin = async (req, res) => {
     logger.info("addAdmin completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "adminSettings.addAdmin");
+        return handleError(res, err, "adminSettings.addAdmin");
   }
 };
 
@@ -59,8 +56,7 @@ const getCommission = async (req, res) => {
     logger.info("getCommission completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "adminSettings.getCommission");
+        return handleError(res, err, "adminSettings.getCommission");
   }
 };
 
@@ -76,8 +72,7 @@ const updateCommission = async (req, res) => {
     logger.info("updateCommission completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminSettings.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "adminSettings.updateCommission");
+        return handleError(res, err, "adminSettings.updateCommission");
   }
 };
 

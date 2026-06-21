@@ -20,16 +20,16 @@ const findCompletedPaidSessions = () =>
         .select("totalAmount commissionAmount")
         .lean();
 
-const findAllWalletEscrows = () =>
-    Wallet.find().select("escrow").lean();
+const sumAllWalletEscrows = () =>
+    Wallet.aggregate([
+        { $group: { _id: null, total: { $sum: "$escrow" } } },
+    ]);
 
 const countRefundedRequests = () =>
     ConnectRequest.countDocuments({ paymentStatus: "refunded" });
 
 
 // CHART
-
-
 const findCompletedSessionsInRange = (monthStart, monthEnd) =>
     ConnectRequest.find({
         status: "completed",
@@ -47,13 +47,12 @@ const findCompletedSessionsSince = (startDate) =>
         .lean();
 
 // TRANSACTIONS
-
-
 const findUserIdsByName = async (search) => {
     const users = await User.find({
         name: { $regex: escapeRegex(search), $options: "i" },
     })
         .select("_id")
+        .limit(200)
         .lean();
     return users.map((u) => u._id);
 };
@@ -73,7 +72,7 @@ module.exports = {
     // stats
     findAdminCommissionRate,
     findCompletedPaidSessions,
-    findAllWalletEscrows,
+    sumAllWalletEscrows,
     countRefundedRequests,
     // chart
     findCompletedSessionsInRange,

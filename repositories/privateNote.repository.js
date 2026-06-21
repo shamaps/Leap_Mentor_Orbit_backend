@@ -16,6 +16,7 @@ const createNote = (data) =>
 
 const findNotesByUser = (connectRequestId, userId) =>
     PrivateNote.find({ connectRequest: connectRequestId, author: userId })
+        .select("title content updatedAt createdAt author connectRequest")
         .sort({ updatedAt: -1 })
         .lean();
 

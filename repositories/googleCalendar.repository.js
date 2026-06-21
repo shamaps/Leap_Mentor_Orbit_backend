@@ -1,13 +1,17 @@
 // repositories/googleCalendar.repository.js
 const Availability = require("../models/Availability");
-
+const { encrypt, decrypt } = require("../utils/tokenCrypto");
 /**
  * Find availability record for a mentor, including the calendar token.
  * @param {ObjectId} mentorId
  * @returns {Promise<Document|null>}
  */
 const findAvailabilityWithToken = async (mentorId) => {
-    return await Availability.findOne({ mentor: mentorId }).select("+googleCalendarToken");
+    const doc = await Availability.findOne({ mentor: mentorId }).select("+googleCalendarToken");
+    if (doc?.googleCalendarToken) {
+        doc.googleCalendarToken = decrypt(doc.googleCalendarToken);
+    }
+    return doc;
 };
 
 /**
@@ -20,7 +24,7 @@ const findAvailabilityWithToken = async (mentorId) => {
 const saveCalendarToken = async (mentorId, tokenJson) => {
     return await Availability.findOneAndUpdate(
         { mentor: mentorId },
-        { googleCalendarConnected: true, googleCalendarToken: tokenJson },
+        { googleCalendarConnected: true, googleCalendarToken: encrypt(tokenJson) },
         { upsert: true, new: true }
     );
 };
@@ -34,10 +38,9 @@ const saveCalendarToken = async (mentorId, tokenJson) => {
 const updateCalendarToken = async (mentorId, tokenJson) => {
     return await Availability.findOneAndUpdate(
         { mentor: mentorId },
-        { googleCalendarToken: tokenJson }
+        { googleCalendarToken: encrypt(tokenJson) }
     );
 };
-
 /**
  * Disconnect Google Calendar for a mentor.
  * @param {ObjectId} mentorId

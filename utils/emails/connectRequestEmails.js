@@ -67,7 +67,7 @@ const sendConnectRequestEmail = async ({
     ${FOOTER}
   `);
 
-  await transporter.sendMail({
+  await transporter.sendMailWithRetry({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: mentorEmail,
     subject: `New Connect Request from ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
@@ -135,7 +135,7 @@ const sendRequestAcceptedEmail = async ({
     ${FOOTER}
   `);
 
-  await transporter.sendMail({
+  await transporter.sendMailWithRetry({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: menteeEmail,
     subject: `${mentorName.replace(/[\r\n]/g, "")}accepted your request — Complete your payment`,

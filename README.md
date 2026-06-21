@@ -51,6 +51,32 @@ LeapMentor's backend handles:
 | Deployment | Render |
 
 ---
+## Dependencies
+
+Install with `npm install`. Key production packages:
+
+| Package | Version | Purpose |
+|---|---|---|
+| `express` | ^5.2.1 | HTTP framework |
+| `mongoose` | ^9.2.1 | MongoDB ODM |
+| `socket.io` | ^4.8.3 | Real-time WebSocket server |
+| `jsonwebtoken` | ^9.0.3 | JWT signing and verification |
+| `bcryptjs` | ^3.0.3 | Password hashing |
+| `@clerk/backend` | ^3.0.1 | Clerk SSO (LinkedIn, Apple) |
+| `google-auth-library` | ^10.5.0 | Google OAuth verification |
+| `ioredis` | ^5.11.0 | Redis client — required for rate limiting |
+| `cloudinary` | ^2.9.0 | File upload and storage |
+| `multer` | ^2.2.0 | Multipart form data (file uploads) |
+| `nodemailer` | ^9.0.1 | SMTP email sending |
+| `pdfkit` | ^0.17.2 | Invoice PDF generation |
+| `helmet` | ^8.2.0 | HTTP security headers |
+| `express-rate-limit` | ^8.5.2 | API rate limiting |
+| `@sentry/node` | ^10.53.1 | Error monitoring |
+| `@logtail/winston` | ^0.5.8 | BetterStack log transport |
+| `winston` | ^3.19.0 | Logging framework |
+| `node-cron` | ^4.2.1 | Scheduled jobs |
+
+Dev dependencies: `jest`, `supertest`, `mongodb-memory-server`, `nodemon`
 
 ## Project Structure
 
@@ -82,6 +108,162 @@ LeapMentor's backend handles:
 ```
 
 ---
+## Architecture
+
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Client
+        FE[React Frontend<br/>Vite + Redux]
+    end
+
+    subgraph LeapMentor Backend
+        EX[Express App<br/>app.js]
+        MW[Middleware<br/>auth · rate-limit · upload]
+        RT[Routes<br/>/api/v1/*]
+        CT[Controllers<br/>35 controllers]
+        SV[Services<br/>Business Logic]
+        RP[Repositories<br/>DB Abstraction]
+        SK[Socket.IO<br/>Real-time chat]
+        CR[Cron Jobs<br/>cleanup · reminders]
+    end
+
+    subgraph External Services
+        MDB[(MongoDB Atlas)]
+        RDS[(Redis<br/>Rate Limiting)]
+        CDN[Cloudinary<br/>File Storage]
+        STP[SMTP<br/>Email]
+        SNT[Sentry<br/>Error Monitoring]
+        LGT[BetterStack<br/>Log Management]
+        CLK[Clerk<br/>LinkedIn/Apple SSO]
+        GGL[Google OAuth]
+        GRQ[Groq / LLaMA<br/>AI Assistant]
+    end
+
+    FE -->|HTTP REST| EX
+    FE -->|WebSocket| SK
+    EX --> MW --> RT --> CT --> SV --> RP --> MDB
+    SV --> CDN
+    SV --> STP
+    SV --> CLK
+    SV --> GGL
+    SV --> GRQ
+    RP --> RDS
+    CT --> SNT
+    CR --> MDB
+    CR --> STP
+    EX --> LGT
+```
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant MW as Middleware
+    participant CT as Controller
+    participant SV as Service
+    participant RP as Repository
+    participant DB as MongoDB
+
+    C->>MW: HTTP Request
+    MW->>MW: JWT Auth + Rate Limit
+    MW->>CT: req, res, next
+    CT->>SV: call service method
+    SV->>RP: query/write
+    RP->>DB: Mongoose operation
+    DB-->>RP: result
+    RP-->>SV: data
+    SV-->>CT: result or throws AppError
+    CT-->>C: JSON response {success, data/message}
+```
+## Workflow
+### Authentication Flow:
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as MongoDB
+
+    U->>FE: Enter email + password
+    FE->>BE: POST /auth/register
+    BE->>DB: Create User + Wallet
+    BE-->>FE: 201 { user }
+    BE->>U: OTP email sent
+    U->>FE: Enter OTP
+    FE->>BE: POST /verification/verify-otp
+    BE->>DB: Mark isEmailVerified = true
+    FE->>BE: POST /auth/login
+    BE->>DB: Create RefreshToken (hashed)
+    BE-->>FE: accessToken in body + refreshToken in HttpOnly cookie
+    FE->>FE: Store accessToken in Redux (memory only)
+```
+
+### Session Booking Flow
+```mermaid
+flowchart TD
+    A[Mentee browses mentors] --> B[POST /connect-requests]
+    B --> C{Mentor reviews}
+    C -->|Accept| D[POST /escrow/pay]
+    C -->|Reject| E[Request rejected]
+    D --> F[Funds held in escrow]
+    F --> G[Session takes place]
+    G --> H[PATCH /sessions/:id/complete]
+    H --> I[Escrow released to mentor]
+    I --> J[Invoice PDF generated]
+    I --> K[Mentee submits feedback]
+```
+
+### Real-time Chat Flow:
+```mermaid
+sequenceDiagram
+    participant M as Mentee
+    participant SK as Socket.IO
+    participant BE as Backend
+    participant DB as MongoDB
+    participant MR as Mentor
+
+    M->>SK: connect (auth token)
+    SK->>BE: socketAuth validates JWT
+    M->>SK: join_room (connectionId)
+    M->>SK: send_message { content }
+    SK->>DB: Message.create()
+    SK->>MR: receive_message
+    SK->>MR: notification event
+```
+
+###  Admin Report Resolution:
+```mermaid
+flowchart TD
+    A[User submits report] --> B[POST /reports]
+    B --> C[Admin views reports]
+    C --> D{Admin decision}
+    D -->|Warn| E[PATCH /admin/reports/:id status=warned]
+    D -->|Refund| F[Escrow refunded to mentee]
+    D -->|Delete Session| G[Session deleted + refund]
+    E --> H[Email sent to reporter]
+    F --> H
+    G --> H
+```
+
+###  Password Reset Flow:
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant BE as Backend
+    participant DB as MongoDB
+
+    U->>BE: POST /auth/forgot-password { email }
+    BE->>DB: Create VerificationToken (hashed OTP)
+    BE->>U: Email with OTP + magic link
+    U->>BE: POST /auth/verify-reset-otp { email, otp }
+    BE->>DB: Verify OTP, extend expiry 10 min
+    U->>BE: POST /auth/reset-password { token, newPassword }
+    BE->>DB: Hash new password, delete token
+    BE-->>U: 200 Password reset successful
+```
 
 ## Getting Started
 
@@ -380,7 +562,21 @@ Socket.IO runs on the same HTTP server as Express. Auth is handled by `socketAut
 | `sessionReminders.js` | Every hour | Sends push + email reminders for upcoming sessions |
 
 ---
+## Debug Tools
 
+### API Debugging
+| Tool | Purpose |
+|------|---------|
+| [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) | VSCode extension — run HTTP requests from `.http` files directly in editor |
+| [MongoDB for VS Code](https://marketplace.visualstudio.com/items?itemName=mongodb.mongodb-vscode) | Browse collections and run queries without leaving VSCode |
+| Postman | Full API testing — collection exported at `docs/LeapMentor.postman_collection.json` |
+| Sentry Dashboard | Runtime error monitoring at `https://sentry.io` — configured via `SENTRY_DSN` env var |
+| Winston + BetterStack | Structured logs viewable at BetterStack dashboard — configured via `LOGTAIL_TOKEN` |
+
+### Backend Local Debugging
+- Use `nodemon` (`npm run dev`) — auto-restarts on every file save
+- Add `--inspect` flag for Chrome DevTools: `node --inspect server.js`
+- VSCode launch config is at `.vscode/launch.json` (see below)
 ## Testing
 
 ```bash

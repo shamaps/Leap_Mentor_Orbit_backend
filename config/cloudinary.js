@@ -8,13 +8,14 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ✅ Verify config loaded correctly on startup
+// Verify config loaded correctly on startup
 const verifyConnection = async () => {
   try {
     await cloudinary.api.ping();
-    logger.info("✅ Cloudinary connected successfully");
+    logger.info("Cloudinary connected successfully");
   } catch (err) {
-    logger.error("❌ Cloudinary connection failed:", err.message);
+    logger.error("Cloudinary connection failed", { error: err.message, stack: err.stack });
+    FI
   }
 };
 

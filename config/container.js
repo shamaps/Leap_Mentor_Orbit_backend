@@ -21,6 +21,7 @@ const googleCalendarRepo = require("../repositories/googleCalendar.repository");
 const invoiceRepo = require("../repositories/invoice.repository");
 const leapRequestRepo = require("../repositories/leapRequest.repository");
 const loginRepo = require("../repositories/login.repository");
+const refreshTokenRepo = require("../repositories/refreshToken.repository");
 const menteeProfileRepo = require("../repositories/menteeProfile.repository");
 const mentorProfileRepo = require("../repositories/mentorProfile.repository");
 const mentorReferRepo = require("../repositories/mentorRefer.repository");
@@ -57,6 +58,7 @@ const createGoogleAuthService = require("../services/googleAuth.service");
 const createGoogleCalendarService = require("../services/googleCalendar.service");
 const createInvoiceService = require("../services/invoice.service");
 const createLeapRequestService = require("../services/leapRequest.service");
+const createRefreshTokenService = require("../services/refreshToken.service");
 const createLoginService = require("../services/login.service");
 const createMenteeProfileService = require("../services/menteeProfile.service");
 const createMentorProfileService = require("../services/mentorProfile.service");
@@ -75,7 +77,7 @@ const createSupportService = require("../services/support.service");
 const createUploadService = require("../services/upload.service");
 const createVerificationService = require("../services/verification.service");
 const createWalletWithdrawalService = require("../services/walletWithdrawal.service");
-
+const createImageService = require("../services/image.service");
 // ── Controller factories
 const createAdminController = require("../controllers/admin.controller");
 const createAdminVerificationController = require("../controllers/adminVerification.controller");
@@ -91,6 +93,7 @@ const createGoalController = require("../controllers/goal.controller");
 const createGoogleAuthController = require("../controllers/googleAuth.controller");
 const createGoogleCalendarController = require("../controllers/googleCalendar.controller");
 const createInvoiceController = require("../controllers/invoice.controller");
+const createRefreshTokenController = require("../controllers/refreshToken.controller");
 const createLeapRequestController = require("../controllers/leapRequest.controller");
 const createLoginController = require("../controllers/login.controller");
 const createMenteeProfileController = require("../controllers/menteeProfile.controller");
@@ -112,7 +115,8 @@ const createVerificationController = require("../controllers/verification.contro
 const createAdminPaymentsController = require("../controllers/admin/adminPayments.controller");
 const createAdminReportsController = require("../controllers/admin/adminReports.controller");
 const createAdminSettingsController = require("../controllers/admin/adminSettings.controller");
-
+const createUserController = require("../controllers/user.controller");
+const createImageController = require("../controllers/image.controller");
 
 const createNotification = makeCreateNotification(notificationRepo);
 // ── Wire services
@@ -133,6 +137,7 @@ const goalService = createGoalService(goalRepo, { logger });
 const googleAuthService = createGoogleAuthService(googleAuthRepo, { logger });
 const googleCalendarService = createGoogleCalendarService(googleCalendarRepo, { logger });
 const invoiceService = createInvoiceService(invoiceRepo, { logger });
+const refreshTokenService = createRefreshTokenService(refreshTokenRepo, { logger });
 const leapRequestService = createLeapRequestService(leapRequestRepo, { logger });
 const loginService = createLoginService(loginRepo, { logger });
 const menteeProfileService = createMenteeProfileService(menteeProfileRepo, { logger });
@@ -152,7 +157,7 @@ const supportService = createSupportService(supportRepo, { logger });
 const uploadService = createUploadService(uploadRepo, { logger });
 const verificationService = createVerificationService(verificationRepo, { logger });
 const walletWithdrawalService = createWalletWithdrawalService(earningsRepo, { logger });
-
+const imageService = createImageService({ logger });
 // ── Wire controllers
 module.exports = {
     adminController: createAdminController(adminService, { logger }),
@@ -169,6 +174,7 @@ module.exports = {
     googleAuthController: createGoogleAuthController(googleAuthService, { logger }),
     googleCalendarController: createGoogleCalendarController(googleCalendarService, { logger }),
     invoiceController: createInvoiceController(invoiceService, { logger }),
+    refreshTokenController: createRefreshTokenController(refreshTokenService, { logger }),
     leapRequestController: createLeapRequestController(leapRequestService, { logger }),
     loginController: createLoginController(loginService, { logger }),
     menteeProfileController: createMenteeProfileController(menteeProfileService, { logger }),
@@ -190,4 +196,6 @@ module.exports = {
     adminPaymentsController: createAdminPaymentsController(adminPaymentsService, { logger }),
     adminReportsController: createAdminReportsController(adminReportsService, { logger }),
     adminSettingsController: createAdminSettingsController(adminSettingsService, { logger }),
+    userController: createUserController({ logger }),
+    imageController: createImageController(imageService, { logger }),
 };

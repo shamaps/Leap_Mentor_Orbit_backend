@@ -3,11 +3,16 @@ const MentorProfile = require("../models/MentorProfile");
 const ConnectRequest = require("../models/ConnectRequest");
 
 const findRequestWithMentor = (id) =>
-    ConnectRequest.findById(id).populate("mentor", "_id");
+    ConnectRequest.findById(id)
+        .select("mentor status")
+        .populate("mentor", "_id")
+        .lean();
 
 const findMyProfileSkills = (userId) =>
-    MentorProfile.findOne({ user: userId }).select("skills industry");
-
+    MentorProfile.findOne({ user: userId })
+        .select("skills industry")
+        .lean();
+        
 const findSimilarMentors = (userId, skills) =>
     MentorProfile.find({
         user: { $ne: userId },

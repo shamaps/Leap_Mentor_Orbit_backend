@@ -73,9 +73,8 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
     let workExperienceDocuments = [];
 
     if (workExperienceFiles.length > 0) {
-        const workResults = await Promise.all(
-            workExperienceFiles.map((file) =>
-                uploadToCloudinary(file.buffer, {
+        const workResults = await Promise.allSettled(
+            workExperienceFiles.map((file) => uploadToCloudinary(file.buffer, { 
                     resource_type: "raw",
                     public_id: workExperienceId(user._id, file.originalname),
                     type: "authenticated",
@@ -84,12 +83,20 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
             )
         );
 
-        workExperienceDocuments = workResults.map((result, index) => ({   
-            url: result.secure_url,
-            publicId: result.public_id,
-            originalName: workExperienceFiles[index].originalname,         
-            uploadedAt: new Date(),
-        }));
+        const failed = workResults.filter(r => r.status === "rejected");
+        if (failed.length) {
+            logger.warn("Some work experience docs failed to upload", {
+                failedCount: failed.length,
+                errors: failed.map(f => f.reason?.message),
+            });
+        }
+        workExperienceDocuments = workResults
+            .filter(r => r.status === "fulfilled")
+            .map(({ value }, i) => ({
+                url: value.secure_url,
+                publicId: value.public_id,
+                originalName: workExperienceFiles[i].originalname,
+            }));
     }
 
     // ── Persist to DB ──
@@ -106,9 +113,8 @@ const uploadVerificationDocuments = async ({ phoneNumber, resumeFile, workExperi
 
     // ── Send documents submitted email (non-blocking) ──
     sendDocumentsSubmittedEmail({ mentorName: user.name, mentorEmail: user.email }).catch((emailErr) => {
-        logger.error("❌ sendDocumentsSubmittedEmail failed:", emailErr.message);
+        logger.warn("sendDocumentsSubmittedEmail failed", { error: emailErr.message });
     });
-
     return {
         status: 200,
         body: { success: true, resumeDocument, workExperienceDocuments },

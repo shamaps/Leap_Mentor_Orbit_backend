@@ -7,31 +7,37 @@ const Transaction = require("../models/Transaction");
 const { escapeRegex } = require("../utils/escapeRegex");
 
 // Summary 
-const findCompletedSessions = (mentorId) =>
-    ConnectRequest.find({ mentor: mentorId, status: "completed" }).lean();
 
 const findMentorProfileStats = (mentorId) =>
     MentorProfile.findOne({ user: mentorId }).select("avgRating totalSessions").lean();
 
-const findOngoingPaidSessions = (mentorId) =>
-    ConnectRequest.find({ mentor: mentorId, status: "ongoing", paymentStatus: "paid" }).lean();
-
 const findWallet = (mentorId) =>
     Wallet.findOne({ user: mentorId }).lean();
 
-// Chart 
+const findCompletedSessions = (mentorId) =>
+    ConnectRequest.find({ mentor: mentorId, status: "completed" })
+        .select("totalAmount completedAt")
+        .lean();
+
+const findOngoingPaidSessions = (mentorId) =>
+    ConnectRequest.find({ mentor: mentorId, status: "ongoing", paymentStatus: "paid" })
+        .select("mentorPayout")
+        .lean();
+//Chart
 const findCompletedSessionsSince = (mentorId, startDate) =>
     ConnectRequest.find({
         mentor: mentorId,
         status: "completed",
         completedAt: { $gte: startDate },
-    }).lean();
+    })
+        .select("totalAmount completedAt")
+        .lean();
+
 
 // Payout history 
 
 const findUserIdsByName = (search) =>
-    User.find({ name: { $regex: escapeRegex(search), $options: "i" } }).select("_id").lean();
-
+    User.find({ name: { $regex: escapeRegex(search), $options: "i" } }).select("_id").limit(200).lean();
 const countPayouts = (query) => ConnectRequest.countDocuments(query);
 
 const findPayouts = (query, skip, limit) =>

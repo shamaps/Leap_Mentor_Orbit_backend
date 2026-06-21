@@ -1,77 +1,121 @@
 # Changelog
 
-## [2.14.0] - 2026-03-13
+All notable changes to the LeapMentor backend are documented here.
+Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [Unreleased]
 
 ### Added
-
-- Support for IP allow list, previews, and additional service fields in `services create`
-- `workflows init` command for scaffolding new workflow projects from templates
-- Added local workflows task output to local task server logs
+- Joi-based request validation at the route boundary for all auth endpoints
+  (register, login, change-password, forgot-password flow), replacing manual
+  presence-only checks with proper email/length/format validation and
+  field-level error responses.
+- `X-Trace-Id` request tracing via `AsyncLocalStorage` — every log line for a
+  request is automatically tagged with the same trace ID, without needing to
+  pass it manually through controllers/services/repositories. Inbound
+  `X-Trace-Id` / `X-Request-Id` headers are honored if present; a new UUID v4
+  is generated otherwise. The same trace ID is now forwarded to the Groq AI
+  proxy call for end-to-end correlation.
+- Swagger / OpenAPI documentation, served at `/api/v1/docs`, generated via
+  `swagger-autogen` from live route annotations.
+- AES-256-GCM encryption for stored Google Calendar OAuth tokens
+  (`Availability.googleCalendarToken`), previously stored as plain text.
+- Process-level `uncaughtException` / `unhandledRejection` handlers, both
+  reporting to Sentry. `uncaughtException` distinguishes operational errors
+  (`AppError`, expected/handled) from programmer errors — only the latter
+  triggers a process exit.
+- Retry-with-backoff wrapper (`utils/withRetry.js`) applied to Cloudinary
+  uploads, Google Calendar API calls, outbound email sending, and Clerk SSO
+  user lookups.
 
 ### Changed
-- Reformatted CLI help output with new visual styles
+- MongoDB connection failure at startup now exits the process instead of
+  continuing to accept requests against an unreachable database.
+- `/users/me` and `/images/profile/:userId` moved out of inline route
+  handlers into proper controller/service layers.
 
 ### Fixed
-- Fixed flag parsing to preserve user intent by treating unset flags as nil
-- Fixed local workflows task runs not being visible in interactive list
+- Fixed `routes/ai.routes.js` referencing an unimported `fail()` helper,
+  which caused an unhandled `ReferenceError` on any Groq API timeout or
+  non-2xx response instead of returning the intended error response.
+- Fixed a typo (`catchError` instead of `handleError`) in the mentee profile
+  creation error path.
+- Fixed two silent `catch` blocks in `middleware/noteAccess.js` that returned
+  a 500 response without logging the underlying error.
 
-## [2.13.0] - 2026-03-9
+---
 
-### Added
+## [1.0.0] — Initial documented baseline
 
-- `services create` command to create services via the CLI
+### API
+- Versioned under `/api/v1`.
 
-## [2.12.0] - 2026-03-05
+### Authentication
+- Email/password registration and login, with bcrypt password hashing.
+- Google OAuth and Clerk SSO (LinkedIn, Apple) sign-in.
+- Email verification via OTP and magic link.
+- Access tokens issued as short-lived JWTs, kept in memory on the frontend
+  (Redux), never persisted to localStorage.
+- Refresh tokens stored as SHA-256 hashes in MongoDB, delivered to the
+  client as an HttpOnly cookie scoped to `/auth/refresh`, with rotation on
+  every refresh.
+- Forgot-password flow via OTP, with its own rate limiting.
 
-### Added
+### Core domain
+- Mentor and mentee profile management.
+- Slot-based mentor availability (weekly schedule + specific-date overrides).
+- Connect-request lifecycle: send → accept/reject → escrow → session →
+  complete.
+- Escrow-based payment system with per-role wallets and transaction history.
+- Session scheduling, feedback, and ratings.
+- Goals and milestones tracking.
+- Shared and private notes per mentor-mentee connection.
+- Real-time chat via Socket.IO, authenticated via JWT at the socket layer.
+- PDF invoice generation.
+- Web Push notifications (VAPID).
+- Google Calendar integration — mentors can connect their calendar to sync
+  availability and sessions.
+- LeapBuddy AI assistant, proxied through Groq's LLaMA-based chat API.
+- Admin panel: user management, report resolution, mentor verification
+  workflow, platform commission settings, payment and engagement reports.
 
-- Support for paginated workflows task run listing
-- Handle `succeeded` workflows task run status
+### Reliability & observability
+- Winston logging with a BetterStack (Logtail) transport and Sentry error
+  reporting.
+- Centralized error handling (`AppError` + `handleError`) distinguishing
+  operational errors (4xx, expected) from unexpected/programmer errors.
+- Centralized response shape (`ok` / `created` / `fail` / `noContent`) used
+  consistently across all controllers.
+- Redis-backed rate limiting, global and per-route (login, registration,
+  OTP, OAuth, forgot-password).
 
-### Changed
+### Security
+- Helmet middleware (CSP, HSTS, X-Frame-Options, etc.).
+- MongoDB injection protection via `express-mongo-sanitize`.
+- CORS restricted to an explicit allowlist from environment variables.
+- Sensitive fields (passwords, tokens, OTPs, card data) redacted from all
+  log output via a shared `sanitize()` utility.
 
-- Renamed "task identifier" / "task ID" to "task slug" in error messages and help text for workflows
+---
 
-## [2.11.0] - 2026-03-03
+## Migration notes
 
-### Added
+### Encrypting existing Google Calendar tokens
+Any `Availability` document with a pre-existing plain-text
+`googleCalendarToken` (written before the AES-256-GCM encryption change)
+must be migrated — either via a one-off script that encrypts existing
+values in place, or by having affected mentors disconnect and reconnect
+their Google Calendar. Attempting to decrypt an un-migrated plain-text value
+will throw, since it was never encrypted by the new `tokenCrypto.js` in the
+first place.
 
-#### Workflows
-- `render workflows list` interactive palette for browsing and managing workflows
-- Support for named-parameter (object) input for task runs (Python workflows only)
-
-#### Early Access
-- `render ea objects delete` supports deleting multiple objects
-
-### Changed
-
-#### General
-- Skip auth and workspace selection prompts for `--local` commands
-
-#### Workflows
-- **Breaking:** Promoted workflows commands from `render ea` to `render workflows`
-- **Breaking:** Moved `taskruns start` to `tasks start`
-- **Breaking:** Renamed `taskruns` command to `runs`
-- Moved local development `dev` command from `workflows tasks` to `workflows`
-- Skip version selection step in interactive task navigation (use most recent version)
-- Use compact tables for workflows task and task run lists
-- Improved `tasks dev` startup output
-
-### Fixed
-
-#### General
-- Show loading spinner in content pane only, keeping header and footer visible
-
-#### Workflows
-- Fixed `--wait` on `versions release` to poll until completion
-- Fixed `tasks dev` hang when start command is invalid or crashes
-- Fixed local task run input display and interactive mode bugs
-- Fixed local `taskruns list` when no task id specified or id is a slug
-- Fixed local dev server generating UUIDs instead of XIDs for task IDs
-- Fixed local dev server logs endpoint returning incorrect response format
-- Fixed referencing local dev server tasks by slug only
-- Fixed malformed format string in `taskruns show -o text`
-- Fixed "service id" error typo when validating TaskRunInput
-- Fixed missing parent and root task ids in local task runs
-- Fixed local dev server returning task runs with `attempts: null`
-- Fixed error message when starting a task run for a nonexistent task in local dev
+### Required new environment variable
+`CALENDAR_TOKEN_ENC_KEY` — a 64-character hex string (32 bytes), used to
+encrypt/decrypt stored Google Calendar OAuth tokens. Generate with:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+The app will fail to start if this is missing or malformed once the
+encryption change is deployed.

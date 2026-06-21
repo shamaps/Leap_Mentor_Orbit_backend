@@ -4,7 +4,6 @@ const { ok, created } = require("../utils/response");
 const createFeedbackController = (feedbackService, { logger }) => {
 // POST /api/feedback
 const submitFeedback = async (req, res) => {
-  console.log("FEEDBACK BODY:", JSON.stringify(req.body));
   try {
     const feedback = await feedbackService.submitFeedback({
       connectRequestId: req.body.connectRequestId,

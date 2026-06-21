@@ -10,8 +10,7 @@ const getNotifications = async (req, res) => {
     logger.info("getNotifications completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "notification.getNotifications");
+        return handleError(res, err, "notification.getNotifications");
   }
 };
 
@@ -22,8 +21,7 @@ const markAllRead = async (req, res) => {
     logger.info("markAllRead completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "notification.markAllRead");
+        return handleError(res, err, "notification.markAllRead");
   }
 };
 
@@ -34,8 +32,7 @@ const markOneRead = async (req, res) => {
     logger.info("markOneRead completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "notification.markOneRead");
+        return handleError(res, err, "notification.markOneRead");
   }
 };
 
@@ -46,8 +43,7 @@ const deleteNotification = async (req, res) => {
     logger.info("deleteNotification completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "notification.deleteNotification");
+        return handleError(res, err, "notification.deleteNotification");
   }
 };
 
@@ -58,8 +54,7 @@ const clearAll = async (req, res) => {
     logger.info("clearAll completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in notification.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "notification.clearAll");
+        return handleError(res, err, "notification.clearAll");
   }
 };
 

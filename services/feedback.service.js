@@ -37,7 +37,7 @@ const assertCompletionEligible = (connectRequest, fromRole, slotIndex) => {
         const slot = connectRequest.selectedSlots?.[slotIndex];
         const myMark = fromRole === "mentee" ? slot?.menteeMarked : slot?.mentorMarked;
 
-        logger.debug("fromRole:", fromRole, "myMark:", myMark, "slot:", slot);
+        logger.debug("Feedback debug state", { fromRole, myMark, slot });
 
         if (!slot || !myMark)
             throw new AppError(400, "Feedback can only be submitted for completed sessions");

@@ -1,7 +1,7 @@
 // controllers/clerkSSO.controller.js
-const AppError = require("../utils/appError");
+const {handleError} = require("../utils/appError");
 const { issueTokens } = require("../utils/auth.utils");   
-const { ok, fail } = require("../utils/response");
+const { ok } = require("../utils/response");
 const createClerkSSOController = (clerkSSOService, { logger }) => {
 const clerkSSO = async (req, res) => {
   try {
@@ -16,10 +16,9 @@ const clerkSSO = async (req, res) => {
       accessToken,    // ← was spread from result which had "token"
       user: result.user,
     });
-    } catch (err) {
-      logger.error("❌ Clerk SSO error:", { error: err.message });
-      return handleError(res, err, "clerkSSO");
-    }
+  } catch (err) {
+    return handleError(res, err, "clerkSSO.clerkSSO");
+  }
 };
 
   return { clerkSSO };

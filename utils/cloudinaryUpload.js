@@ -1,8 +1,8 @@
-// utils/cloudinaryUpload.js
 const { cloudinary } = require("../config/cloudinary");
 const streamifier = require("streamifier");
+const { withRetry } = require("./withRetry");
 
-const uploadToCloudinary = (buffer, options) =>
+const attemptUpload = (buffer, options) =>
     new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
             options,
@@ -13,5 +13,8 @@ const uploadToCloudinary = (buffer, options) =>
         );
         streamifier.createReadStream(buffer).pipe(stream);
     });
+
+const uploadToCloudinary = (buffer, options) =>
+    withRetry(() => attemptUpload(buffer, options), { retries: 3, label: "cloudinaryUpload" });
 
 module.exports = { uploadToCloudinary };

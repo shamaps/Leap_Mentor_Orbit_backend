@@ -1,4 +1,5 @@
-const { ok, fail } = require("../utils/response");
+const { ok,} = require("../utils/response");
+const { handleError } = require("../utils/appError");
 const createSupportController = (supportService, { logger }) => {
 
  const createMessage = async (req, res) => {
@@ -7,28 +8,29 @@ const createSupportController = (supportService, { logger }) => {
     const {  body } = await supportService.createMessage({ email, subject, message, role });
     return ok(res, body);
   } catch (err) {
-    logger.error("Unhandled error in support.controller", { error: err.message, stack: err.stack });
-    return fail(res, "Server error", 500);
+    return handleError(res, err, "support.createMessage");
   }
 };
 
-const getMessages = async (req, res) => {
-  try {
-    const {  body } = await supportService.getMessages();
-    return ok(res, body);
-  } catch (err) {
-    logger.error("Unhandled error in support.controller", { error: err.message, stack: err.stack });
-    return fail(res, "Server error", 500);
-  }
-};
+  const getMessages = async (req, res) => {
+    try {
+      const { body } = await supportService.getMessages({
+        page: req.query.page,
+        limit: req.query.limit,
+      });
+      logger.info("getMessages completed successfully");
+      return ok(res, body);
+    } catch (err) {
+      return handleError(res, err, "support.getMessages");
+    }
+  };
 
 const resolveMessage = async (req, res) => {
   try {
     const {  body } = await supportService.resolveMessage(req.params.id);
     return ok(res, body);
   } catch (err) {
-    logger.error(err);
-    return fail(res, "Server error", 500);
+    return handleError(res, err, "support.resolveMessage");
   }
 };
 

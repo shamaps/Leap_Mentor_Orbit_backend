@@ -11,10 +11,6 @@ const uploadNote = async (req, res) => {
     logger.info("uploadNote completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("❌ uploadNote error:", err.message);
-    if (err.message?.includes("File type not allowed")) {
-      return fail(res, err.message, 400);
-    }
     if (err.code === "LIMIT_FILE_SIZE") {
       return fail(res, "File too large. Maximum size is 10MB.", 400);
     }
@@ -31,8 +27,7 @@ const getNotes = async (req, res) => {
     logger.info("getNotes completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "note.getNotes");
+        return handleError(res, err, "note.getNotes");
   }
 };
 
@@ -45,8 +40,7 @@ const getPrivateNotes = async (req, res) => {
     logger.info("getPrivateNotes completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "note.getPrivateNotes");
+     return handleError(res, err, "note.getPrivateNotes");
   }
 };
 
@@ -59,8 +53,7 @@ const deleteNote = async (req, res) => {
     logger.info("deleteNote completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in note.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "note.deleteNote");
+      return handleError(res, err, "note.deleteNote");
   }
 };
   return { uploadNote, getNotes, getPrivateNotes, deleteNote };

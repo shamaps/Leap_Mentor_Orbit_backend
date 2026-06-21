@@ -78,8 +78,7 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
         complaintType,
         description: description.trim(),
         reporterRole,
-    }).catch((err) => logger.error("❌ sendReportSubmittedEmail failed:", err.message));
-
+    }).catch((err) => logger.warn("sendReportSubmittedEmail failed", { error: err.message }))
     return {
         status: 201,
         body: {
@@ -152,7 +151,7 @@ const updateReportStatus = async ({ reportId, status, adminNote, userId }) => {
             complaintType: report.complaintType,
             status,
             adminNote: adminNote?.trim() || "",
-        }).catch((err) => logger.error("❌ sendReportResolvedEmail failed:", err.message));
+        }).catch((err) => logger.warn("sendReportResolvedEmail failed", { error: err.message }))
     }
 
     return { status: 200, body: { success: true, report } };

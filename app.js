@@ -8,6 +8,7 @@ const cors = require("cors");
 const Sentry = require("@sentry/node");
 const { randomUUID } = require("node:crypto");
 const logger = require("./utils/logger");
+const { runWithTraceId } = require("./utils/requestContext");
 const app = express();
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -32,7 +33,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization",'baggage','sentry-trace',],
+  allowedHeaders: ["Content-Type", "Authorization", "baggage", "sentry-trace", "Accept-Version"],
 }));
 
 // Sentry request tagging
@@ -43,19 +44,31 @@ app.use((req, res, next) => {
     next();
   });
 });
-app.use(helmet());
 
-// Request ID — ties all logs for one request together in Logtail
+app.use(helmet());
 app.use((req, res, next) => {
-  req.requestId = randomUUID();
-  res.setHeader("X-Request-Id", req.requestId);
-  logger.info("Incoming request", {
-    requestId: req.requestId,
-    method: req.method,
-    path: req.path,
-    ip: req.ip,
-  });
+  req.version = req.headers["accept-version"] || "1.0";
   next();
+});
+
+// Trace ID — ties all logs for one request together in Logtail.
+// Honors an inbound X-Trace-Id / X-Request-Id header (from frontend, API
+// gateway, or load balancer) so the same ID can be correlated end-to-end;
+// falls back to generating a fresh UUID v4 if neither is present.
+app.use((req, res, next) => {
+  const traceId = req.headers["x-trace-id"] || req.headers["x-request-id"] || randomUUID();
+  req.traceId = traceId;
+  req.requestId = traceId; // kept for backward compatibility with existing code
+  res.setHeader("X-Trace-Id", traceId);
+
+  runWithTraceId(traceId, () => {
+    logger.info("Incoming request", {
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+    next();
+  });
 });
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -90,7 +103,6 @@ const v1 = express.Router();
 
 v1.use("/ai", require("./routes/ai.routes"));
 v1.use("/auth", require("./routes/auth.routes"));
-v1.use("/auth", require("./routes/forgotPassword.routes"));
 v1.use("/verification", require("./routes/verification.routes"));
 v1.use("/users", require("./routes/user.routes"));
 v1.use("/upload", require("./routes/upload.routes"));
@@ -115,12 +127,8 @@ v1.use("/google-calendar", require("./routes/googleCalendar.routes"));
 v1.use("/support", require("./routes/support.routes"));
 v1.use("/leap-requests", require("./routes/leapRequest.routes"));
 
-// Admin routes
-v1.use("/admin", require("./routes/admin.routes"));
-v1.use("/admin/settings", require("./routes/adminSettings.routes"));
-v1.use("/admin/payments", require("./routes/adminPayments.routes"));
-v1.use("/admin/reports", require("./routes/adminReports.routes"));
-v1.use("/admin/mentor-verifications", require("./routes/adminVerification.routes"));
+// Admin routes — all sub-paths handled inside routes/admin/index.js
+v1.use("/admin", require("./routes/admin"));
 app.use("/api/v1/images", imageRoutes);
 /* ===========================
    🔹 MOUNT VERSIONED ROUTER
@@ -130,4 +138,33 @@ app.use("/api/v1", v1);
 app.get("/", (req, res) => res.send("🚀 LeapMentor API Running..."));
 
 Sentry.setupExpressErrorHandler(app);
+// 404 handler 
+app.use((req, res) => {
+  logger.warn("Route not found", {
+    method: req.method,
+    path: req.path,
+  });
+  res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` });
+});
+
+/* ===========================
+   🔹 GLOBAL ERROR HANDLER
+   4-param signature is REQUIRED by Express to treat this as error middleware
+   Catches: next(err) calls, CORS errors, middleware throws
+=========================== */
+const AppError = require("./utils/appError");
+const { handleError } = require("./utils/appError");
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  // Sentry already captured it above — just respond
+  logger.error("[global] Unhandled error", {
+    method: req.method,
+    path: req.path,
+    error: err.message,
+    stack: err.stack,
+  });
+  return handleError(res, err, `${req.method} ${req.path}`);
+});
+
 module.exports = app;

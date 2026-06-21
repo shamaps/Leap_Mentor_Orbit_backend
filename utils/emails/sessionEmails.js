@@ -74,13 +74,13 @@ const sendSlotCancelledEmail = async ({
   `);
 
     await Promise.all([
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
             subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
             html: buildHtml(mentorName),
         }),
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: menteeEmail,
             subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
@@ -167,13 +167,13 @@ const sendSlotRescheduledEmail = async ({
   `);
 
     await Promise.all([
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
           subject: `Session rescheduled by ${menteeName.replace(/[\r\n]/g, "")} — ${formatDate(newSlot.date)}`,
             html: buildHtml(mentorName),
         }),
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: menteeEmail,
             subject: `Session rescheduled — New time: ${formatDate(newSlot.date)} at ${formatTime(newSlot.startTime)}`,
@@ -247,13 +247,13 @@ const sendAdditionalSlotEmail = async ({
   `);
 
     await Promise.all([
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
           subject: `New session slot added by ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
             html: buildHtml(mentorName),
         }),
-        transporter.sendMail({
+      transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: menteeEmail,
             subject: `Session slot confirmed — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,

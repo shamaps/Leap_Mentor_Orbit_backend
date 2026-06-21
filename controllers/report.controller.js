@@ -1,4 +1,4 @@
-const { ok, fail } = require("../utils/response"); 
+const { ok} = require("../utils/response"); 
 const { handleError } = require("../utils/appError");
 const createReportController = (reportService, { logger }) => {
 const submitReport = async (req, res) => {
@@ -14,8 +14,7 @@ const submitReport = async (req, res) => {
     });
     return ok(res, body);
   } catch (err) {
-    logger.error("❌ submitReport error:", err);
-    return fail(res, "Server error. Please try again.", 500);
+    return handleError(res, err, "report.submitReport");
   }
 };
 
@@ -28,8 +27,7 @@ const getMyReport = async (req, res) => {
     });
     return ok(res, body);
   } catch (err) {
-    logger.error("❌ getMyReport error:", err);
-    return fail(res, "Server error.", 500);
+    return handleError(res, err, "report.getMyReport");
   }
 };
 
@@ -43,8 +41,7 @@ const getAllReports = async (req, res) => {
     });
     return ok(res, body);
   } catch (err) {
-    logger.error("❌ getAllReports error:", err);
-    return fail(res, "Server error.", 500);
+    return handleError(res, err, "report.getAllReports");
   }
 };
 
@@ -60,8 +57,7 @@ const updateReportStatus = async (req, res) => {
     });
     return ok(res, body);
   } catch (err) {
-    logger.error("❌ updateReportStatus error:", err);
-    return fail(res, "Server error.", 500);
+    return handleError(res, err, "report.updateReportStatus");
   }
 };
 

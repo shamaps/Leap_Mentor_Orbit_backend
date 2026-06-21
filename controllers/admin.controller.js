@@ -20,12 +20,11 @@ const adminLogin = async (req, res) => {
     return ok(res,result);
     // result now only contains { admin: {...} } — no accessToken
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "adminLogin");
   }
 };
 
-// ── Admin Logout ──────────────────────────────────────────────
+// Admin Logout 
 // Must clear the httpOnly cookie server-side — JS cannot do it
 const adminLogout = (req, res) => {
   res.clearCookie("adminAccessToken", { path: "/" });
@@ -46,7 +45,6 @@ const getStats = async (_req, res) => {
     logger.info("getStats completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getStats");
   }
 };
@@ -57,7 +55,6 @@ const getUserGrowth = async (_req, res) => {
     logger.info("getUserGrowth completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUserGrowth");
   }
 };
@@ -68,7 +65,6 @@ const getMentorIndustryStats = async (_req, res) => {
     logger.info("getMentorIndustryStats completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getMentorIndustryStats");
   }
 };
@@ -81,7 +77,6 @@ const getUsers = async (req, res) => {
     logger.info("getUsers completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUsers");
   }
 };
@@ -92,7 +87,6 @@ const getUserDetail = async (req, res) => {
     logger.info("getUserDetail completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getUserDetail");
   }
 };
@@ -103,7 +97,6 @@ const deleteUser = async (req, res) => {
     logger.info("deleteUser completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "deleteUser");
   }
 };
@@ -114,7 +107,6 @@ const blockUser = async (req, res) => {
     logger.info("blockUser completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "blockUser");
   }
 };
@@ -125,7 +117,6 @@ const unblockUser = async (req, res) => {
     logger.info("unblockUser completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "unblockUser");
   }
 };
@@ -138,7 +129,7 @@ const getEngagementStats = async (_req, res) => {
     logger.info("getEngagementStats completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
+    
     return handleError(res, err, "getEngagementStats");
   }
 };
@@ -149,7 +140,6 @@ const getEngagements = async (req, res) => {
     logger.info("getEngagements completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in admin.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "getEngagements");
   }
 };

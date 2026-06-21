@@ -14,8 +14,7 @@ const getMessages = async (req, res) => {
     logger.info("getMessages completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in message.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "message.getMessages");
+        return handleError(res, err, "message.getMessages");
   }
 };
 
@@ -31,8 +30,7 @@ const getUnreadCount = async (req, res) => {
     logger.info("getUnreadCount completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in message.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "message.getUnreadCount");
+        return handleError(res, err, "message.getUnreadCount");
   }
 };
 

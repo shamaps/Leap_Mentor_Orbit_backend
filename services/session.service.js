@@ -2,6 +2,7 @@
 const mongoose = require("mongoose");
 const releaseEscrow = require("../utils/releaseEscrow");
 const refundSlot = require("../utils/refundSlot");
+const AppError = require("../utils/appError");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const {
     sendSlotCancelledEmail,
@@ -91,20 +92,17 @@ const dayFromDate = (dateStr) =>
  * Fire-and-forget: populate the session, then send a notification email.
  * Extracted to remove duplication across addSlot/cancelSlot/rescheduleSlot.
  */
-const sendNotificationAfterPopulate = (connectRequestId, emailFn, buildPayload) => {
-    sessionRepo.findSessionPopulated(connectRequestId)
-        .then((populated) => {
-            const payload = buildPayload(populated);
-            emailFn(payload).catch((err) =>
-                logger.error("Notification email failed", { error: err.message })
-
-            );
-        })
-        .catch((err) =>
-            logger.error("Failed to populate for notification email", { error: err.message })
-
-        );
-};
+    const sendNotificationAfterPopulate = (connectRequestId, emailFn, buildPayload) => {
+        (async () => {
+            try {
+                const populated = await sessionRepo.findSessionPopulated(connectRequestId);
+                const payload = buildPayload(populated);
+                await emailFn(payload);
+            } catch (err) {
+                logger.error("Notification after populate failed", { error: err.message, connectRequestId });
+            }
+        })();
+    };
 
 // Socket helpers (lazy-require avoids circular-dep issues)
 
@@ -137,22 +135,18 @@ const emitToOther = ({ connectRequest, currentUserId, event, payload }) => {
 
 const assertSessionAccess = (connectRequest, userId, connectRequestId) => {
     if (!connectRequest) {
-        const err = new Error("Session not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Session not found");
+
     }
     if (!isParticipant(connectRequest, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
+
     }
 };
 
 const assertOngoing = (connectRequest) => {
     if (connectRequest.status !== "ongoing") {
-        const err = new Error("Session is not active");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Session is not active");
     }
 };
 
@@ -172,9 +166,7 @@ const loadAndValidateSlot = async (connectRequestId, slotIndex, userId, mongoSes
 
     const validated = parseSlotIndex(connectRequest, slotIndex);
     if (!validated) {
-        const err = new Error("Invalid slot index");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Invalid slot index");
     }
 
     return { connectRequest, ...validated };
@@ -227,18 +219,14 @@ const buildCompleteMessage = (allComplete, bothMarked, isMentee) => {
 const applyMark = ({ slot, slotRef, isMentee, isMentor }) => {
     if (isMentee) {
         if (slot.menteeMarked) {
-            const err = new Error("You have already marked this session complete");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "You have already marked this session complete");
         }
         slotRef.menteeMarked = true;
     }
 
     if (isMentor) {
         if (slot.mentorMarked) {
-            const err = new Error("You have already marked this session complete");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "You have already marked this session complete");
         }
         slotRef.mentorMarked = true;
     }
@@ -267,16 +255,11 @@ const getSlots = async (connectRequestId, userId) => {
 
 const setMeetingLink = async ({ connectRequestId, slotIndex, meetingLink, userId }) => {
     if (!meetingLink?.trim()) {
-        const err = new Error("meetingLink is required");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "meetingLink is required");
+
     }
     if (!isValidMeetingLink(meetingLink.trim())) {
-        const err = new Error(
-            "Only links from trusted platforms (Google Meet, Zoom, etc.) are allowed."
-        );
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Only links from trusted platforms (Google Meet, Zoom, etc.) are allowed.");
     }
 
     const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
@@ -316,17 +299,11 @@ const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
         const slot = connectRequest.selectedSlots[idx];
 
         if (slot.status === "cancelled") {
-            const err = new Error("Cannot mark a cancelled slot as complete");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "Cannot mark a cancelled slot as complete");
         }
 
         if (slot.menteeMarked && slot.mentorMarked) {
-            const err = new Error(
-                "This session is already marked complete by both parties"
-            );
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "This session is already marked complete by both parties");
         }
 
         const isMentor = connectRequest.mentor.toString() === userId.toString();
@@ -402,9 +379,7 @@ const addSlot = async (connectRequestId, body, userId) => {
     let { day, date, startTime, endTime } = body;
 
     if (!date || !startTime || !endTime) {
-        const err = new Error("date, startTime and endTime are required");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "date, startTime and endTime are required");
     }
 
     if (!day) day = dayFromDate(date);
@@ -426,9 +401,7 @@ const addSlot = async (connectRequestId, body, userId) => {
         );
 
     if (slotTaken) {
-        const err = new Error("This slot already exists in the session");
-        err.statusCode = 409;
-        throw err;
+        throw new AppError(409, "This slot already exists in the session");
     }
 
     const newAdditionalSlot = {
@@ -491,14 +464,10 @@ const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) 
     const slot = connectRequest.selectedSlots[idx];
 
     if (slot.status === "cancelled") {
-        const err = new Error("This slot is already cancelled");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "This slot is already cancelled");
     }
     if (slot.menteeMarked && slot.mentorMarked) {
-        const err = new Error("Cannot cancel a completed slot");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Cannot cancel a completed slot");
     }
 
     const isMentor = connectRequest.mentor.toString() === userId.toString();
@@ -572,25 +541,17 @@ const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => 
     const { date, startTime, endTime } = body;
 
     if (!date || !startTime || !endTime) {
-        const err = new Error(
-            "date, startTime, and endTime are required for the new slot"
-        );
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "date, startTime, and endTime are required for the new slot");
     }
 
     const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
     const oldSlot = connectRequest.selectedSlots[idx];
 
     if (oldSlot.status === "cancelled") {
-        const err = new Error("This slot is already cancelled");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "This slot is already cancelled");
     }
     if (oldSlot.menteeMarked && oldSlot.mentorMarked) {
-        const err = new Error("Cannot reschedule a completed slot");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Cannot reschedule a completed slot");
     }
 
     const newSlotTaken = connectRequest.selectedSlots.find(
@@ -601,9 +562,7 @@ const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => 
             s.status !== "cancelled"
     );
     if (newSlotTaken) {
-        const err = new Error("The new slot is already booked");
-        err.statusCode = 409;
-        throw err;
+        throw new AppError(409, "The new slot is already booked");
     }
 
     const newDay = dayFromDate(date);

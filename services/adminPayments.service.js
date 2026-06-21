@@ -31,9 +31,9 @@ const fetchPaymentStats = async (adminId) => {
         0,
     );
 
-    const wallets = await repo.findAllWalletEscrows();
-    const pendingPayouts = wallets.reduce((s, w) => s + (w.escrow || 0), 0);
-
+    const [escrowResult] = await repo.sumAllWalletEscrows();
+    const pendingPayouts = escrowResult?.total || 0;
+    
     const refundedRequests = await repo.countRefundedRequests();
 
     return {

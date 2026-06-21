@@ -43,9 +43,10 @@ const dispatchPaySideEffects = (
     commissionRate,
   }).catch((err) => logger.error("Payment received email failed", { error: err.message }));
 
-  repo.findMentorTimezone(connectRequest.mentor._id)
-    .then((availability) =>
-      sendCalendarInvite({
+  (async () => {
+    try {
+      const availability = await repo.findMentorTimezone(connectRequest.mentor._id);
+      await sendCalendarInvite({
         requestId: connectRequest._id.toString(),
         mentorName: connectRequest.mentor.name,
         mentorEmail: connectRequest.mentor.email,
@@ -54,11 +55,12 @@ const dispatchPaySideEffects = (
         slots: connectRequest.selectedSlots.map(({ date, startTime, endTime }) => ({ date, startTime, endTime })),
         timezone: availability?.timezone || PLATFORM_TIMEZONE,
         message: connectRequest.message || "",
-      })
-    )
-    .then(() => logger.info("Calendar invite sent", { connectRequestId: connectRequest._id.toString() }))
-    .catch((err) => logger.error("Calendar invite send failed", { error: err.message }))
-    .catch((err) => logger.error("Timezone fetch failed — calendar invite skipped", { error: err.message }));;
+      });
+      logger.info("Calendar invite sent", { connectRequestId: connectRequest._id.toString() });
+    } catch (err) {
+      logger.error("Calendar invite failed", { error: err.message, connectRequestId: connectRequest._id.toString() });
+    }
+  })(); 
 };
 
 // PAY

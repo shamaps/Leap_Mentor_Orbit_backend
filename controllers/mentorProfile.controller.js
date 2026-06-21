@@ -1,5 +1,5 @@
 // controllers/mentorProfile.controller.js
-const { ok, created, fail } = require("../utils/response");
+const { ok, created } = require("../utils/response");
 const { handleError } = require("../utils/appError");
 const createMentorProfileController = (mentorProfileService, { logger }) => {
 /**
@@ -11,8 +11,7 @@ const createProfile = async (req, res) => {
     logger.info("createProfile completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
-    return fail(res, "Server error", 500);
+    return handleError(res, err, "mentorProfile.createProfile");
   }
 };
 
@@ -25,11 +24,6 @@ const getMyProfile = async (req, res) => {
     logger.info("getMyProfile completed successfully");
     return ok(res, data);
   } catch (err) {
-    // Preserve the isProfileComplete: false field from the original 404 response
-    if (err.statusCode === 404) {
-      return fail(res, err.message, 404);
-    }
-    logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "mentorProfile.getMyProfile");
   }
 };
@@ -43,7 +37,6 @@ const updateProfile = async (req, res) => {
     logger.info("updateProfile completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "mentorProfile.updateProfile");
   }
 };
@@ -57,7 +50,6 @@ const getPublicProfile = async (req, res) => {
     logger.info("getPublicProfile completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in mentorProfile.controller", { error: err.message, stack: err.stack });
     return handleError(res, err, "mentorProfile.getPublicProfile");
   }
 };

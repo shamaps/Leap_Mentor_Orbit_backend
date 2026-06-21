@@ -1,13 +1,7 @@
 // controllers/menteeProfile.controller.js
-const { ok, created, fail } = require("../utils/response");
+const { ok, created } = require("../utils/response");
 const { handleError } = require("../utils/appError");
-const AppError = require("../utils/appError");
 const createMenteeProfileController = (menteeProfileService, { logger }) => {
-// Local helper — eliminates the repeated catch pattern 
-const catchError = (res, err, context) => {
-  logger.error(`Unhandled error in menteeProfile.controller`, { error: err.message, stack: err.stack });
-  return handleError(res, err, context);
-};
 
 const createProfile = async (req, res) => {
   try {
@@ -15,7 +9,7 @@ const createProfile = async (req, res) => {
     logger.info("createProfile completed successfully");
     return created(res, data);
   } catch (err) {
-    return catchError(res, err, "menteeProfile.createProfile");
+    return handleError(res, err, "menteeProfile.createProfile");
   }
 };
 
@@ -25,11 +19,7 @@ const getMyProfile = async (req, res) => {
     logger.info("getMyProfile completed successfully");
     return ok(res, data);
   } catch (err) {
-    // Special case: preserve isProfileComplete flag on 404
-    if (err.statusCode === 404) {
-      return res.status(404).json({ success: false, message: err.message, isProfileComplete: false });
-    }
-    return catchError(res, err, "menteeProfile.getMyProfile");
+    return handleError(res, err, "menteeProfile.getMyProfile");
   }
 };
 
@@ -38,9 +28,7 @@ const updateProfile = async (req, res) => {
     const data = await menteeProfileService.updateProfile(req.user._id, req.body);
     logger.info("updateProfile completed successfully");
     return ok(res, data);
-  } catch (err) {
-    return catchError(res, err, "menteeProfile.updateProfile");
-  }
+  } catch (err) { return handleError(res, err, "menteeProfile.updateProfile"); }
 };
 
 const getPublicProfile = async (req, res) => {
@@ -48,9 +36,7 @@ const getPublicProfile = async (req, res) => {
     const data = await menteeProfileService.getPublicProfile(req.params.id);
     logger.info("getPublicProfile completed successfully");
     return ok(res, data);
-  } catch (err) {
-    return catchError(res, err, "menteeProfile.getPublicProfile");
-  }
+  } catch (err) { return handleError(res, err, "menteeProfile.getPublicProfile"); }
 };
 
   return { createProfile, getMyProfile, updateProfile, getPublicProfile };

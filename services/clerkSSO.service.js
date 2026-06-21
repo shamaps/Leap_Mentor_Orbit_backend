@@ -1,6 +1,7 @@
 // backend/services/clerkSSO.service.js
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/appError");
+const { withRetry } = require("../utils/withRetry");
 const { clerkClient,  validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
@@ -24,24 +25,26 @@ const extractClerkMeta = (clerkUser) => {
  * Decodes the Clerk token and fetches the full user from Clerk API.
  * Extracted so the main function doesn't nest a try/catch inside its own try/catch.
  */
-const resolveClerkUser = async (clerkToken) => {
-    if (!clerkToken) throw new AppError(400, "Missing Clerk token");
+    const resolveClerkUser = async (clerkToken) => {
+        if (!clerkToken) throw new AppError(400, "Missing Clerk token");
 
-    const decoded = jwt.decode(clerkToken);
-    logger.info("🔑 Decoded Clerk token sub:", decoded?.sub);
+        const decoded = jwt.decode(clerkToken);
+        logger.info("Decoded Clerk token", { sub: decoded?.sub });
 
-    if (!decoded?.sub) throw new AppError(401, "Invalid Clerk token");
+        if (!decoded?.sub) throw new AppError(401, "Invalid Clerk token");
 
-    try {
-        const clerkUser = await clerkClient.users.getUser(decoded.sub);
-        logger.info("✅ Clerk user fetched:", clerkUser.id);
-        return clerkUser;
-    } catch (err) {
-        logger.error("❌ Failed to fetch Clerk user:", err.message);
-        throw new AppError(401, "Could not fetch Clerk user");
-    }
-};
-
+        try {
+            const clerkUser = await withRetry(
+                () => clerkClient.users.getUser(decoded.sub),
+                { retries: 2, label: "clerkSSO.getUser", logger }
+            );
+            logger.info("Clerk user fetched", { clerkUserId: clerkUser.id });
+            return clerkUser;
+        } catch (err) {
+            logger.error("Failed to fetch Clerk user", { error: err.message, stack: err.stack });
+            throw new AppError(401, "Could not fetch Clerk user");
+        }
+    };
 
 
 /**
@@ -56,7 +59,7 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
     const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
     if (!valid) throw new AppError(400, message);
 
-    logger.info("🆕 Creating new user with roles:", uniqueRoles);
+    logger.info("Creating new Clerk user", { roles: uniqueRoles });
 
     const user = await repo.createUser({
         name,
@@ -67,7 +70,7 @@ const createNewUser = async ({ name, email, roles, termsAccepted }) => {
         termsAcceptedAt: new Date(),
     });
 
-    logger.info("✅ User created:", user._id, "| Roles:", user.roles);
+    logger.info("Clerk user created", { userId: user._id.toString(), roles: user.roles });
 
     try {
         await provisionWallet(user._id, uniqueRoles);
@@ -88,12 +91,12 @@ const linkOAuthAccount = async (userId, provider, providerId) => {
     const existingOAuth = await repo.findOAuthAccount(provider, providerId);
 
     if (existingOAuth) {
-        logger.info("ℹ️ OAuthAccount already linked | Provider:", provider);
+        logger.info("OAuthAccount already linked", { provider });
         return;
     }
 
     await repo.createOAuthAccount({ user: userId, provider, providerId });
-    logger.info("🔗 OAuthAccount linked | Provider:", provider);
+    logger.info("OAuthAccount linked", { provider });
 };
 
 
@@ -118,7 +121,7 @@ const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
 
     logger.debug("User found in DB", { found: !!user });
     if (user) {
-        logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
+        logger.info("Existing Clerk user found, skipping wallet", { roles: user.roles });
         await mergeRoles(user, roles, repo.saveUser);
     } else {
         user = await createNewUser({ name, email, roles, termsAccepted });

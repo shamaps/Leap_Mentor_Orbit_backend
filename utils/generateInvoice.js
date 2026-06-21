@@ -120,7 +120,7 @@ const generateInvoice = (data) => {
           doc.image(logoPath, LOGO_X, LOGO_Y, { width: LOGO_SIZE, height: LOGO_SIZE });
           logoLoaded = true;
         } catch (logoErr) {
-          logger.warn("⚠️ Logo image could not be loaded:", logoErr.message);
+          logger.warn("Logo image could not be loaded", { error: logoErr.message });
         }
       }
       const textX = logoLoaded ? LOGO_X + LOGO_SIZE + 10 : L;

@@ -5,14 +5,15 @@ const Transaction = require("../models/Transaction");
 const AdminUser = require("../models/AdminUser");
 const Availability = require("../models/Availability");
 const MentorProfile = require("../models/MentorProfile");
-
+const logger = require("../utils/logger");
 // ─── Admin ────────────────────────────────────────────────────
 const findActiveAdmin = () =>
   AdminUser.findOne({ isActive: true }).select("commissionRate walletBalance");
 
-const creditAdmin = (adminId, amount) =>
-  AdminUser.findByIdAndUpdate(adminId, { $inc: { walletBalance: amount } });
-
+const creditAdmin = (adminId, amount) => {
+  logger.debug("creditAdmin called", { adminId: adminId?.toString(), amount });
+  return AdminUser.findByIdAndUpdate(adminId, { $inc: { walletBalance: amount } });
+};
 // ─── Connect Request ──────────────────────────────────────────
 const findConnectRequestById = (id, session) =>
   ConnectRequest.findById(id)
@@ -42,17 +43,19 @@ const saveWallet = (wallet, session) =>
   wallet.save(session ? { session } : undefined);
 
 // ─── Transaction ──────────────────────────────────────────────
-const createTransactions = (docs, session) =>
-  Transaction.insertMany(docs, { session, ordered: true });
-
+const createTransactions = (docs, session) => {
+  logger.debug("createTransactions called", { count: docs.length });
+  return Transaction.insertMany(docs, { session, ordered: true });
+};
 // ─── Availability ─────────────────────────────────────────────
 const findMentorTimezone = (mentorId) =>
   Availability.findOne({ mentor: mentorId }).select("timezone").lean();
 
 // ─── Mentor Profile ───────────────────────────────────────────
-const incrementMentorSessions = (mentorId) =>
-  MentorProfile.findOneAndUpdate({ user: mentorId }, { $inc: { totalSessions: 1 } });
-
+const incrementMentorSessions = (mentorId) => {
+  logger.debug("incrementMentorSessions called", { mentorId: mentorId?.toString() });
+  return MentorProfile.findOneAndUpdate({ user: mentorId }, { $inc: { totalSessions: 1 } });
+};
 module.exports = {
   findActiveAdmin,
   creditAdmin,

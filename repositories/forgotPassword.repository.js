@@ -1,7 +1,7 @@
 // repositories/forgotPassword.repository.js
 const User = require("../models/User");
 const VerificationToken = require("../models/VerificationToken");
-
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────────────────────
@@ -40,8 +40,10 @@ const findTokenByUser = async (userId) => {
  * @param {ObjectId} userId
  */
 const deleteTokensByUser = async (userId) => {
+    logger.debug("deleteTokensByUser called", { userId: userId?.toString() });
     return await VerificationToken.deleteMany({ user: userId });
 };
+
 
 /**
  * Create a new OTP record.
@@ -51,11 +53,8 @@ const deleteTokensByUser = async (userId) => {
  * @param {Date}     data.expiresAt
  */
 const createToken = async ({ userId, otpHash, expiresAt }) => {
-    return await VerificationToken.create({
-        user: userId,
-        otp: otpHash,
-        expiresAt,
-    });
+    logger.debug("createToken called", { userId: userId?.toString() });
+    return await VerificationToken.create({ user: userId, otp: otpHash, expiresAt });
 };
 
 /**

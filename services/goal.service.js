@@ -1,6 +1,7 @@
 // services/goal.service.js
 const socketHandler = require("../socket/socketHandler");
 const { VALID_GOAL_STATUSES } = require("../config/constants");
+const AppError = require("../utils/appError");
 const { toGoalDTO, toMilestoneDTO } = require("../utils/mappers/goal.mapper");
 const createGoalService = (goalRepo, { logger }) => {
 //  Socket helper 
@@ -10,7 +11,7 @@ const emitToRoom = (connectRequestId, event, data) => {
             socketHandler.io.to(connectRequestId.toString()).emit(event, data);
         }
     } catch (err) {
-        logger.error("❌ Socket emit error:", err.message);
+        logger.warn("Socket emit failed", { error: err.message });
     }
 };
 
@@ -30,38 +31,29 @@ const createGoal = async (body, userId) => {
     const { connectRequestId, title, description, startDate, endDate } = body;
 
     if (!connectRequestId) {
-        const err = new Error("connectRequestId is required");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "connectRequestId is required");
     }
+
     if (!title?.trim()) {
-        const err = new Error("title is required");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "title is required");
     }
 
     const session = await goalRepo.findSessionById(connectRequestId);
     if (!session) {
-        const err = new Error("Session not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Session not found");
     }
+
     if (session.status !== "ongoing") {
-        const err = new Error("Goals can only be set for ongoing sessions");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Goals can only be set for ongoing sessions");
     }
+
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const existing = await goalRepo.findGoalBySession(connectRequestId);
     if (existing) {
-        const err = new Error("A goal already exists for this session");
-        err.statusCode = 409;
-        throw err;
+        throw new AppError(409, "A goal already exists for this session");
     }
 
     const goal = await goalRepo.createGoal({
@@ -86,14 +78,11 @@ const createGoal = async (body, userId) => {
 const getGoal = async (connectRequestId, userId) => {
     const session = await goalRepo.findSessionById(connectRequestId);
     if (!session) {
-        const err = new Error("Session not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Session not found");
     }
+
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const goal = await goalRepo.findGoalBySession(connectRequestId);
@@ -112,25 +101,19 @@ const getGoal = async (connectRequestId, userId) => {
 const updateGoal = async (goalId, body, userId) => {
     const goal = await goalRepo.findGoalById(goalId);
     if (!goal) {
-        const err = new Error("Goal not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Goal not found");
     }
 
     const session = await goalRepo.findSessionById(goal.connectRequest);
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const { title, description, startDate, endDate, status } = body;
 
     if (title !== undefined) {
         if (!title.trim()) {
-            const err = new Error("title cannot be empty");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "title cannot be empty");
         }
         goal.title = title.trim();
     }
@@ -139,9 +122,7 @@ const updateGoal = async (goalId, body, userId) => {
     if (endDate !== undefined) goal.endDate = endDate || null;
     if (status !== undefined) {
         if (!VALID_GOAL_STATUSES.includes(status)) {
-            const err = new Error("Invalid status");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "Invalid status");
         }
         goal.status = status;
     }
@@ -159,23 +140,17 @@ const updateGoal = async (goalId, body, userId) => {
 const addMilestone = async (goalId, body, userId) => {
     const goal = await goalRepo.findGoalByIdLean(goalId);
     if (!goal) {
-        const err = new Error("Goal not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Goal not found");
     }
 
     const session = await goalRepo.findSessionById(goal.connectRequest);
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const { title, description, dueDate } = body;
-    if (!title?.trim()) {
-        const err = new Error("title is required");
-        err.statusCode = 400;
-        throw err;
+    if (!title.trim()) {
+        throw new AppError(400, "title cannot be empty");
     }
 
     const lastMilestone = await goalRepo.findLastMilestone(goal._id);
@@ -201,25 +176,20 @@ const addMilestone = async (goalId, body, userId) => {
 const updateMilestone = async (milestoneId, body, userId) => {
     const milestone = await goalRepo.findMilestoneById(milestoneId);
     if (!milestone) {
-        const err = new Error("Milestone not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Milestone not found");
+
     }
 
     const session = await goalRepo.findSessionById(milestone.connectRequest);
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const { title, description, isCompleted } = body;
 
     if (title !== undefined) {
         if (!title.trim()) {
-            const err = new Error("title cannot be empty");
-            err.statusCode = 400;
-            throw err;
+            throw new AppError(400, "title cannot be empty");
         }
         milestone.title = title.trim();
     }
@@ -244,16 +214,12 @@ const updateMilestone = async (milestoneId, body, userId) => {
 const deleteMilestone = async (milestoneId, userId) => {
     const milestone = await goalRepo.findMilestoneById(milestoneId);
     if (!milestone) {
-        const err = new Error("Milestone not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Milestone not found");
     }
 
     const session = await goalRepo.findSessionById(milestone.connectRequest);
     if (!assertParticipant(session, userId)) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const connectRequestId = milestone.connectRequest;

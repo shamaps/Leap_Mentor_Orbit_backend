@@ -1,6 +1,6 @@
-const AppError = require("../utils/appError");
+const { handleError } = require("../utils/appError");
 const { issueTokens } = require("../utils/auth.utils");
-const { ok, fail } = require("../utils/response");
+const { ok} = require("../utils/response");
 const createLoginController = (loginService, { logger }) => {
 const login = async (req, res) => {
   try {
@@ -23,28 +23,7 @@ const login = async (req, res) => {
       isNewUser: false
     });
   } catch (err) {
-    if (err instanceof AppError) {
-      //  Known errors — warn level
-      logger.warn("Login rejected", {
-        email: req.body.email,
-        reason: err.message,
-        status: err.status,
-        isEmailVerified: err.isEmailVerified,
-      });
-
-      const body = { message: err.message };
-      if (err.isEmailVerified !== undefined) body.isEmailVerified = err.isEmailVerified;
-      if (err.email) body.email = err.email;
-      return res.status(err.status).json({ success: false, ...body });
-    }
-
-    // Unexpected errors — error level
-    logger.error("Unexpected error during login", {
-      email: req.body.email,
-      error: err.message,
-    });
-
-    return fail(res, "Internal server error", 500);
+    return handleError(res, err, "login.login");
   }
 };
 

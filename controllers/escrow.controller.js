@@ -18,8 +18,7 @@ const pay = async (req, res) => {
     logger.info("pay completed successfully");
     return ok(res, { message: "Payment successful. Tokens locked in escrow.", ...result });
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow pay");
+        return handleError(res, err, "Escrow pay");
   }
 };
 
@@ -40,8 +39,7 @@ const release = async (req, res) => {
     logger.info("release completed successfully");
     return ok(res, { message: "Session marked complete. Tokens released to mentor.", ...result });
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow release");
+        return handleError(res, err, "Escrow release");
   }
 };
 
@@ -59,8 +57,7 @@ const refund = async (req, res) => {
     });
     return ok(res, { message: "Escrow refunded successfully. Tokens returned to mentee.", ...result });
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow refund");
+        return handleError(res, err, "Escrow refund");
   }
 };
 
@@ -74,8 +71,7 @@ const getStatus = async (req, res) => {
     logger.info("getStatus completed successfully");
     return ok(res, result);
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow status");
+        return handleError(res, err, "Escrow status");
   }
 };
 
@@ -86,8 +82,7 @@ const getMyWallet = async (req, res) => {
     logger.info("getMyWallet completed successfully");
     return ok(res, result);
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow getMyWallet");
+        return handleError(res, err, "Escrow getMyWallet");
   }
 };
 
@@ -107,8 +102,7 @@ const payAdditional = async (req, res) => {
     logger.info("payAdditional completed successfully");
     return ok(res, { message: "Additional session payment successful. Tokens locked in escrow.", ...result });
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow payAdditional");
+        return handleError(res, err, "Escrow payAdditional");
   }
 };
 
@@ -119,8 +113,7 @@ const getCommissionRate = async (_req, res) => {
     logger.info("getCommissionRate completed successfully");
     return ok(res, result);
   } catch (err) {
-    logger.error("Unhandled error in escrow.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "Escrow getCommissionRate");
+        return handleError(res, err, "Escrow getCommissionRate");
   }
 };
 

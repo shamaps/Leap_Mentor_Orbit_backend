@@ -2,15 +2,18 @@
 const express = require("express");
 const router = express.Router();
 const logger = require("../utils/logger");
-
-logger.info("GROQ KEY LOADED:", process.env.GROQ_API_KEY ? "YES ✅" : "NO ❌");
+const { fail } = require("../utils/response");
+const { getTraceId } = require("../utils/requestContext");
+const { authenticate } = require("../middleware/authenticate");
+const { aiLimiter } = require("../middleware/rateLimiter");
+logger.info("Groq API key status", { loaded: !!process.env.GROQ_API_KEY });
 
 /**
  * POST /api/ai/chat
  * Body: { messages: [...], systemPrompt: "..." }
  * Proxies to Groq (free, fast LLM API)
  */
-router.post("/chat", async (req, res) => {
+router.post("/chat", authenticate, aiLimiter, async (req, res) =>  {
   try {
     const { messages, systemPrompt } = req.body;
 
@@ -29,6 +32,7 @@ router.post("/chat", async (req, res) => {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "X-Trace-Id": getTraceId(),
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
@@ -54,7 +58,7 @@ router.post("/chat", async (req, res) => {
 
     if (!response.ok) {
       // Log full Groq error internally — never forward raw vendor error to client
-      logger.error("Groq API error", { status: response.status, response: data });
+      logger.error("Groq API error", { status: response.status, errorCode: data?.error?.code });
       return fail(res, "AI service temporarily unavailable", 502);
     }
 

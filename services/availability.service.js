@@ -1,6 +1,7 @@
 // services/availability.service.js
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+const AppError = require("../utils/appError");
 const createAvailabilityService = (availabilityRepository, { logger }) => {
 const getMyAvailability = async (mentorId) => {
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
@@ -22,9 +23,7 @@ const getMyAvailability = async (mentorId) => {
 const createAvailability = async (mentorId, body) => {
   const existing = await availabilityRepository.findAvailabilityByMentor(mentorId);
   if (existing) {
-    const error = new Error("Availability already exists. Use PATCH /api/availability/me to update");
-    error.statusCode = 409;
-    throw error;
+    throw new AppError(409, "Availability already exists. Use PATCH /api/availability/me to update");
   }
 
   const { timezone, sessionDurations, specificDates } = body;
@@ -52,9 +51,7 @@ const updateAvailability = async (mentorId, body) => {
   });
 
   if (Object.keys(updates).length === 0) {
-    const error = new Error("No valid fields provided to update");
-    error.statusCode = 400;
-    throw error;
+    throw new AppError(400, "No valid fields provided to update");
   }
 
   return await availabilityRepository.updateAvailability(mentorId, updates);
@@ -64,9 +61,7 @@ const getMentorAvailability = async (mentorId) => {
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
 
   if (!availability) {
-    const error = new Error("Availability not set by this mentor");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError(404, "Availability not set by this mentor");
   }
 
   return {
@@ -82,16 +77,12 @@ const deleteAvailability = async (mentorId) => {
 
 const getAvailableSlots = async (mentorId, duration, userId) => {
   if (![30, 45, 60].includes(duration)) {
-    const error = new Error("Duration must be 30, 45, or 60 minutes");
-    error.statusCode = 400;
-    throw error;
+    throw new AppError(400, "Duration must be 30, 45, or 60 minutes");
   }
 
   const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
   if (!availability) {
-    const error = new Error("Availability not set by this mentor");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError(404, "Availability not set by this mentor");
   }
 
   // Build booked slots

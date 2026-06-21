@@ -92,7 +92,7 @@ const cancelRequest = async (req, res, next) => {
       requestId: req.params.id,
     });
 
-    return res.status(204).send();
+    return noContent(res);
   } catch (err) {
     return handleError(res, err, "connectRequest.cancelRequest");
   }

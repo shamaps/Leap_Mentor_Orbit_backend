@@ -2,27 +2,30 @@
 const { sendMentorVerifiedEmail } = require("../utils/emails");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const { signCloudinaryUrl } = require("../utils/cloudinarySign");
-
+const AppError = require("../utils/appError");
 const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
 
-const getAllMentorVerifications = async () => {
-    const mentorProfiles = await adminVerificationRepo.findAllMentorProfiles();
+    const getAllMentorVerifications = async ({ page = 1, limit = 20 } = {}) => {
+        const safePage = Math.max(1, parseInt(page) || 1);
+        const safeLimit = Math.min(50, parseInt(limit) || 20);
+        const skip = (safePage - 1) * safeLimit;
 
-    const mentors = mentorProfiles.map((profile) => ({
-        user: profile.user,
-        mentorProfile: toMentorProfileDTO({ ...profile, user: undefined }),
-    }));
+        const [mentorProfiles, total] = await Promise.all([
+            adminVerificationRepo.findAllMentorProfiles(skip, safeLimit),
+            adminVerificationRepo.countMentorProfiles(),
+        ]);
 
-    return { mentors, total: mentors.length };
-};
+        return {
+            mentors: mentorProfiles,  
+            pagination: { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
+        };
+    };
 
 const getMentorVerificationById = async (mentorProfileId) => {
     const profile = await adminVerificationRepo.findMentorProfileById(mentorProfileId);
 
     if (!profile) {
-        const err = new Error("Mentor profile not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Mentor profile not found");
     }
     const mentorProfile = toMentorProfileDTO({ ...profile, user: undefined });
 
@@ -45,15 +48,11 @@ const verifyMentor = async (mentorProfileId) => {
     const profile = await adminVerificationRepo.findMentorProfileDocumentById(mentorProfileId);
 
     if (!profile) {
-        const err = new Error("Mentor profile not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Mentor profile not found");
     }
 
     if (profile.verificationStatus === "verified") {
-        const err = new Error("Mentor is already verified");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Mentor is already verified");
     }
 
     profile.verificationStatus = "verified";
@@ -64,7 +63,7 @@ const verifyMentor = async (mentorProfileId) => {
         mentorName: profile.user.name,
         mentorEmail: profile.user.email,
     }).catch((emailErr) => {
-        logger.error("❌ sendMentorVerifiedEmail failed:", emailErr.message);
+        logger.warn("sendMentorVerifiedEmail failed", { error: emailErr.message });
     });
 
     return {
@@ -78,15 +77,11 @@ const revokeMentorVerification = async (mentorProfileId) => {
     const profile = await adminVerificationRepo.findMentorProfileDocumentById(mentorProfileId);
 
     if (!profile) {
-        const err = new Error("Mentor profile not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Mentor profile not found");
     }
 
     if (profile.verificationStatus === "unverified") {
-        const err = new Error("Mentor is already unverified");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "Mentor is already unverified");
     }
 
     profile.verificationStatus = "unverified";

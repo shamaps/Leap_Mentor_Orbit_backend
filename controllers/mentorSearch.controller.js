@@ -1,48 +1,38 @@
-// backend/controllers/mentorSearch.controller.js
-const { ok, fail } = require("../utils/response");
+// controllers/mentorSearch.controller.js
+const { ok } = require("../utils/response");
+const { handleError } = require("../utils/appError");
+
 const createMentorSearchController = (mentorSearchService, { logger }) => {
-// GET /api/mentors/search
 
-const searchMentors = async (req, res) => {
-  try {
-    const result = await mentorSearchService.searchMentors(req.query);
-    logger.info("searchMentors completed successfully");
-    return ok(res, result);
-  } catch (err) {
-    logger.error("❌ Mentor search error:", err.message);
-
-    if (err.message?.includes("$search") || err.message?.includes("search index")) {
-      logger.warn("⚠️  Atlas Search unavailable — falling back to regex");
-      // FIX: "Handle this exception or don't catch it at all" —
-      // the fallback is now awaited and its result returned, so the
-      // original error is handled (not silently swallowed).
-      try {
-        const result = await mentorSearchService.fallbackSearch(req.query);
-        logger.info("searchMentors completed successfully");
-        return ok(res, result);
-      } catch (fallbackErr) {
-        logger.error("❌ Fallback search error:", fallbackErr.message);
-        return fail(res, "Server error", 500);
+  const searchMentors = async (req, res) => {
+    try {
+      const result = await mentorSearchService.searchMentors(req.query);
+      logger.info("searchMentors completed successfully");
+      return ok(res, result);
+    } catch (err) {
+      if (err.message?.includes("$search") || err.message?.includes("search index")) {
+        logger.warn("Atlas Search unavailable — falling back to regex", { error: err.message });
+        try {
+          const result = await mentorSearchService.fallbackSearch(req.query);
+          logger.info("searchMentors fallback completed successfully");
+          return ok(res, result);
+        } catch (fallbackErr) {
+          return handleError(res, fallbackErr, "mentorSearch.fallbackSearch");
+        }
       }
+      return handleError(res, err, "mentorSearch.searchMentors");
     }
+  };
 
-    return fail(res, "use proper price ranges(min - max)", 500);
-  }
-};
-
-
-// GET /api/mentors/autocomplete
-
-const autocompleteMentors = async (req, res) => {
-  try {
-    const suggestions = await mentorSearchService.autocompleteMentors(req.query);
-    logger.info("autocompleteMentors completed successfully");
-    return ok(res, suggestions );
-  } catch (err) {
-    logger.error("❌ Autocomplete error:", err.message);
-    return fail(res, "Server error", 500);
-  }
-};
+  const autocompleteMentors = async (req, res) => {
+    try {
+      const suggestions = await mentorSearchService.autocompleteMentors(req.query);
+      logger.info("autocompleteMentors completed successfully");
+      return ok(res, suggestions);
+    } catch (err) {
+      return handleError(res, err, "mentorSearch.autocompleteMentors");
+    }
+  };
 
   return { searchMentors, autocompleteMentors };
 };

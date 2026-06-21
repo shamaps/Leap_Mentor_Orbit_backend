@@ -1,9 +1,6 @@
 // repositories/notification.repository.js
 const Notification = require("../models/Notification");
 
-const findAllNotifications = () =>
-    Notification.find({});
-
 const findNotificationsByUser = (userId) =>
     Notification.find({ recipient: userId }).sort({ createdAt: -1 }).limit(50);
 
@@ -27,7 +24,6 @@ const deleteAllByUser = (userId) =>
     Notification.deleteMany({ recipient: userId });
 
 module.exports = {
-    findAllNotifications,
     findNotificationsByUser,
     createNotification,
     markAllReadByUser,

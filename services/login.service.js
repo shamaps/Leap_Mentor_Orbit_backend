@@ -42,10 +42,10 @@ const login = async (email, password) => {
             userId: user._id,
             email: normalizedEmail,
         });
-        throw Object.assign(
-            new AppError(403, "Please verify your email before logging in."),
-            { isEmailVerified: false, email: user.email }
-        );
+        throw new AppError(403, "Please verify your email before logging in.", {
+            isEmailVerified: false,
+            email: user.email,
+        });
     }
 
     return { user: toUserDTO(user) };

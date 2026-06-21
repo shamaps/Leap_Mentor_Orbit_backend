@@ -1,13 +1,14 @@
 const Report = require("../models/Report");
 const ConnectRequest = require("../models/ConnectRequest");
 
-const findConnectRequestById = (id) => ConnectRequest.findById(id);
+const findConnectRequestById = (id) =>
+    ConnectRequest.findById(id).select("mentee mentor").lean();
 
 const findExistingReport = (connectRequestId, reportedById) =>
     Report.findOne({
         connectRequest: connectRequestId,
         reportedBy: reportedById,
-    });
+    }).select("_id").lean();
 
 const createReport = (data) => Report.create(data);
 

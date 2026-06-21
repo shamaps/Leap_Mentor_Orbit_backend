@@ -1,7 +1,7 @@
 // repositories/session.repository.js
 const ConnectRequest = require("../models/ConnectRequest");
 const Availability = require("../models/Availability");
-
+const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // ConnectRequest queries
 // ─────────────────────────────────────────────────────────────
@@ -18,15 +18,18 @@ const findSessionForRead = (connectRequestId) =>
 /**
  * Fetch a live Mongoose document (needed for mutations / markModified / save).
  */
-const findSessionDocument = (connectRequestId) =>
-    ConnectRequest.findById(connectRequestId);
+const findSessionDocument = (connectRequestId) => {
+    logger.debug("findSessionDocument called", { connectRequestId: connectRequestId?.toString() });
+    return ConnectRequest.findById(connectRequestId);
+};
 
 /**
  * Fetch a live Mongoose document inside a MongoDB session (for transactions).
  */
-const findSessionDocumentWithSession = (connectRequestId, mongoSession) =>
-    ConnectRequest.findById(connectRequestId).session(mongoSession);
-
+const findSessionDocumentWithSession = (connectRequestId, mongoSession) => {
+    logger.debug("findSessionDocumentWithSession called", { connectRequestId: connectRequestId?.toString() });
+    return ConnectRequest.findById(connectRequestId).session(mongoSession);
+};
 /**
  * Fetch a session with mentor + mentee populated (name + email only).
  * Used for email notifications.

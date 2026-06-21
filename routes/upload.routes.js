@@ -1,7 +1,7 @@
 // backend/routes/upload.routes.js
 const express = require("express");
 const router = express.Router();
-const { authenticate } = require("../middleware/authenticate");
+const { authenticate, requireRole } = require("../middleware/authenticate");
 const { upload, uploadImage } = require("../middleware/upload.middleware");
 const { uploadController } = require("../config/container");
 const {
@@ -18,10 +18,11 @@ router.post(
   uploadProfilePicture
 );
 
-// POST /api/upload/verification-documents
+// POST /api/upload/verification-documents — mentor only
 router.post(
   "/verification-documents",
   authenticate,
+  requireRole("mentor"),
   upload.fields([
     { name: "resume", maxCount: 1 },
     { name: "workExperienceDocs", maxCount: 3 },

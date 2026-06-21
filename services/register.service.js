@@ -5,17 +5,16 @@ const { provisionWallet } = require("../utils/wallet");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const AppError = require("../utils/appError");
 const createRegisterService = (registerRepo, { logger }) => {
-const validateInput = (name, email, password, roles, termsAccepted) => {
-    if (roles?.length !== 1)
-        throw Object.assign(new Error("Exactly one role is required."), { statusCode: 400 });
-    if (!name || !email || !password)
-        throw Object.assign(new Error("name, email, password are required"), { statusCode: 400 });
-    if (!Array.isArray(roles) || roles.length === 0)
-        throw Object.assign(new Error("roles must be an array with at least one role"), { statusCode: 400 });
-    if (termsAccepted !== true)
-        throw Object.assign(new Error("You must accept terms to continue"), { statusCode: 400 });
-};
-
+    const validateInput = (name, email, password, roles, termsAccepted) => {
+        if (roles?.length !== 1)
+            throw new AppError(400, "Exactly one role is required.");
+        if (!name || !email || !password)
+            throw new AppError(400, "name, email, password are required");
+        if (!Array.isArray(roles) || roles.length === 0)
+            throw new AppError(400, "roles must be an array with at least one role");
+        if (termsAccepted !== true)
+            throw new AppError(400, "You must accept terms to continue");
+    };
 
 const handleExistingUser = async (existing, uniqueRoles) => {
     const newRoles = [...new Set([...existing.roles, ...uniqueRoles])];
@@ -45,7 +44,7 @@ const register = async (res, body) => {
     const normalizedEmail = String(email).toLowerCase().trim();
     const { valid, message, uniqueRoles } = validateRoles(roles);
     if (!valid)
-        throw Object.assign(new Error(message), { statusCode: 400 });
+         throw new AppError(400, message);
 
     const existing = await registerRepo.findUserByEmail(normalizedEmail);
     if (existing) {

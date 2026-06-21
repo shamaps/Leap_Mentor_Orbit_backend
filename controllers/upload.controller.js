@@ -1,14 +1,14 @@
 // backend/controllers/upload.controller.js
-const { ok, fail } = require("../utils/response");
+const { ok } = require("../utils/response");
+const { handleError } = require("../utils/appError");
 const createUploadController = (uploadService, { logger }) => {
 const uploadProfilePicture = async (req, res) => {
   try {
     const { body } = await uploadService.uploadProfilePicture({ file: req.file, user: req.user });
     return ok(res, body);
-     } catch (err) {
-      logger.error("❌ uploadProfilePicture error:", err.message || err);
-      return fail(res, "Failed to upload image.", 500);
-    }
+  } catch (err) {
+    return handleError(res, err, "upload.uploadProfilePicture");
+  }
 };
 
 const uploadVerificationDocuments = async (req, res) => {
@@ -21,8 +21,7 @@ const uploadVerificationDocuments = async (req, res) => {
     });
     return ok(res, body);
   } catch (err) {
-    logger.error("❌ uploadVerificationDocuments error:", err.message);
-    return fail(res, "Failed to upload documents.", 500);
+    return handleError(res, err, "upload.uploadVerificationDocuments");
   }
 };
 

@@ -11,11 +11,10 @@ const getReportStats = async (_req, res) => {
     logger.info("getReportStats completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "getReportStats");
+        return handleError(res, err, "getReportStats");
   }
 };
-
+  
 
 // GET /api/admin/reports
 
@@ -30,8 +29,7 @@ const getReports = async (req, res) => {
     logger.info("getReports completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "getReports");
+        return handleError(res, err, "getReports");
   }
 };
 
@@ -55,8 +53,7 @@ const handleReport = async (req, res) => {
     logger.info("handleReport completed successfully");
     return ok(res, { message: `Report ${status}.`, report });
   } catch (err) {
-    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "handleReport");
+        return handleError(res, err, "handleReport");
   }
 };
 
@@ -77,8 +74,7 @@ const processRefund = async (req, res) => {
       refundAmount,
     });
   } catch (err) {
-    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "processRefund");
+        return handleError(res, err, "processRefund");
   }
 };
 
@@ -96,8 +92,7 @@ const deleteSession = async (req, res) => {
     logger.info("deleteSession completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in adminReports.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "deleteSession");
+        return handleError(res, err, "deleteSession");
   }
 };
 

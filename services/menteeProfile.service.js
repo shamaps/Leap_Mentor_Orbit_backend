@@ -54,9 +54,7 @@ const getMyProfile = async (userId) => {
     const profile = await menteeProfileRepo.findProfileByUserPopulated(userId);
 
     if (!profile) {
-        const err = new AppError(404, "Profile not found");
-        err.isProfileComplete = false;
-        throw err;
+        throw new AppError(404, "Profile not found", { isProfileComplete: false });
     }
 
     return toMenteeProfileDTO(profile);
@@ -69,11 +67,8 @@ const updateProfile = async (userId, body) => {
     const profile = await menteeProfileRepo.updateProfileByUser(userId, body);
 
     if (!profile) {
-        const err = new Error("Profile not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Profile not found");
     }
-
     return { message: "Profile updated successfully", profile: toMenteeProfileDTO(profile) };
 };
 
@@ -84,9 +79,7 @@ const getPublicProfile = async (userId) => {
     const profile = await menteeProfileRepo.findPublicProfileByUser(userId);
 
     if (!profile) {
-        const err = new Error("Mentee profile not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Mentee profile not found");
     }
 
     return toMenteeProfileDTO(profile);

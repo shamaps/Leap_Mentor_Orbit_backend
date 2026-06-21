@@ -10,8 +10,7 @@ const createNote = async (req, res) => {
     logger.info("createNote completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("❌ createNote error:", err.message);
-    return handleError(res, err, "privateNote.createNote");
+        return handleError(res, err, "privateNote.createNote");
   }
 };
 
@@ -24,8 +23,7 @@ const getNotes = async (req, res) => {
     logger.info("getNotes completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "privateNote.getNotes");
+        return handleError(res, err, "privateNote.getNotes");
   }
 };
 
@@ -38,8 +36,7 @@ const updateNote = async (req, res) => {
     logger.info("updateNote completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "privateNote.updateNote");
+        return handleError(res, err, "privateNote.updateNote");
   }
 };
 
@@ -52,8 +49,7 @@ const deleteNote = async (req, res) => {
     logger.info("deleteNote completed successfully");
     return noContent(res);
   } catch (err) {
-    logger.error("Unhandled error in privateNote.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "privateNote.deleteNote");
+        return handleError(res, err, "privateNote.deleteNote");
   }
 };
 

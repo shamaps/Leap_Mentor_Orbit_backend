@@ -4,6 +4,7 @@ const { validateSessionAccess } = require("../utils/sessionAccess");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 const { signCloudinaryUrl } = require("../utils/cloudinarySign");
 const { noteId } = require("../utils/cloudinaryPublicId");
+const AppError = require("../utils/appError");
 const { cloudinary } = require("../config/cloudinary");
 const createNoteService = (noteRepo, { logger }) => {
   // POST /api/notes/upload
@@ -12,27 +13,19 @@ const uploadNote = async (userId, body, file) => {
     const isPrivate = body.isPrivate === "true" || body.isPrivate === true;
 
     if (!connectRequestId) {
-        const err = new Error("connectRequestId is required");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "connectRequestId is required");
     }
     if (!file) {
-        const err = new Error("No file uploaded");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError(400, "No file uploaded");
     }
 
     const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
-        const err = new Error(access.reason);
-        err.statusCode = access.status;
-        throw err;
+        throw new AppError(access.status, access.reason);
     }
 
     if (access.sessionStatus === "completed") {
-        const err = new Error("Cannot upload notes to a completed session");
-        err.statusCode = 400;
-        throw err;
+        throw new AppError("Cannot upload notes to a completed session");
     }
     const isImage = file.mimetype.startsWith("image/");
 
@@ -76,9 +69,7 @@ const uploadNote = async (userId, body, file) => {
 const getNotes = async (connectRequestId, userId) => {
     const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
-        const err = new Error(access.reason);
-        err.statusCode = access.status;
-        throw err;
+        throw new AppError(access.status, access.reason);
     }
 
     const notes = await noteRepo.findSharedNotes(connectRequestId);
@@ -99,9 +90,7 @@ const getNotes = async (connectRequestId, userId) => {
 const getPrivateNotes = async (connectRequestId, userId) => {
     const access = await validateSessionAccess(noteRepo.findSessionParticipants, connectRequestId, userId);
     if (!access.valid) {
-        const err = new Error(access.reason);
-        err.statusCode = access.status;
-        throw err;
+        throw new AppError(access.status, access.reason);
     }
 
     const notes = await noteRepo.findPrivateNotes(connectRequestId, userId);
@@ -122,14 +111,10 @@ const deleteNote = async (noteId, userId) => {
     const note = await noteRepo.findNoteById(noteId);
 
     if (!note) {
-        const err = new Error("Note not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(400, "Note not found");
     }
     if (note.uploadedBy.toString() !== userId.toString()) {
-        const err = new Error("You can only delete your own notes");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "You can only delete your own notes");
     }
 
     try {
@@ -137,7 +122,7 @@ const deleteNote = async (noteId, userId) => {
         await cloudinary.uploader.destroy(note.publicId, { resource_type: resourceType });
         logger.info(`Cloudinary file deleted: ${note.publicId}`);
     } catch (cloudErr) {
-        logger.warn("Cloudinary delete warning:", cloudErr.message);
+        logger.warn("Cloudinary delete failed", { error: cloudErr.message, publicId: note.publicId });
     }
 
     await noteRepo.deleteNoteById(noteId);

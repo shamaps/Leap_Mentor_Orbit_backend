@@ -5,15 +5,39 @@ require("./instrument");
 require("dotenv").config();
 
 const express = require("express");
-const http       = require("node:http");
+const http = require("node:http");
 const { Server } = require("socket.io");
-const mongoose   = require("mongoose");
+const mongoose = require("mongoose");
+const Sentry = require("@sentry/node");
 const logger = require("./utils/logger");
-const app                  = require("./app");
-const socketAuth           = require("./socket/socketAuth");
-const socketHandler        = require("./socket/socketHandler");
+const app = require("./app");
+const socketAuth = require("./socket/socketAuth");
+const socketHandler = require("./socket/socketHandler");
 const { verifyConnection } = require("./config/cloudinary");
+const config = require("./config/env"); 
+/* ===========================
+   🔹 PROCESS-LEVEL SAFETY NETS
+   Must be registered once, before anything else can throw/reject.
+=========================== */
+process.on("unhandledRejection", (reason) => {
+  Sentry.captureException(reason);
+  logger.error("Unhandled Promise Rejection", {
+    reason: reason?.message || reason,
+    stack: reason?.stack,
+  });
+});
 
+process.on("uncaughtException", (err) => {
+  Sentry.captureException(err);
+  logger.error("Uncaught Exception", {
+    error: err.message,
+    stack: err.stack,
+    isOperational: !!err.isOperational,
+  });
+  if (!err.isOperational) {
+    process.exit(1);
+  }
+});
 /* ===========================
    🔹 DATABASE CONNECTION
 =========================== */
@@ -23,12 +47,15 @@ mongoose
     logger.info("MongoDB connected");
     verifyConnection();
   })
-  .catch((err) => logger.error("MongoDB connection failed", { error: err.message }));
+  .catch((err) => {
+    logger.error("MongoDB connection failed — exiting", { error: err.message });
+    process.exit(1);
+  });
 
 /* ===========================
    🔹 CRON JOBS
 =========================== */
-const { startCleanupCron }         = require("./cron/cleanupAvailability");
+const { startCleanupCron } = require("./cron/cleanupAvailability");
 const { startSessionReminderCron } = require("./cron/sessionReminders");
 startCleanupCron();
 startSessionReminderCron();
@@ -45,11 +72,11 @@ const io = new Server(httpServer, {
       "http://localhost:5174",
       "http://localhost:3000",
       "http://localhost:4173",
-      process.env.APP_BASE_URL, 
+      process.env.APP_BASE_URL,
     ],
     credentials: true,
   },
-  pingTimeout:  60000,
+  pingTimeout: 60000,
   pingInterval: 25000,
 });
 

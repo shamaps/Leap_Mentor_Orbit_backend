@@ -22,9 +22,15 @@ const findUserIdsByName = async (search) => {
         name: { $regex: escapeRegex(search), $options: "i" },
     })
         .select("_id")
+        .limit(200)
         .lean();
     return users.map((u) => u._id);
 };
+
+const findMyProfileSkills = (userId) =>
+    MentorProfile.findOne({ user: userId })
+        .select("skills industry")
+        .lean();
 
 const countReports = (filter) =>
     Report.countDocuments(filter);
@@ -49,7 +55,7 @@ const findReportByIdWithSession = (id) =>
     Report.findById(id)
         .populate("reportedBy", "name email")
         .populate("reportedUser", "name email")
-        .populate("connectRequest");
+        .populate("connectRequest", "status paymentStatus totalAmount sessionRate sessionCount mentee mentor completedAt paidAt");
 
 const findReportByIdWithSessionAndParticipants = (id) =>
     Report.findById(id)

@@ -22,7 +22,7 @@ const findSessionForRead = (id) =>
 // ─────────────────────────────────────────────────────────────
 
 const findExistingFeedback = (query) =>
-    Feedback.findOne(query);
+    Feedback.findOne(query).select("_id").lean();
 
 const createFeedback = (data) =>
     Feedback.create(data);
@@ -39,7 +39,9 @@ const findFeedbackBySession = (connectRequestId) =>
         .lean();
 
 const findAllFeedbackForMentor = (mentorUserId) =>
-    Feedback.find({ to: mentorUserId }).lean();
+    Feedback.find({ to: mentorUserId })
+        .select("rating slotIndex from")
+        .lean();
 
 // ─────────────────────────────────────────────────────────────
 // MENTOR PROFILE

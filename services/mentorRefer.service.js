@@ -1,18 +1,15 @@
 // services/mentorRefer.service.js
+const AppError = require("../utils/appError");
 const createMentorReferService = (mentorReferRepo, { logger }) => {
 const getSimilarMentors = async (requestId, userId) => {
     const request = await mentorReferRepo.findRequestWithMentor(requestId);
     if (!request) {
-        const err = new Error("Request not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Request not found");
     }
 
     // Only the mentor who received it can fetch similar mentors
     if (request.mentor._id.toString() !== userId.toString()) {
-        const err = new Error("Not authorized");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized");
     }
 
     const myProfile = await mentorReferRepo.findMyProfileSkills(userId);

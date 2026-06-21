@@ -9,11 +9,10 @@ const getMyRequest = async (req, res) => {
     logger.info("getMyRequest completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.getMyRequest");
+       return handleError(res, err, "leapRequest.getMyRequest");
   }
 };
-
+ 
 //MENTEE: Create a new request 
 const createRequest = async (req, res) => {
   try {
@@ -21,20 +20,21 @@ const createRequest = async (req, res) => {
     logger.info("createRequest completed successfully");
     return created(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.createRequest");
+       return handleError(res, err, "leapRequest.createRequest");
   }
 };
 
 // ADMIN: Get all requests
 const getAllRequests = async (req, res) => {
   try {
-    const data = await leapRequestService.getAllRequests();
+    const data = await leapRequestService.getAllRequests({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
     logger.info("getAllRequests completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.getAllRequests");
+       return handleError(res, err, "leapRequest.getAllRequests");
   }
 };
 
@@ -45,8 +45,7 @@ const getPendingCount = async (req, res) => {
     logger.info("getPendingCount completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.getPendingCount");
+       return handleError(res, err, "leapRequest.getPendingCount");
   }
 };
 
@@ -57,8 +56,7 @@ const approveRequest = async (req, res) => {
     logger.info("approveRequest completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.approveRequest");
+       return handleError(res, err, "leapRequest.approveRequest");
   }
 };
 
@@ -69,8 +67,7 @@ const rejectRequest = async (req, res) => {
     logger.info("rejectRequest completed successfully");
     return ok(res, data);
   } catch (err) {
-    logger.error("Unhandled error in leapRequest.controller", { error: err.message, stack: err.stack });
-    return handleError(res, err, "leapRequest.rejectRequest");
+       return handleError(res, err, "leapRequest.rejectRequest");
   }
 };
 

@@ -87,7 +87,7 @@ const sendPaymentReceivedEmail = async ({
   ${FOOTER}
 `);
 
-    await transporter.sendMail({
+    await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: mentorEmail,
       subject: `Payment received from ${menteeName.replace(/[\r\n]/g, "")} — ${mentorPayout} tokens in escrow`,
@@ -167,7 +167,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
     ${FOOTER}
   `);
 
-    await transporter.sendMail({
+    await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: mentorEmail,
         subject: `We received your documents — Application under review`,
@@ -251,7 +251,7 @@ const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
     ${FOOTER}
   `);
 
-    await transporter.sendMail({
+    await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: mentorEmail,
         subject: `Your account is verified — Welcome to LeapMentor! 🎉`,

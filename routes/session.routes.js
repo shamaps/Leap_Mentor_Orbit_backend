@@ -1,31 +1,39 @@
 // backend/routes/session.routes.js
 const express = require("express");
-const router  = express.Router();
-const { authenticate } = require("../middleware/authenticate");
+const router = express.Router();
+const { authenticate, requireRole } = require("../middleware/authenticate");
 const { sessionController } = require("../config/container");
 const {
   getSlots, setMeetingLink, markSlotComplete, addSlot,
   cancelSlot, rescheduleSlot, getMentorAvailability,
 } = sessionController;
+
 // GET  /api/sessions/:connectRequestId/slots
-router.get("/:connectRequestId/slots", authenticate, getSlots);
+// Both mentor and mentee can view their session slots
+router.get("/:connectRequestId/slots", authenticate, requireRole("mentor", "mentee"), getSlots);
 
 // GET  /api/sessions/:connectRequestId/mentor-availability
-router.get("/:connectRequestId/mentor-availability", authenticate, getMentorAvailability);
+// Either party can check availability when rescheduling
+router.get("/:connectRequestId/mentor-availability", authenticate, requireRole("mentor", "mentee"), getMentorAvailability);
 
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
-router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, setMeetingLink);
+// Either party can set the meeting link
+router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, requireRole("mentor", "mentee"), setMeetingLink);
 
 // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
-router.patch("/:connectRequestId/slots/:slotIndex/mark-complete", authenticate, markSlotComplete);
+// Both parties independently mark their side complete
+router.patch("/:connectRequestId/slots/:slotIndex/mark-complete", authenticate, requireRole("mentor", "mentee"), markSlotComplete);
 
 // POST /api/sessions/:connectRequestId/slots
-router.post("/:connectRequestId/slots", authenticate, addSlot);
+// Either party can propose a new slot
+router.post("/:connectRequestId/slots", authenticate, requireRole("mentor", "mentee"), addSlot);
 
-// NEW — PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
-router.patch("/:connectRequestId/slots/:slotIndex/cancel", authenticate, cancelSlot);
+// PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
+// Either party can cancel a slot
+router.patch("/:connectRequestId/slots/:slotIndex/cancel", authenticate, requireRole("mentor", "mentee"), cancelSlot);
 
-// NEW — PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
-router.patch("/:connectRequestId/slots/:slotIndex/reschedule", authenticate, rescheduleSlot);
+// PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
+// Either party can reschedule a slot
+router.patch("/:connectRequestId/slots/:slotIndex/reschedule", authenticate, requireRole("mentor", "mentee"), rescheduleSlot);
 
 module.exports = router;

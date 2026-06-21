@@ -16,10 +16,24 @@ const createMessage = async ({ email, subject, message, role }) => {
     return { status: 201, body: msg };
 };
 
-const getMessages = async () => {
-    const msgs = await repo.findAllMessages();
-    return { status: 200, body: msgs };
-};
+    const getMessages = async ({ page = 1, limit = 50 } = {}) => {
+        const safePage = Math.max(1, parseInt(page) || 1);
+        const safeLimit = Math.min(100, parseInt(limit) || 50);
+        const skip = (safePage - 1) * safeLimit;
+
+        const [msgs, total] = await Promise.all([
+            repo.findAllMessages(skip, safeLimit),
+            repo.countMessages(),
+        ]);
+
+        return {
+            status: 200,
+            body: {
+                messages: msgs,
+                pagination: { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
+            },
+        };
+    };
 
 const resolveMessage = async (id) => {
     const msg = await repo.resolveMessageById(id);
@@ -42,7 +56,7 @@ const resolveMessage = async (id) => {
 
     // ── 2. Email notification (non-blocking) ─────────────────
     sendSupportResolvedEmail({ toEmail: msg.email, subject: msg.subject })
-        .catch((emailErr) => logger.error("⚠️ Support resolved email failed:", emailErr.message));
+        .catch((emailErr) => logger.warn("Support resolved email failed", { error: emailErr.message }));
 
     return { status: 200, body: msg };
 };

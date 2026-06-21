@@ -4,7 +4,7 @@ const AdminUser = require("../models/AdminUser");
 const MentorProfile = require("../models/MentorProfile");
 const MenteeProfile = require("../models/MenteeProfile");
 const ConnectRequest = require("../models/ConnectRequest");
-
+const logger = require("../utils/logger");
 // ═════════════════════════════════════════════════════════════
 // AUTH
 // ═════════════════════════════════════════════════════════════
@@ -74,10 +74,14 @@ const findUserById = (userId) =>
         .lean();
 
 const findMentorProfileByUser = (userId) =>
-    MentorProfile.findOne({ user: userId }).lean();
+    MentorProfile.findOne({ user: userId })
+        .select("verificationStatus isProfileComplete isProfilePublished bio skills currentRole company industry yearsOfExperience averageRating totalSessions profilePicture")
+        .lean();
 
 const findMenteeProfileByUser = (userId) =>
-    MenteeProfile.findOne({ user: userId }).lean();
+    MenteeProfile.findOne({ user: userId })
+        .select("isProfileComplete isProfilePublished bio goals profilePicture learningInterests")
+        .lean();
 
 const countCompletedSessions = (userId) =>
     ConnectRequest.countDocuments({
@@ -85,15 +89,22 @@ const countCompletedSessions = (userId) =>
         status: "completed",
     });
 
-const hardDeleteUser = (userId) =>
-    Promise.all([
+const hardDeleteUser = async (userId) => {
+    logger.debug("hardDeleteUser called", { userId: userId?.toString() });
+    const results = await Promise.allSettled([
         User.findByIdAndDelete(userId),
         MentorProfile.findOneAndDelete({ user: userId }),
         MenteeProfile.findOneAndDelete({ user: userId }),
-        ConnectRequest.deleteMany({
-            $or: [{ mentor: userId }, { mentee: userId }],
-        }),
+        ConnectRequest.deleteMany({ $or: [{ mentor: userId }, { mentee: userId }] }),
     ]);
+    const failures = results.filter(r => r.status === "rejected");
+    if (failures.length) {
+        failures.forEach(f =>
+            logger.error("hardDeleteUser partial failure", { error: f.reason?.message, userId: userId?.toString() })
+        );
+    }
+    logger.debug("hardDeleteUser complete", { userId: userId?.toString(), failures: failures.length });
+};
 
 const findUserByIdRaw = (userId) =>
     User.findById(userId);

@@ -36,10 +36,21 @@ const createRequest = async (menteeId) => {
 };
 
 // ADMIN: Get all requests 
-const getAllRequests = async () => {
-    const requests = await leapRequestRepo.findAllRequests();
-    return { requests };
-};
+    const getAllRequests = async ({ page = 1, limit = 50 } = {}) => {
+        const safePage = Math.max(1, parseInt(page) || 1);
+        const safeLimit = Math.min(100, parseInt(limit) || 50);
+        const skip = (safePage - 1) * safeLimit;
+
+        const [requests, total] = await Promise.all([
+            leapRequestRepo.findAllRequests(skip, safeLimit),
+            leapRequestRepo.countAllRequests(),
+        ]);
+
+        return {
+            requests,
+            pagination: { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
+        };
+    };
 
 // ADMIN: Get pending count (for sidebar badge)
 const getPendingCount = async () => {

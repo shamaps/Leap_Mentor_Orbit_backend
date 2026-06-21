@@ -37,7 +37,7 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
     ${FOOTER}
   `);
 
-  await transporter.sendMail({
+  await transporter.sendMailWithRetry({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: toEmail,
     subject: `Your support request has been resolved — LeapMentor`,
@@ -105,7 +105,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
     ${FOOTER}
   `);
 
-    await transporter.sendMail({
+    await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: reporterEmail,
         subject: `Your report has been received — LeapMentor`,
@@ -190,7 +190,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
     ${FOOTER}
   `);
 
-    await transporter.sendMail({
+    await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: reporterEmail,
         subject: `Your report has been ${statusLabel.toLowerCase()} — LeapMentor`,

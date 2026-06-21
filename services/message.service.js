@@ -1,5 +1,5 @@
 // services/message.service.js
-
+const AppError = require("../utils/appError");
 const createMessageService = (messageRepo, { logger }) => {
 // GET /api/messages/:connectRequestId
 
@@ -10,17 +10,13 @@ const getMessages = async (connectRequestId, userId, query) => {
 
     const request = await messageRepo.findSessionParticipants(connectRequestId);
     if (!request) {
-        const err = new Error("Session not found");
-        err.statusCode = 404;
-        throw err;
+        throw new AppError(404, "Session not found");
     }
 
     const isMentor = request.mentor.toString() === userId;
     const isMentee = request.mentee.toString() === userId;
     if (!isMentor && !isMentee) {
-        const err = new Error("Not authorized to view these messages");
-        err.statusCode = 403;
-        throw err;
+        throw new AppError(403, "Not authorized to view these messages");
     }
 
     const [messages, totalCount] = await Promise.all([
