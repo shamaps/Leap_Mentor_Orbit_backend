@@ -6,11 +6,11 @@
 const escapeHtml = (str) => {
     if (str === null || str === undefined) return "";
     return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+        .replaceAll(/&/g, "&amp;")
+        .replaceAll(/</g, "&lt;")
+        .replaceAll(/>/g, "&gt;")
+        .replaceAll(/"/g, "&quot;")
+        .replaceAll(/'/g, "&#39;");
 };
 
 module.exports = { escapeHtml };

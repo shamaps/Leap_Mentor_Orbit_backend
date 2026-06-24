@@ -170,7 +170,7 @@ const sendSlotRescheduledEmail = async ({
       transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
-          subject: `Session rescheduled by ${menteeName.replace(/[\r\n]/g, "")} — ${formatDate(newSlot.date)}`,
+          subject: `Session rescheduled by ${menteeName.replaceAll(/[\r\n]/g, "")} — ${formatDate(newSlot.date)}`,
             html: buildHtml(mentorName),
         }),
       transporter.sendMailWithRetry({
@@ -250,7 +250,7 @@ const sendAdditionalSlotEmail = async ({
       transporter.sendMailWithRetry({
             from: `"LeapMentor" <${process.env.SMTP_USER}>`,
             to: mentorEmail,
-          subject: `New session slot added by ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
+          subject: `New session slot added by ${menteeName.replaceAll(/[\r\n]/g, "")} — LeapMentor`,
             html: buildHtml(mentorName),
         }),
       transporter.sendMailWithRetry({

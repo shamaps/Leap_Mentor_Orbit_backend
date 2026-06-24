@@ -1,6 +1,6 @@
 // backend/models/Feedback.js
 const mongoose = require("mongoose");
-const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 
 const feedbackSchema = new mongoose.Schema(
   {
@@ -36,6 +36,15 @@ const feedbackSchema = new mongoose.Schema(
       maxlength: 1000,
       default: "",
     },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",   // AdminUser who reviewed/removed this feedback
+      default: null,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
     slotIndex: {                   
       type: Number,
       default: undefined,          
@@ -52,5 +61,5 @@ feedbackSchema.index({ connectRequest: 1 });
 
 // ✅ Fast lookup for all feedback received by a user (for avg rating)
 feedbackSchema.index({ to: 1 });
-
+applySoftDelete(feedbackSchema);
 module.exports = mongoose.model("Feedback", feedbackSchema);

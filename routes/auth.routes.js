@@ -35,15 +35,14 @@ const { clerkSSO } = clerkSSOController;
 const { changePassword } = changePasswordController;
 const { sendForgotPasswordOTP, verifyResetOTP, resetPassword } = forgotPasswordController;
 
-router.post("/register", registerLimiter, validate(registerSchema), register);
-router.post("/login", loginLimiter, validate(loginSchema), login);
 router.post("/google", oauthLimiter, googleAuth);
 router.post("/clerk-sso", oauthLimiter, clerkSSO);
 router.patch("/password", authenticate, changePassword);
 router.post("/refresh", refresh);
+router.post("/register", registerLimiter, validate(registerSchema), register);
+router.post("/login", loginLimiter, validate(loginSchema), login);
 router.post("/logout", logout);
-router.post("/forgot-password", forgotPasswordLimiter, validate(forgotPasswordSchema), sendForgotPasswordOTP);
-router.post("/verify-reset-otp", otpLimiter, validate(verifyOtpSchema), verifyResetOTP);
-router.post("/reset-password", forgotPasswordLimiter, validate(resetPasswordSchema), resetPassword);
-
+router.post("/password-reset", forgotPasswordLimiter, validate(forgotPasswordSchema), sendForgotPasswordOTP);
+router.post("/password-reset/verification", otpLimiter, validate(verifyOtpSchema), verifyResetOTP);
+router.post("/password-reset/confirmation", forgotPasswordLimiter, validate(resetPasswordSchema), resetPassword);
 module.exports = router;

@@ -15,7 +15,11 @@ const slotLockSchema = new mongoose.Schema({
   date: { type: String, required: true, match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"] },
   startTime: { type: String, required: true, match: [/^\d{2}:\d{2}$/, "Time must be HH:MM"] },
   endTime: { type: String, required: true, match: [/^\d{2}:\d{2}$/, "Time must be HH:MM"] },
-  expiresAt: { type: Date,   required: true }, // TTL field
+  expiresAt: {
+    type: Date,
+    required: true,
+    min: [() => new Date(), "Expiry must be in the future"],
+  },
 }, BASE_SCHEMA_OPTIONS);
 
 // ✅ MongoDB auto-deletes document when expiresAt is reached

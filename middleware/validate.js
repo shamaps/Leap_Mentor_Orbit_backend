@@ -15,7 +15,7 @@ const validate = (schema) => (req, res, next) => {
     if (error) {
         const messages = error.details.map((d) => ({
             field: d.path.join("."),
-            message: d.message.replace(/['"]/g, ""),
+            message: d.message.replaceAll(/['"]/g, ""),
         }));
         return res.status(400).json({ success: false, errors: messages });
     }

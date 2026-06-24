@@ -90,7 +90,7 @@ const sendPaymentReceivedEmail = async ({
     await transporter.sendMailWithRetry({
         from: `"LeapMentor" <${process.env.SMTP_USER}>`,
         to: mentorEmail,
-      subject: `Payment received from ${menteeName.replace(/[\r\n]/g, "")} — ${mentorPayout} tokens in escrow`,
+      subject: `Payment received from ${menteeName.replaceAll(/[\r\n]/g, "")} — ${mentorPayout} tokens in escrow`,
         html,
     });
 

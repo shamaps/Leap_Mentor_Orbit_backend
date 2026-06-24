@@ -1,6 +1,7 @@
 // utils/mailer.js
 const nodemailer = require("nodemailer");
 const { withRetry } = require("./withRetry");
+const { getTraceId } = require("./requestContext");          
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -15,8 +16,16 @@ const transporter = nodemailer.createTransport({
     socketTimeout: 10_000,
 });
 
-const sendMailWithRetry = (mailOptions) =>
-    withRetry(() => transporter.sendMail(mailOptions), { retries: 3, label: "sendMail" });
+const sendMailWithRetry = (mailOptions) => {
+    const optionsWithTrace = {
+        ...mailOptions,
+        headers: {
+            ...(mailOptions.headers || {}),
+            "X-Trace-Id": getTraceId(),                    
+        },
+    };
+    return withRetry(() => transporter.sendMail(optionsWithTrace), { retries: 3, label: "sendMail" });
+};
 
 module.exports = transporter;
 module.exports.sendMailWithRetry = sendMailWithRetry;

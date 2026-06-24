@@ -43,6 +43,21 @@ const findAllFeedbackForMentor = (mentorUserId) =>
         .select("rating slotIndex from")
         .lean();
 
+// Computes { avg, count } for a mentor's ratings via aggregation.
+// Returns [] (not [{avg: null, count: 0}]) when there are zero ratings,
+// matching refreshMentorAvgRating's `result ? ... : 0` fallback.
+const computeMentorAvgRating = (mentorUserId) =>
+    Feedback.aggregate([
+        { $match: { to: mentorUserId } },
+        {
+            $group: {
+                _id: "$to",
+                avg: { $avg: "$rating" },
+                count: { $sum: 1 },
+            },
+        },
+    ]);
+
 // ─────────────────────────────────────────────────────────────
 // MENTOR PROFILE
 // ─────────────────────────────────────────────────────────────
@@ -61,5 +76,6 @@ module.exports = {
     findFeedbackById,
     findFeedbackBySession,
     findAllFeedbackForMentor,
+    computeMentorAvgRating,
     updateMentorAvgRating,
 };

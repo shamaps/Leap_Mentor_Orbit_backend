@@ -1,6 +1,7 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL, buildSlotRows, formatTime, formatDate,BRAND_GRADIENT } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
+const logger = require("../logger");
 // Email 1: Mentor notified when mentee sends a connect request
 const sendConnectRequestEmail = async ({
   mentorName,
@@ -70,7 +71,7 @@ const sendConnectRequestEmail = async ({
   await transporter.sendMailWithRetry({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: mentorEmail,
-    subject: `New Connect Request from ${menteeName.replace(/[\r\n]/g, "")} — LeapMentor`,
+    subject: `New Connect Request from ${menteeName.replaceAll(/[\r\n]/g, "")} — LeapMentor`,
     html,
   });
 
@@ -138,7 +139,7 @@ const sendRequestAcceptedEmail = async ({
   await transporter.sendMailWithRetry({
     from: `"LeapMentor" <${process.env.SMTP_USER}>`,
     to: menteeEmail,
-    subject: `${mentorName.replace(/[\r\n]/g, "")}accepted your request — Complete your payment`,
+    subject: `${mentorName.replaceAll(/[\r\n]/g, "")}accepted your request — Complete your payment`,
     html,
   });
 

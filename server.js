@@ -7,13 +7,13 @@ require("dotenv").config();
 const express = require("express");
 const http = require("node:http");
 const { Server } = require("socket.io");
-const mongoose = require("mongoose");
 const Sentry = require("@sentry/node");
 const logger = require("./utils/logger");
 const app = require("./app");
 const socketAuth = require("./socket/socketAuth");
 const socketHandler = require("./socket/socketHandler");
 const { verifyConnection } = require("./config/cloudinary");
+const { connectDB } = require("./config/database");
 const config = require("./config/env"); 
 /* ===========================
    🔹 PROCESS-LEVEL SAFETY NETS
@@ -41,17 +41,9 @@ process.on("uncaughtException", (err) => {
 /* ===========================
    🔹 DATABASE CONNECTION
 =========================== */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    logger.info("MongoDB connected");
-    verifyConnection();
-  })
-  .catch((err) => {
-    logger.error("MongoDB connection failed — exiting", { error: err.message });
-    process.exit(1);
-  });
-
+(async () => {
+await connectDB();
+verifyConnection();
 /* ===========================
    🔹 CRON JOBS
 =========================== */
@@ -92,3 +84,4 @@ httpServer.listen(PORT, () => {
   logger.info(`🔌 Socket.io ready`);
   logger.info(`📡 Using Client ID: ${process.env.GOOGLE_CLIENT_ID ? "LOADED" : "NOT FOUND"}`);
 });
+})();

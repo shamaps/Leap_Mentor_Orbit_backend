@@ -11,70 +11,65 @@ const menteeProfileSchema = new mongoose.Schema(
       unique: true, // one profile per mentee
     },
 
-    currentRole: {
+    currentRole: { 
       type: String,
-      trim: true,
+       trim: true, 
       default: "",
-    },
-
-    industry: {
-      type: String,
+       maxlength: [100, "Role cannot exceed 100 characters"] },
+    industry: 
+    { type: String, 
       trim: true,
-      default: "",
-    },
-    
-    company: {
-      type: String,
+       default: "",
+        maxlength: [100, "Industry cannot exceed 100 characters"] },
+    company: { 
+      type: String, 
       trim: true,
-      default: "",
-    },
+       default: "", 
+       maxlength: [100, "Company cannot exceed 100 characters"] },
 
     yearsOfExperience: {
-  type:    String,
-  trim:    true,
-  default: "",
-},
-
+      type: String,
+      min: 0,
+      max: 60,
+      default: 0,
+    },
     bio: {
       type: String,
       trim: true,
-      maxlength: 1000,
       default: "",
+      validate: {
+        validator: function (v) {
+          return v === "" || v.length >= 10;
+        },
+        message: "Bio must be at least 10 characters",
+      },
+      maxlength: [1000, "Bio cannot exceed 1000 characters"],
     },
-
-    profilePicture: {
-      type: String, // URL or base64
-      default: "",
-    },
-    profilePictureThumbnail: {   
-      type: String,
-      default: "",
-    },
-    profilePicture56: {
-      type: String,
-      default: ""
-    },  // 56×56  avatar
-    profilePicture80: {
-      type: String,
-      default: ""
-    },  // 80×80  card
-    profilePicture160: {
-      type: String,
-      default: ""
-    },  // 160×160 modal
+    profilePicture: { type: String, default: "", maxlength: 2048 },
+    profilePictureThumbnail: { type: String, default: "", maxlength: 2048 },
+    profilePicture56: { type: String, default: "", maxlength: 2048 },
+    profilePicture80: { type: String, default: "", maxlength: 2048 },
+    profilePicture160: { type: String, default: "", maxlength: 2048 },
+    profilePictureOriginalName: { type: String, default: "", maxlength: 255 },
 
     linkedInUrl: {
       type: String,
       trim: true,
       default: "",
-      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
+      validate: {
+        validator: (v) => v === "" || /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/.test(v),
+        message: "Invalid URL format",
+      },
     },
 
     portfolioUrl: {
       type: String,
       trim: true,
       default: "",
-      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
+      validate: {
+        validator: (v) => v === "" || /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/.test(v),
+        message: "Invalid URL format",
+      },
     },
 
     skills: {
@@ -119,4 +114,6 @@ const menteeProfileSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS
 );
 applySoftDelete(menteeProfileSchema);
+menteeProfileSchema.index({ interestedFields: 1 });
+menteeProfileSchema.index({ skills: 1 });
 module.exports = mongoose.model("MenteeProfile", menteeProfileSchema);

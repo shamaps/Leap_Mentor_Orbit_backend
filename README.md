@@ -349,6 +349,25 @@ VAPID_EMAIL=mailto:your@email.com
 ```
 
 ---
+## Rate Limiting
+
+All API routes are protected by Redis-backed rate limits.
+
+| Endpoint Group        | Limit          | Window     | Key    |
+|-----------------------|----------------|------------|--------|
+| Global (POST/PUT/DELETE) | 500 requests | 15 minutes | IP/User |
+| POST /auth/login      | 5 requests     | 15 minutes | IP     |
+| POST /auth/register   | 10 requests    | 1 hour     | IP     |
+| POST /auth/google, /clerk-sso | 10 requests | 15 minutes | IP |
+| POST /auth/forgot-password | 5 requests | 1 hour   | IP     |
+| POST /auth/verify-reset-otp | 5 requests | 15 minutes | IP  |
+| POST /ai/chat         | 50 requests    | 1 hour     | User   |
+| POST /upload/*        | 10 requests    | 1 hour     | User   |
+| POST /reports         | 10 requests    | 1 hour     | User   |
+| POST /support         | 10 requests    | 1 hour     | IP     |
+| POST /admin/login     | 3 requests     | 15 minutes | IP     |
+
+Throttled requests receive HTTP **429** with header `RateLimit-*` (RFC 6585).
 
 ## API Routes
 
@@ -562,6 +581,30 @@ Socket.IO runs on the same HTTP server as Express. Auth is handled by `socketAut
 | `sessionReminders.js` | Every hour | Sends push + email reminders for upcoming sessions |
 
 ---
+## MapReduce vs Aggregation Pipeline
+
+MongoDB's MapReduce is a JavaScript-based data processing approach.
+LeapMentor uses the **Aggregation Pipeline** instead (`$group`, `$sum`,
+`$match`, `$project`) for all complex data operations — aggregation is
+faster (native C++ vs JS engine), supports indexes, and is the MongoDB-
+recommended approach from v5.0 onwards where MapReduce was deprecated.
+## Why We Don't Use mapReduce
+
+MongoDB has deprecated `mapReduce` in favor of the aggregation pipeline since MongoDB 5.0. 
+This project intentionally does not use `mapReduce` for that reason:
+
+- Aggregation pipeline operators (`$group`, `$sum`, `$lookup`, `$facet`, `$project`) already 
+  cover every use case `mapReduce` would otherwise be used for in this codebase (e.g. mentor 
+  industry breakdowns, user growth charts, Atlas-backed search ranking).
+- Aggregation pipelines run as native MongoDB operations and are index-aware and 
+  query-planner-optimized; `mapReduce` executes interpreted JavaScript on the server, 
+  which is slower and harder to scale.
+- No part of this project's data processing requires custom JS-level transform logic that 
+  the aggregation pipeline's built-in operators cannot already express.
+
+See `repositories/mentorSearch.repository.js`, `repositories/userSearch.repository.js`, and 
+`repositories/admin.repository.js` for aggregation pipeline usage.
+
 ## Debug Tools
 
 ### API Debugging
@@ -614,3 +657,35 @@ Deployed on **Render**.
 
 
 
+## Pagination Strategy
+
+This project uses two pagination approaches, chosen deliberately based on dataset characteristics:
+
+### 1. Skip/Limit Pagination (`cursor.skip()` + `cursor.limit()`)
+
+**Used for:** Admin list views — Users, Engagements, Transactions, Reports, Mentor Verifications.
+
+**Why:** These datasets are bounded, moderate in size, and the UI needs page-number navigation (e.g. "Page 3 of 12", jump to page N). Skip/limit supports this directly. The performance cost of `skip()` (Mongo has to walk past skipped documents) is acceptable here because:
+- Page sizes are small (10–20 records)
+- Admin users rarely paginate deep (page 1–3 covers most usage)
+- Collections are queried with an indexed filter first, keeping the skip-scan cheap
+
+**Where:** `admin.repository.js`, `adminPayments.repository.js`, `adminReports.repository.js`, `adminVerification.repository.js`, `leapRequest.repository.js`, `support.repository.js`, `report.repository.js`, `earnings.repository.js`, `mentorSearch.repository.js`
+
+### 2. Cursor-Based Pagination (`_id` + `$lt`/`$gt`)
+
+**Used for:** Chat messages (`message.repository.js`), via `filter._id = { $lt: beforeId }`.
+
+**Why:** Message history is append-heavy, chronologically ordered, and can grow unbounded per conversation. Cursor pagination is used here instead of skip/limit because:
+- `skip()` cost grows linearly with offset — unacceptable for a collection that keeps growing per conversation
+- Chat UIs load "previous messages" relative to the last-seen message, not by page number — a natural fit for cursor-based fetching
+- `_id` is a MongoDB `ObjectId`, which is monotonically increasing by creation time, making it a reliable, indexed cursor with no extra fields needed
+
+### Decision Rule
+
+| Dataset trait | Approach |
+|---|---|
+| Bounded size, needs page numbers, admin/back-office UI | Skip/limit |
+| Unbounded growth, chronological, infinite-scroll/"load more" UI | Cursor (`_id`-based) |
+
+**Note:** Transaction and Report lists currently use skip/limit. As these grow large in production, they are candidates to migrate to cursor-based pagination using `createdAt`/`_id` as the cursor, following the same pattern already used in `message.repository.js`.

@@ -1,6 +1,6 @@
 // backend/models/Note.js
 const mongoose = require("mongoose");
-const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
+const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 
 const noteSchema = new mongoose.Schema(
   {
@@ -61,4 +61,5 @@ noteSchema.index({ connectRequest: 1, createdAt: -1 });
 noteSchema.index({ uploadedBy: 1 });
 noteSchema.index({ connectRequest: 1, uploadedBy: 1, isPrivate: 1 });
 
+applySoftDelete(noteSchema);
 module.exports = mongoose.model("Note", noteSchema);

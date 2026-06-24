@@ -1,6 +1,6 @@
 // backend/models/Report.js
 const mongoose = require("mongoose");
-const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 const COMPLAINT_TYPES = [
   "inappropriate_behavior",
   "session_misconduct",
@@ -69,5 +69,5 @@ reportSchema.index({ reportedUser: 1 });
 reportSchema.index({ status: 1 });
 reportSchema.index({ createdAt: -1 });
 reportSchema.index({ connectRequest: 1, reportedBy: 1 }, { unique: true });
-
+applySoftDelete(reportSchema);
 module.exports = mongoose.model("Report", reportSchema);

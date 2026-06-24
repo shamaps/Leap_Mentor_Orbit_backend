@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
+const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 const goalSchema = new mongoose.Schema(
   {
     connectRequest: {
@@ -22,7 +22,8 @@ const goalSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 200,
+      minlength: [3, "Title must be at least 3 characters"],
+      maxlength: [200, "Title cannot exceed 200 characters"],
     },
     description: {
       type: String,
@@ -31,12 +32,14 @@ const goalSchema = new mongoose.Schema(
       default: "",
     },
     startDate: {
-      type: String, // "YYYY-MM-DD" — consistent with your slot date format
+      type: String, // "YYYY-MM-DD"
       default: null,
+      maxlength: 10,
     },
     endDate: {
       type: String, // "YYYY-MM-DD"
       default: null,
+      maxlength: 10,
     },
     status: {
       type: String,
@@ -54,5 +57,5 @@ const goalSchema = new mongoose.Schema(
 
 goalSchema.index({ mentor: 1 });
 goalSchema.index({ mentee: 1 });
-
+applySoftDelete(goalSchema);
 module.exports = mongoose.model("Goal", goalSchema);

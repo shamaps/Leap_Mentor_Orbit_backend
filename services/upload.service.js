@@ -40,6 +40,7 @@ const createUploadService = (repo, { logger }) => {
                 thumbnail80: result.eager?.[1]?.secure_url,      // 80×80  card
                 thumbnail160: result.eager?.[2]?.secure_url,      // 160×160 modal
                 publicId: result.public_id,
+                originalName: file.originalname, 
             },
         };
 };

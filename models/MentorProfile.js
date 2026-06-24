@@ -4,18 +4,9 @@ const { BASE_SCHEMA_OPTIONS, applySoftDelete } = require("../utils/baseSchema");
 
 const documentSchema = new mongoose.Schema(
   {
-    url: {
-      type: String,
-      required: true,
-    },
-    publicId: {
-      type: String,
-      required: true,
-    },
-    originalName: { 
-      type: String,
-       default: "" 
-      }, 
+    url: { type: String, required: true, maxlength: 2048 },
+    publicId: { type: String, required: true, maxlength: 255 },
+    originalName: { type: String, default: "", maxlength: 255 },
     uploadedAt: {
       type: Date,
       default: Date.now,
@@ -38,46 +29,43 @@ const mentorProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      maxlength: [100, "Role cannot exceed 100 characters"],
     },
 
     industry: {
       type: String,
       trim: true,
       default: "",
+      maxlength: [100, "Industry cannot exceed 100 characters"],
     },
 
     company: {
       type: String,
       trim: true,
       default: "",
+      maxlength: [100, "Company cannot exceed 100 characters"],
     },
 
     bio: {
       type: String,
       trim: true,
-      maxlength: 1000,
       default: "",
+      validate: {
+        validator: function (v) {
+          return v === "" || v.length >= 10;
+        },
+        message: "Bio must be at least 10 characters",
+      },
+      maxlength: [1000, "Bio cannot exceed 1000 characters"],
     },
 
-    profilePicture: {
-      type: String,
-      default: "",
-    },// 400×400 — existing
-    profilePictureThumbnail: {   
-      type: String,
-      default: "",
-    },
-     
-    profilePicture56: {
-       type: String,
-       default: "" },  // 56×56  avatar
-    profilePicture80: { 
-      type: String, 
-      default: "" },  // 80×80  card
-    profilePicture160: {
-       type: String,
-       default: "" },  // 160×160 modal
-       
+    profilePicture: { type: String, default: "", maxlength: 2048 },
+    profilePictureThumbnail: { type: String, default: "", maxlength: 2048 },
+    profilePicture56: { type: String, default: "", maxlength: 2048 },
+    profilePicture80: { type: String, default: "", maxlength: 2048 },
+    profilePicture160: { type: String, default: "", maxlength: 2048 },
+    profilePictureOriginalName: { type: String, default: "", maxlength: 255 },
+
     yearsOfExperience: {
       type: Number,
       min: 0,
@@ -124,14 +112,20 @@ const mentorProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
-      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
+      validate: {
+        validator: (v) => v === "" || /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/.test(v),
+        message: "Invalid URL format",
+      },
     },
 
     portfolioUrl: {
       type: String,
       trim: true,
       default: "",
-      match: [/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/, "Invalid URL format"],
+      validate: {
+        validator: (v) => v === "" || /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/.test(v),
+        message: "Invalid URL format",
+      },
     },
 
     isProfileComplete: {
@@ -148,8 +142,6 @@ const mentorProfileSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
-    // ✅ Verification
     // ✅ Verification
     verificationStatus: {
       type: String,
@@ -161,7 +153,10 @@ const mentorProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
-      match: [/^\+?[\d\s\-().]{7,20}$/, "Invalid phone number format"],
+      validate: {
+        validator: (v) => v === "" || /^\+?[\d\s\-().]{7,20}$/.test(v),
+        message: "Invalid phone number format",
+      },
     },
 
     resumeDocument: {
@@ -177,5 +172,8 @@ const mentorProfileSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS
 );
 applySoftDelete(mentorProfileSchema);
-
+mentorProfileSchema.index({ skills: 1 });
+mentorProfileSchema.index({ industry: 1 });
+mentorProfileSchema.index({ verificationStatus: 1 });
+mentorProfileSchema.index({ isProfilePublished: 1 });
 module.exports = mongoose.model("MentorProfile", mentorProfileSchema);

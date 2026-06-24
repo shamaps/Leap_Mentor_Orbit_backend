@@ -19,14 +19,15 @@ const toMentorProfileDTO = (doc) => {
         hourlyRate: doc.hourlyRate || 0,
         avgRating: doc.avgRating || 0,
         totalSessions: doc.totalSessions || 0,
-        communicationPrefs: doc.communicationPreferences || [],
+        communicationPreferences: doc.communicationPreferences || [],
         isProfileComplete: doc.isProfileComplete,
         isProfilePublished: doc.isProfilePublished,
         verificationStatus: doc.verificationStatus,
         linkedInUrl: doc.linkedInUrl || "",
+        portfolioUrl: doc.portfolioUrl || "",
     };
     // Stripped: resumeDocument, workExperienceDocuments (internal verification docs),
-    //           phoneNumber, emailNotifications, __v, isDeleted
+    ///         phoneNumber, emailNotifications, __v, isDeleted
 };
 
 const toMentorProfileSummary = (doc) => {

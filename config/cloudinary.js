@@ -14,9 +14,7 @@ const verifyConnection = async () => {
     await cloudinary.api.ping();
     logger.info("Cloudinary connected successfully");
   } catch (err) {
-    logger.error("Cloudinary connection failed", { error: err.message, stack: err.stack });
-    FI
-  }
+    logger.error("Cloudinary connection failed", { error: err.message, stack: err.stack });  }
 };
 
 module.exports = { cloudinary, verifyConnection };

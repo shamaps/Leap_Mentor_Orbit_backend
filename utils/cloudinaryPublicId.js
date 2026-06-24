@@ -14,6 +14,9 @@ const sanitise = (str) =>
 
 /**
  * Strips file extension from a filename string.
+ * Uses .replace() (not .replaceAll()) since the regex is not global —
+ * .replaceAll() throws "called with a non-global RegExp argument" otherwise,
+ * and only one extension ever needs to be stripped from the end of the string.
  */
 const stripExt = (filename) => filename.replace(/\.[^/.]+$/, "");
 

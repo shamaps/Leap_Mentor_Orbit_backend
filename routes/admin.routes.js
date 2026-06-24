@@ -26,7 +26,7 @@ router.get("/stats", adminAuthenticate, getStats);
 
 router.get("/user-growth", adminAuthenticate, getUserGrowth);
 // User management 
-router.get("/users", adminAuthenticate, getUsers);
+router.get("/users",  /* #swagger.tags = ['Admin'] */ adminAuthenticate, getUsers);
 router.get("/users/:userId", adminAuthenticate, getUserDetail);
 router.delete("/users/:userId", adminAuthenticate, deleteUser);
 

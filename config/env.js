@@ -16,7 +16,7 @@ const config = {
 
     jwtSecret: required("JWT_SECRET"),
     jwtAccessExpiresIn: optional("JWT_ACCESS_EXPIRES_IN", "15m"),
-    jwtRefreshExpiresInDays: parseInt(optional("JWT_REFRESH_EXPIRES_IN_DAYS", "7"), 10),
+    jwtRefreshExpiresInDays: Number.parseInt(optional("JWT_REFRESH_EXPIRES_IN_DAYS", "7"), 10),
     jwtAdminExpiresIn: optional("JWT_ADMIN_EXPIRES_IN", "7d"),
 
     googleClientId: required("GOOGLE_CLIENT_ID"),
@@ -30,7 +30,7 @@ const config = {
     corsOrigins: optional("CORS_ORIGINS", ""),
 
     smtpHost: optional("SMTP_HOST"),
-    smtpPort: parseInt(optional("SMTP_PORT", "587"), 10),
+    smtpPort: Number.parseInt(optional("SMTP_PORT", "587"), 10),
     smtpUser: optional("SMTP_USER"),
     smtpPass: optional("SMTP_PASS"),
     fromEmail: optional("FROM_EMAIL", "noreply@leapmentor.com"),
@@ -40,7 +40,7 @@ const config = {
     cloudinaryApiSecret: required("CLOUDINARY_API_SECRET"),
 
     redisHost: optional("REDIS_HOST", "127.0.0.1"),
-    redisPort: parseInt(optional("REDIS_PORT", "6379"), 10),
+    redisPort: Number.parseInt(optional("REDIS_PORT", "6379"), 10),
     redisPassword: optional("REDIS_PASSWORD"),
     redisTls: optional("REDIS_TLS") === "true",
     redisUrl: optional("REDIS_URL"),

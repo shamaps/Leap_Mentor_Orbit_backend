@@ -6,8 +6,8 @@ const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 // ─── Time Slot ────────────────────────────────────────────────
 const timeSlotSchema = new mongoose.Schema(
   {
-    startTime: { type: String, required: true }, // "HH:MM"
-    endTime:   { type: String, required: true }, // "HH:MM"
+    startTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
+    endTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
   },
   { _id: true }
 );
@@ -30,7 +30,7 @@ const dayScheduleSchema = new mongoose.Schema(
 // e.g. mentor marks Mar 15 available with custom hours
 const specificDateSchema = new mongoose.Schema(
   {
-    date:  { type: String, required: true }, // "YYYY-MM-DD"
+    date: { type: String, required: true, maxlength: 10 }, // "YYYY-MM-DD"
     slots: { type: [timeSlotSchema], default: [] },
   },
   { _id: false }
@@ -50,8 +50,9 @@ const availabilitySchema = new mongoose.Schema(
       type: String,
       default: PLATFORM_TIMEZONE,
       trim: true,
+      maxlength: 50,
     },
-
+    
     sessionDurations: {
       type: [Number],
       default: [30, 60],

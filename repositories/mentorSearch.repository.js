@@ -2,21 +2,49 @@
 const MentorProfile = require("../models/MentorProfile");
 const User = require("../models/User");
 const { escapeRegex } = require("../utils/escapeRegex");
+
 const MENTOR_SELECT =
     "user currentRole industry company skills hourlyRate avgRating profilePicture linkedInUrl portfolioUrl yearsOfExperience bio verificationStatus";
 
-// USER
+// ── Name search via Atlas (user_name_search index on users collection) ──────
+// Falls back to $regex if user_name_search index doesn't exist yet
+const findMentorUsersByName = async (name) => {
+    try {
+        const results = await User.aggregate([
+            {
+                $search: {
+                    index: "user_name_search",
+                    compound: {
+                        must: [
+                            {
+                                autocomplete: {
+                                    query: name,
+                                    path: "name",
+                                    fuzzy: { maxEdits: 1 },
+                                },
+                            },
+                        ],
+                        filter: [
+                            { equals: { path: "isDeleted", value: false } },
+                        ],
+                    },
+                },
+            },
+            { $match: { roles: { $in: ["mentor"] } } },
+            { $limit: 50 },
+            { $project: { _id: 1 } },
+        ]);
+        return results;
+    } catch {
+        // Fallback to regex if Atlas user index not set up yet
+        return User.find({
+            name: { $regex: escapeRegex(name), $options: "i" },
+            roles: { $in: ["mentor"] },
+        }).select("_id").lean();
+    }
+};
 
-const findMentorUsersByName = (name) =>
-    User.find({
-        name: { $regex: escapeRegex(name), $options: "i" },
-        roles: { $in: ["mentor"] },
-    })
-        .select("_id")
-        .lean();
-
-// PLAIN LIST (no query, no filters)
-
+// ── Plain list (no query, no filters) ───────────────────────────────────────
 const countPublishedMentors = () =>
     MentorProfile.countDocuments({ isProfilePublished: true, isProfileComplete: true });
 
@@ -29,11 +57,11 @@ const findPublishedMentors = (skip, limit) =>
         .limit(limit)
         .lean();
 
-// ATLAS SEARCH
-
+// ── Atlas Search pipeline runner ─────────────────────────────────────────────
 const runAtlasPipeline = (pipeline) =>
     MentorProfile.aggregate(pipeline);
-// NAME-MATCH UNION (extra profiles not returned by Atlas)
+
+// ── Name-match union (profiles Atlas missed because name is on User) ─────────
 const findProfilesByUserIds = (userIds, expMatch) =>
     MentorProfile.find({
         user: { $in: userIds },
@@ -45,8 +73,7 @@ const findProfilesByUserIds = (userIds, expMatch) =>
         .select(MENTOR_SELECT)
         .lean();
 
-// FALLBACK (regex — used when Atlas is unavailable)
-
+// ── Fallback (regex — used when Atlas is unavailable) ───────────────────────
 const countByFilter = (filter) =>
     MentorProfile.countDocuments(filter);
 

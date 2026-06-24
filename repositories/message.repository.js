@@ -19,6 +19,18 @@ const findMessages = (connectRequestId, skip, limit) =>
         .limit(limit)
         .lean();
 
+const findMessagesByCursor = (connectRequestId, beforeId, limit = 30) => {
+    const filter = { connectRequest: connectRequestId };
+    // If beforeId provided, get messages older than that _id
+    if (beforeId) filter._id = { $lt: beforeId };
+
+    return Message.find(filter)
+        .populate("sender", "name email")
+        .sort({ _id: -1 })   // newest first, client reverses for display
+        .limit(limit)
+        .lean();
+};
+
 const countMessages = (connectRequestId) =>
     Message.countDocuments({ connectRequest: connectRequestId });
 
@@ -39,6 +51,7 @@ module.exports = {
     findSessionParticipants,
     findMessages,
     countMessages,
+    findMessagesByCursor,
     markMessagesAsRead,
     countUnreadMessages,
 };

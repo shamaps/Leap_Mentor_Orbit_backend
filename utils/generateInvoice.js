@@ -104,9 +104,9 @@ const generateInvoice = (data) => {
       const LINE_SM = 16;
       const LINE_MD = 20;
 
-      // ═════════════════════════════════════════════════════════
+
       // HEADER
-      // ═════════════════════════════════════════════════════════
+
       doc.rect(0, 0, doc.page.width, HEADER_H).fill(C.brand);
 
       const logoPath = customLogoPath || path.resolve("public/images/logo.webp");
@@ -130,9 +130,9 @@ const generateInvoice = (data) => {
         .font("Helvetica-Bold")
         .text("LeapMentor", textX, (HEADER_H - 24) / 2 + 2);
 
-      // ═════════════════════════════════════════════════════════
+
       // INVOICE TITLE
-      // ═════════════════════════════════════════════════════════
+
       let y = HEADER_H + 28;
 
       doc
@@ -154,9 +154,9 @@ const generateInvoice = (data) => {
       y += 40;
       doc.rect(L, y, W, 0.8).fill(C.slate200);
 
-      // ═════════════════════════════════════════════════════════
+
       // BILLED TO / SESSION WITH
-      // ═════════════════════════════════════════════════════════
+
       y += 18;
       const col2X = 310;
 
@@ -177,9 +177,9 @@ const generateInvoice = (data) => {
       y += 30;
       doc.rect(L, y, W, 0.8).fill(C.slate200);
 
-      // ═════════════════════════════════════════════════════════
+
       // SESSION DETAILS
-      // ═════════════════════════════════════════════════════════
+
       y += 16;
       doc.fillColor(C.slate400).fontSize(8).font("Helvetica-Bold")
         .text(
@@ -209,9 +209,9 @@ const generateInvoice = (data) => {
         });
       }
 
-      // ═════════════════════════════════════════════════════════
+
       // SESSION TABLE
-      // ═════════════════════════════════════════════════════════
+
       y += 14;
 
       doc.rect(L, y, W, 28).fill(C.slate100);
@@ -231,9 +231,9 @@ const generateInvoice = (data) => {
       doc.fillColor(C.slate900).font("Helvetica-Bold")
         .text(`${baseAmount}`, 472, y + 11);
 
-      // ═════════════════════════════════════════════════════════
+
       // PAYMENT BREAKDOWN
-      // ═════════════════════════════════════════════════════════
+
       y += 44;
       doc.rect(L, y, W, 0.8).fill(C.slate200);
 
@@ -276,9 +276,9 @@ const generateInvoice = (data) => {
         .text(`${escrowTotal} tokens`, R - COL_W, y + 12,
           { width: COL_W, align: "right" });
 
-      // ═════════════════════════════════════════════════════════
+
       // FOOTER
-      // ═════════════════════════════════════════════════════════
+
       y += BOX_H + 30;
       doc.rect(L, y, W, 0.8).fill(C.slate200);
 

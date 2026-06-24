@@ -13,6 +13,7 @@ const app = express();
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
 const imageRoutes = require("./routes/image.routes");
+const swaggerUi = require("swagger-ui-express");
 
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
@@ -72,6 +73,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
 app.use((req, res, next) => {
   if (req.body) req.body = mongoSanitize.sanitize(req.body, { allowDots: true });
   next();
@@ -130,6 +132,21 @@ v1.use("/leap-requests", require("./routes/leapRequest.routes"));
 // Admin routes — all sub-paths handled inside routes/admin/index.js
 v1.use("/admin", require("./routes/admin"));
 app.use("/api/v1/images", imageRoutes);
+/* ===========================
+   🔹 SWAGGER API DOCS
+   Available at /api-docs in all environments
+=========================== */
+try {
+  const swaggerDocument = require("./swagger-output.json");
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    customSiteTitle: "LeapMentor API Docs",
+    customCss: ".swagger-ui .topbar { display: none }",
+    swaggerOptions: { persistAuthorization: true },
+  }));
+  logger.info("Swagger UI available at /api-docs");
+} catch {
+  logger.warn("swagger-output.json not found — run: npm run swagger");
+}
 /* ===========================
    🔹 MOUNT VERSIONED ROUTER
 =========================== */

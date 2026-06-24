@@ -9,7 +9,7 @@ const submitFeedback = async (req, res) => {
       connectRequestId: req.body.connectRequestId,
       rating: req.body.rating,
       comment: req.body.comment,
-      slotIndex: req.body.slotIndex !== undefined && req.body.slotIndex !== null ? parseInt(req.body.slotIndex, 10) : undefined,
+      slotIndex: req.body.slotIndex !== undefined && req.body.slotIndex !== null ? Number.parseInt(req.body.slotIndex, 10) : undefined,
       userId: req.user._id,
     });
     logger.info("submitFeedback completed successfully");

@@ -1,5 +1,5 @@
 // utils/escapeRegex.js
 const escapeRegex = (str) =>
-    str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    str.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 module.exports = { escapeRegex };

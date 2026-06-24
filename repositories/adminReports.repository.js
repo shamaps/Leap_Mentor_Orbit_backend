@@ -1,10 +1,9 @@
 // backend/repositories/adminReports.repository.js
 const Report = require("../models/Report");
-const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const ConnectRequest = require("../models/ConnectRequest");
-const { escapeRegex } = require("../utils/escapeRegex");
+const { findUsersByName } = require("./userSearch.repository");
 
 // STATS
 const countAllReports = () =>
@@ -18,12 +17,7 @@ const countResolvedToday = (today) =>
 
 // LIST
 const findUserIdsByName = async (search) => {
-    const users = await User.find({
-        name: { $regex: escapeRegex(search), $options: "i" },
-    })
-        .select("_id")
-        .limit(200)
-        .lean();
+    const users = await findUsersByName(search, { includeDeleted: true });
     return users.map((u) => u._id);
 };
 

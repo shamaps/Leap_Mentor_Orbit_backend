@@ -6,8 +6,8 @@ const verificationTokenSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-  token: { type: String, default: null },
-  otp: { type: String, default: null },
+  token: { type: String, default: null, maxlength: 512 }, // JWT or UUID token
+  otp: { type: String, default: null, maxlength: 60 }, // bcrypt hash of the 6-digit OTP
 
   expiresAt: {
     type: Date,
@@ -24,5 +24,6 @@ verificationTokenSchema.set("toJSON", {
     return ret;
   },
 });
+verificationTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model("VerificationToken", verificationTokenSchema);

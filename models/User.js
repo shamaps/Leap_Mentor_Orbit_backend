@@ -1,12 +1,16 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+      trim: true,                                           
+      minlength: [2, "Name must be at least 2 characters"], // ADD minlength
+      maxlength: [100, "Name cannot exceed 100 characters"],// ADD maxlength
     },
-
+    
     email: {
       type: String,
       required: true,
@@ -53,7 +57,10 @@ const userSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS,
 );
 // No changes to schema fields — isDeleted and deletedAt are correct ✅
-
+userSchema.methods.matchPassword = async function (candidatePassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 userSchema.index({ roles: 1 });
 userSchema.set("toJSON", {
@@ -64,5 +71,6 @@ userSchema.set("toJSON", {
     return ret;
   }
 });
+
 applySoftDelete(userSchema);
 module.exports = mongoose.model("User", userSchema);

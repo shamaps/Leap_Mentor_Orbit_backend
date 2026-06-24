@@ -1,6 +1,8 @@
 // backend/routes/escrow.routes.js
 const express = require("express");
 const router = express.Router();
+const validate = require("../middleware/validate");
+const { paySchema, escrowActionSchema } = require("../validators/escrow.validator");
 const { authenticate, requireRole } = require("../middleware/authenticate");
 const { escrowController } = require("../config/container");
 const {
@@ -11,7 +13,7 @@ router.use(authenticate);
 
 // POST /api/escrow/pay
 // Mentee locks tokens into escrow after request is accepted
-router.post("/pay", requireRole("mentee"), pay);
+router.post("/pay", requireRole("mentee"), validate(paySchema), pay);
 
 // GET /api/escrow/commission-rate
 // Both roles can read the platform commission rate
@@ -20,7 +22,7 @@ router.get("/commission-rate", getCommissionRate);
 // PATCH /api/escrow/:requestId
 // Mentee confirms session complete { action: "release" } — tokens released to mentor
 // Either party cancels { action: "refund" } — tokens returned to mentee
-router.patch("/:requestId", requireRole("mentor", "mentee"), (req, res, next) => {
+router.patch("/:requestId", requireRole("mentor", "mentee"), validate(escrowActionSchema), (req, res, next) => {
     const { action } = req.body;
     if (action === "release") return release(req, res, next);
     if (action === "refund") return refund(req, res, next);

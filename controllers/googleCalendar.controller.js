@@ -1,6 +1,6 @@
 // controllers/googleCalendar.controller.js
 const { ok, noContent } = require("../utils/response");
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const { handleError } = require("../utils/appError");
 const createGoogleCalendarController = (service, { logger }) => {
   const { escapeHtml } = require("../utils/escapeHtml"); 

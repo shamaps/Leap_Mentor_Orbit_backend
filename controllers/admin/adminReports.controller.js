@@ -1,5 +1,5 @@
 // backend/controllers/admin/adminReports.controller.js
-const { ok, fail, noContent } = require("../../utils/response");
+const { ok, fail, noContent, unprocessable } = require("../../utils/response");
 const { handleError } = require("../../utils/appError");
 const createAdminReportsController = (adminReportsService, { logger }) => {
 
@@ -41,7 +41,7 @@ const handleReport = async (req, res) => {
     const { status, adminNote } = req.body;
 
     if (!["resolved", "dismissed"].includes(status)) {
-      return fail(res, "Status must be resolved or dismissed.", 422);
+      return unprocessable(res, "Status must be resolved or dismissed.");
     }
 
     const report = await adminReportsService.handleReport(

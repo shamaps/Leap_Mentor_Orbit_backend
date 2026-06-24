@@ -2,54 +2,55 @@
 const { ok } = require("../utils/response");
 const { handleError } = require("../utils/appError");
 const createAdminVerificationController = (adminVerificationService, { logger }) => {
-const getAllMentorVerifications = async (req, res) => {
-  try {
-    const data = await adminVerificationService.getAllMentorVerifications({
-      page: req.query.page,
-      limit: req.query.limit,
-    });
-    logger.info("getAllMentorVerifications completed successfully");
-    return ok(res, data);
-  } catch (err) {
-    return handleError(res, err, "getAllMentorVerifications");
-  }
-};
+  const getAllMentorVerifications = async (req, res) => {
+    try {
+      const data = await adminVerificationService.getAllMentorVerifications({
+        page: req.query.page,
+        limit: req.query.limit,
+        search: req.query.search,
+      });
+      logger.info("getAllMentorVerifications completed successfully");
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "getAllMentorVerifications");
+    }
+  };
 
-const getMentorVerificationById = async (req, res) => {
-  try {
-    const data = await adminVerificationService.getMentorVerificationById(
-      req.params.mentorProfileId
-    );
-    logger.info("getMentorVerificationById completed successfully");
-    return ok(res, data);
-  } catch (err) {
-    return handleError(res, err, "getMentorVerificationById");
-  }
-};
+  const getMentorVerificationById = async (req, res) => {
+    try {
+      const data = await adminVerificationService.getMentorVerificationById(
+        req.params.mentorProfileId
+      );
+      logger.info("getMentorVerificationById completed successfully");
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "getMentorVerificationById");
+    }
+  };
 
-const verifyMentor = async (req, res) => {
-  try {
-    const data = await adminVerificationService.verifyMentor(
-      req.params.mentorProfileId
-    );
-    logger.info("verifyMentor completed successfully");
-    return ok(res, data);
-  } catch (err) {
-    return handleError(res, err, "verifyMentor");
-  }
-};
+  const verifyMentor = async (req, res) => {
+    try {
+      const data = await adminVerificationService.verifyMentor(
+        req.params.mentorProfileId
+      );
+      logger.info("verifyMentor completed successfully");
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "verifyMentor");
+    }
+  };
 
-const revokeMentorVerification = async (req, res) => {
-  try {
-    const data = await adminVerificationService.revokeMentorVerification(
-      req.params.mentorProfileId
-    );
-    logger.info("revokeMentorVerification completed successfully");
-    return ok(res, data);
-  } catch (err) {
-    return handleError(res, err, "revokeMentorVerification");
-  }
-};
+  const revokeMentorVerification = async (req, res) => {
+    try {
+      const data = await adminVerificationService.revokeMentorVerification(
+        req.params.mentorProfileId
+      );
+      logger.info("revokeMentorVerification completed successfully");
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "revokeMentorVerification");
+    }
+  };
 
   return { getAllMentorVerifications, getMentorVerificationById, verifyMentor, revokeMentorVerification };
 };

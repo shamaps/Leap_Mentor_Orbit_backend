@@ -26,4 +26,11 @@ const fail = (res, message, status = 400) =>
  */
 const noContent = (res) => res.status(204).send();
 
-module.exports = { ok, created, fail, noContent };
+/**
+ * 422 Unprocessable Entity — request is well-formed but semantically invalid
+ * e.g. invalid status value, slot already booked, escrow already paid
+ */
+const unprocessable = (res, message, meta = {}) =>
+    res.status(422).json({ success: false, message, code: "UNPROCESSABLE", ...meta });
+
+module.exports = { ok, created, fail, noContent, unprocessable };
