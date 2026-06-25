@@ -1,5 +1,6 @@
 // services/earnings.service.js
 const { buildMonthlyBuckets, buildWeeklyBuckets } = require("../utils/earningsChart");
+const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO, toPayoutRowDTO } = require("../utils/mappers/earnings.mapper");
 const createEarningsService = (earningsRepo, { logger }) => {
 
     /**
@@ -24,8 +25,7 @@ const createEarningsService = (earningsRepo, { logger }) => {
         const pendingPayout = ongoingSessions.reduce((sum, r) => sum + (r.mentorPayout || 0), 0);
 
         const wallet = await earningsRepo.findWallet(mentorId);
-
-        return { totalEarnings, sessionsThisMonth, avgRating, pendingPayout, walletBalance: wallet?.balance || 0 };
+        return toEarningsSummaryDTO({ totalEarnings, sessionsThisMonth, avgRating, pendingPayout, walletBalance: wallet?.balance || 0 });
     };
 
     /**
@@ -41,13 +41,13 @@ const createEarningsService = (earningsRepo, { logger }) => {
         if (period === "monthly") {
             const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
             const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
-            return { period, data: buildMonthlyBuckets(completed, now) };
+            return toEarningsChartDTO({ period, data: buildMonthlyBuckets(completed, now) });
         }
 
         const startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 55);
         const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
-        return { period, data: buildWeeklyBuckets(completed, now) };
+        return toEarningsChartDTO({ period, data: buildWeeklyBuckets(completed, now) });
     };
 
     /**
@@ -94,15 +94,7 @@ const createEarningsService = (earningsRepo, { logger }) => {
             status: r.paymentStatus || "paid",
         }));
 
-        return {
-            payouts: rows,
-            pagination: {
-                totalCount,
-                currentPage: safePage,
-                totalPages: Math.ceil(totalCount / safeLimit),
-                hasMore: safePage < Math.ceil(totalCount / safeLimit),
-            },
-        };
+        return toPayoutHistoryDTO({ payouts, pagination: { totalCount, currentPage: safePage, totalPages: Math.ceil(totalCount / safeLimit), hasMore: safePage < Math.ceil(totalCount / safeLimit) } });
     };
 
     return { getEarningsSummary, getEarningsChart, getPayoutHistory };

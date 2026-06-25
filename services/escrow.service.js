@@ -2,6 +2,7 @@
 const AppError = require("../utils/appError");
 const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { withTransaction } = require("../utils/withTransaction");
+const { toPayDTO, toReleaseDTO, toRefundDTO, toEscrowStatusDTO, toWalletDTO } = require("../utils/mappers/escrow.mapper");
 const { sendCalendarInvite } = require("../utils/sendCalendarInvite");
 const { sendPaymentReceivedEmail } = require("../utils/emails");
 const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("../config/constants");
@@ -104,7 +105,7 @@ const createEscrowService = (repo, { logger }) => {
         balanceAfter: menteeWallet.balance,
       }], session);
 
-      return { connectRequest, menteeWallet, mentorAmount, platformFee, commissionRate, totalAmount };
+      return { connectRequest, menteeWallet, mentorAmount, platformFee, totalAmount, commissionRate };
     }, "escrow.pay");
 
     dispatchPaySideEffects(result.connectRequest, {
@@ -114,7 +115,7 @@ const createEscrowService = (repo, { logger }) => {
       commissionRate: result.commissionRate,
     });
 
-    return {
+    return toPayDTO({
       mentorAmount: result.mentorAmount,
       platformFee: result.platformFee,
       totalAmount: result.totalAmount,
@@ -123,7 +124,7 @@ const createEscrowService = (repo, { logger }) => {
       escrow: result.menteeWallet.escrow,
       paymentStatus: "paid",
       status: "ongoing",
-    };
+    });
   };
 
 
@@ -187,7 +188,7 @@ const createEscrowService = (repo, { logger }) => {
         },
       ], session);
 
-      return { totalAmount, commissionRate, commissionAmount, mentorPayout, menteeEscrow: menteeWallet.escrow, status: "completed" };
+      return toReleaseDTO({ totalAmount, commissionRate, commissionAmount, mentorPayout, menteeEscrow: menteeWallet.escrow, status: "completed" });
     }, "escrow.release");
   };
 
@@ -226,7 +227,7 @@ const createEscrowService = (repo, { logger }) => {
         balanceAfter: menteeWallet.balance,
       }], session);
 
-      return { totalAmount, balance: menteeWallet.balance, escrow: menteeWallet.escrow, status: "rejected", paymentStatus: "refunded" };
+      return toRefundDTO({ totalAmount, balance: menteeWallet.balance, escrow: menteeWallet.escrow, status: "rejected", paymentStatus: "refunded" });
     }, "escrow.refund");
   };
 
@@ -246,25 +247,15 @@ const createEscrowService = (repo, { logger }) => {
     const commissionRate = admin?.commissionRate ?? DEFAULT_COMMISSION_RATE;
     const menteeWallet = await repo.findWalletByUserLean(connectRequest.mentee);
 
-    return {
-      status: connectRequest.status,
-      paymentStatus: connectRequest.paymentStatus,
-      sessionRate: connectRequest.sessionRate,
-      sessionCount: connectRequest.sessionCount,
-      totalAmount: connectRequest.totalAmount,
-      paidAt: connectRequest.paidAt,
-      completedAt: connectRequest.completedAt,
-      confirmedSlot: connectRequest.confirmedSlot,
-      commissionRate,
-      wallet: menteeWallet ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow } : null,
-    };
+    return toEscrowStatusDTO({ status: connectRequest.status, paymentStatus: connectRequest.paymentStatus, sessionRate: connectRequest.sessionRate, sessionCount: connectRequest.sessionCount, totalAmount: connectRequest.totalAmount, paidAt: connectRequest.paidAt, completedAt: connectRequest.completedAt, confirmedSlot: connectRequest.confirmedSlot, commissionRate, wallet: menteeWallet ? { balance: menteeWallet.balance, escrow: menteeWallet.escrow } : null });
+
   };
 
   // GET MY WALLET
   const getMyWallet = async (userId) => {
     const wallet = await repo.findWalletByUserLean(userId);
     if (!wallet) throw new AppError(404, "Wallet not found");
-    return { balance: wallet.balance, escrow: wallet.escrow };
+    return toWalletDTO({ balance: wallet.balance, escrow: wallet.escrow });
   };
 
   // GET COMMISSION RATE

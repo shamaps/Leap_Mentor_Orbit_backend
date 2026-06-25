@@ -1,4 +1,5 @@
 const { sendSupportResolvedEmail } = require("../utils/emails");
+const { toSupportMessageDTO, toSupportListDTO } = require("../utils/mappers/support.mapper");
 const createSupportService = (repo, { logger }) => {
     const createMessage = async ({ email, subject, message, role }) => {
         if (!email || !subject || !message) {
@@ -13,7 +14,7 @@ const createSupportService = (repo, { logger }) => {
             status: "open",
         });
 
-        return { status: 201, body: msg };
+        return { status: 201, body: toSupportMessageDTO(msg) };
     };
 
     const getMessages = async ({ page = 1, limit = 50 } = {}) => {
@@ -26,12 +27,11 @@ const createSupportService = (repo, { logger }) => {
             repo.countMessages(),
         ]);
 
+        const pagination = { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) };
+
         return {
             status: 200,
-            body: {
-                messages: msgs,
-                pagination: { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
-            },
+            body: toSupportListDTO({ messages: msgs, pagination }),
         };
     };
 
@@ -58,7 +58,7 @@ const createSupportService = (repo, { logger }) => {
         sendSupportResolvedEmail({ toEmail: msg.email, subject: msg.subject })
             .catch((emailErr) => logger.warn("Support resolved email failed", { error: emailErr.message }));
 
-        return { status: 200, body: msg };
+        return { status: 200, body: toSupportMessageDTO(msg) };
     };
 
     return { createMessage, getMessages, resolveMessage };

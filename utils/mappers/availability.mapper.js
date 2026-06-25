@@ -1,5 +1,5 @@
 // utils/mappers/availability.mapper.js
-const { PLATFORM_TIMEZONE } = require("../config/constants");
+const { PLATFORM_TIMEZONE } = require("../../config/constants");
 
 const toAvailabilityDTO = (doc, mentorId) => {
     if (!doc) {

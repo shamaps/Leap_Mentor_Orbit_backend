@@ -1,5 +1,6 @@
 // services/walletWithdrawal.service.js
 const AppError = require("../utils/appError");
+const { toWithdrawalDTO } = require("../utils/mappers/wallet.mapper");
 const createWalletWithdrawalService = (earningsRepo, { logger }) => {
     /**
      * Withdraws the mentor's full available wallet balance.
@@ -29,11 +30,7 @@ const createWalletWithdrawalService = (earningsRepo, { logger }) => {
             balanceAfter: 0,
         });
 
-        return {
-            message: "Withdrawal request submitted successfully",
-            withdrawn,
-            newBalance: 0,
-        };
+        return toWithdrawalDTO({ message: "Withdrawal request submitted successfully", withdrawn, newBalance: 0 });
     };
 
     return { withdrawEarnings };

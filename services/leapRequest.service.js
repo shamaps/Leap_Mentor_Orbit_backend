@@ -1,8 +1,9 @@
 // services/leapRequest.service.js
 const { LEAP_REFILL_THRESHOLD, LEAP_REFILL_AMOUNT } = require("../config/constants");
-const AppError = require("../utils/appError")
+const AppError = require("../utils/appError");
+const { toLeapRequestDTO, toLeapRequestListDTO } = require("../utils/mappers/leapRequest.mapper");
 const createLeapRequestService = (leapRequestRepo, { logger }) => {
-    // MENTEE: Check my latest request 
+    // MENTEE: Check my latest request
     const getMyRequest = async (menteeId) => {
         const request = await leapRequestRepo.findPendingByMentee(menteeId);
 
@@ -10,7 +11,7 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
             throw new AppError(404, "No pending request");
         }
 
-        return request;
+        return toLeapRequestDTO(request);
     };
 
     //  MENTEE: Create a new request
@@ -29,13 +30,12 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
             throw new AppError(400, "You still have Leap Points remaining.");
         }
 
-
         const request = await leapRequestRepo.createRequest({ mentee: menteeId, currentBalance });
 
-        return { message: "Request submitted successfully.", request };
+        return { message: "Request submitted successfully.", request: toLeapRequestDTO(request) };
     };
 
-    // ADMIN: Get all requests 
+    // ADMIN: Get all requests
     const getAllRequests = async ({ page = 1, limit = 50 } = {}) => {
         const safePage = Math.max(1, Number.parseInt(page) || 1);
         const safeLimit = Math.min(100, Number.parseInt(limit) || 50);
@@ -46,10 +46,9 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
             leapRequestRepo.countAllRequests(),
         ]);
 
-        return {
-            requests,
-            pagination: { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
-        };
+        const pagination = { page: safePage, limit: safeLimit, total, pages: Math.ceil(total / safeLimit) };
+
+        return toLeapRequestListDTO({ requests, pagination });
     };
 
     // ADMIN: Get pending count (for sidebar badge)
@@ -58,7 +57,7 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
         return { count };
     };
 
-    // ADMIN: Approve — add 500 LP 
+    // ADMIN: Approve — add 500 LP
     const approveRequest = async (id, adminId) => {
         const request = await leapRequestRepo.findRequestById(id);
         if (!request) {
@@ -79,7 +78,7 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
         return {
             message: `${LEAP_REFILL_AMOUNT} LP added successfully`,
             newBalance: wallet.balance,
-            request,
+            request: toLeapRequestDTO(request),
         };
     };
 
@@ -98,7 +97,7 @@ const createLeapRequestService = (leapRequestRepo, { logger }) => {
         request.reviewedBy = adminId;
         await request.save();
 
-        return { message: "Request rejected.", request };
+        return { message: "Request rejected.", request: toLeapRequestDTO(request) };
     };
 
     return { getMyRequest, createRequest, getAllRequests, getPendingCount, approveRequest, rejectRequest };

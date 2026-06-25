@@ -44,7 +44,7 @@ const createMessageService = (messageRepo, { logger }) => {
 
     const getUnreadCount = async (connectRequestId, userId) => {
         const count = await messageRepo.countUnreadMessages(connectRequestId, userId);
-        return { unreadCount: count };
+        return toUnreadCountDTO(count);
     };
 
     return { getMessages, getUnreadCount };

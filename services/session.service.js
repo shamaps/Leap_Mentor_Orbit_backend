@@ -1,9 +1,10 @@
-
 // services/session.service.js
 const mongoose = require("mongoose");
 const releaseEscrow = require("../utils/releaseEscrow");
 const refundSlot = require("../utils/refundSlot");
 const AppError = require("../utils/appError");
+const cache = require("../utils/cache");
+const { toSlotDTO, toMarkCompleteDTO, toAvailabilityDTO } = require("../utils/mappers/session.mapper");
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const {
     sendSlotCancelledEmail,
@@ -11,8 +12,11 @@ const {
     sendAdditionalSlotEmail,
 } = require("../utils/emails");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+
 const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
-    // Pure helpers (no I/O — easy to unit-test in isolation)
+
+    // ── Pure helpers (no I/O — easy to unit-test in isolation) ───────────────
+
     const ALLOWED_MEETING_DOMAINS = [
         "meet.google.com",
         "zoom.us",
@@ -87,7 +91,7 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
     const dayFromDate = (dateStr) =>
         DAYS[new Date(`${dateStr}T00:00:00`).getDay()];
 
-    // Notification helper (lazy-populate then send email, fire-and-forget)
+    // ── Notification helper ───────────────────────────────────────────────────
 
     /**
      * Fire-and-forget: populate the session, then send a notification email.
@@ -100,12 +104,15 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
                 const payload = buildPayload(populated);
                 await emailFn(payload);
             } catch (err) {
-                logger.error("Notification after populate failed", { error: err.message, connectRequestId });
+                logger.error("Notification after populate failed", {
+                    error: err.message,
+                    connectRequestId,
+                });
             }
         })();
     };
 
-    // Socket helpers (lazy-require avoids circular-dep issues)
+    // ── Socket helpers (lazy-require avoids circular-dep issues) ─────────────
 
     const emitSlotUpdate = (connectRequest, payload) => {
         try {
@@ -132,16 +139,14 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         }
     };
 
-    // Shared guards
+    // ── Shared guards ─────────────────────────────────────────────────────────
 
     const assertSessionAccess = (connectRequest, userId, connectRequestId) => {
         if (!connectRequest) {
             throw new AppError(404, "Session not found");
-
         }
         if (!isParticipant(connectRequest, userId)) {
             throw new AppError(403, "Not authorized");
-
         }
     };
 
@@ -155,7 +160,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
      * Shared setup for slot-mutating endpoints: loads the session (optionally
      * within a mongo transaction), checks access/ongoing status, and validates
      * the slot index. Throws on any failure.
-     * Extracted to remove duplication across setMeetingLink/markSlotComplete/cancelSlot/rescheduleSlot.
      */
     const loadAndValidateSlot = async (connectRequestId, slotIndex, userId, mongoSession = null) => {
         const connectRequest = mongoSession
@@ -173,22 +177,14 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         return { connectRequest, ...validated };
     };
 
-    // Shared helper for cancelSlot/rescheduleSlot — computes progress,
-    // broadcasts the update over sockets, and fires the notification email.
-
     /**
      * Computes progress, broadcasts the slot update over sockets to both
      * parties, and fires a non-blocking notification email.
-     * @param {Object} connectRequest
-     * @param {string} connectRequestId
-     * @param {string} userId - current user (excluded from emitToOther broadcast)
-     * @param {string} event - "slot_cancelled" | "slot_rescheduled"
-     * @param {Object} otherPayload - event-specific fields merged into emitToOther's payload
-     * @param {Function} emailFn - e.g. sendSlotCancelledEmail / sendSlotRescheduledEmail
-     * @param {Function} buildEmailPayload - (populated) => {...}
-     * @returns {{connectRequestId: string, slots: Array, totalSlots: number, completedSlots: number, progress: number}}
      */
-    const finalizeSlotMutation = (connectRequest, connectRequestId, userId, event, otherPayload, emailFn, buildEmailPayload) => {
+    const finalizeSlotMutation = (
+        connectRequest, connectRequestId, userId,
+        event, otherPayload, emailFn, buildEmailPayload
+    ) => {
         const { totalSlots, completedSlots, progress } = computeProgress(connectRequest.selectedSlots);
 
         const socketPayload = {
@@ -200,7 +196,12 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         };
 
         emitSlotUpdate(connectRequest, socketPayload);
-        emitToOther({ connectRequest, currentUserId: userId, event, payload: { connectRequestId, ...otherPayload } });
+        emitToOther({
+            connectRequest,
+            currentUserId: userId,
+            event,
+            payload: { connectRequestId, ...otherPayload },
+        });
         sendNotificationAfterPopulate(connectRequestId, emailFn, buildEmailPayload);
 
         return socketPayload;
@@ -215,8 +216,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
     };
 
     // Pure helper — validates and applies the mark for one role
-    // Extracted to reduce cognitive complexity of markSlotComplete
-
     const applyMark = ({ slot, slotRef, isMentee, isMentor }) => {
         if (isMentee) {
             if (slot.menteeMarked) {
@@ -224,7 +223,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
             }
             slotRef.menteeMarked = true;
         }
-
         if (isMentor) {
             if (slot.mentorMarked) {
                 throw new AppError(400, "You have already marked this session complete");
@@ -233,7 +231,7 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         }
     };
 
-    // GET /api/sessions/:connectRequestId/slots
+    // ── GET /api/sessions/:connectRequestId/slots ─────────────────────────────
 
     const getSlots = async (connectRequestId, userId) => {
         const connectRequest = await sessionRepo.findSessionForRead(connectRequestId);
@@ -244,20 +242,19 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         );
 
         return {
-            slots: connectRequest.selectedSlots,
-            additionalSlots: connectRequest.additionalSlots || [],
+            slots: connectRequest.selectedSlots.map(toSlotDTO),
+            additionalSlots: (connectRequest.additionalSlots || []).map(toSlotDTO),
             totalSlots,
             completedSlots,
             progress,
         };
     };
 
-    // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link
+    // ── PATCH /api/sessions/:connectRequestId/slots/:slotIndex/meeting-link ──
 
     const setMeetingLink = async ({ connectRequestId, slotIndex, meetingLink, userId }) => {
         if (!meetingLink?.trim()) {
             throw new AppError(400, "meetingLink is required");
-
         }
         if (!isValidMeetingLink(meetingLink.trim())) {
             throw new AppError(400, "Only links from trusted platforms (Google Meet, Zoom, etc.) are allowed.");
@@ -281,39 +278,39 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
             progress,
         });
 
-        return {
-            slot: connectRequest.selectedSlots[idx],
-            slotIndex: idx,
-        };
+        return { slot: toSlotDTO(connectRequest.selectedSlots[idx]), slotIndex: idx };
     };
 
-    // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete
+    // ── PATCH /api/sessions/:connectRequestId/slots/:slotIndex/mark-complete ──
 
     const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
         const mongoSession = await mongoose.startSession();
         mongoSession.startTransaction();
 
+        // These are captured inside try so we can use them after commitTransaction
+        let connectRequest, idx, bothMarked, allComplete, releaseResult,
+            totalSlots, completedSlots, progress, isMentee;
+
         try {
-            const { connectRequest, idx } = await loadAndValidateSlot(
+            ({ connectRequest, idx } = await loadAndValidateSlot(
                 connectRequestId, slotIndex, userId, mongoSession
-            );
+            ));
+
             const slot = connectRequest.selectedSlots[idx];
 
             if (slot.status === "cancelled") {
                 throw new AppError(400, "Cannot mark a cancelled slot as complete");
             }
-
             if (slot.menteeMarked && slot.mentorMarked) {
                 throw new AppError(400, "This session is already marked complete by both parties");
             }
 
             const isMentor = connectRequest.mentor.toString() === userId.toString();
-            const isMentee = connectRequest.mentee.toString() === userId.toString();
+            isMentee = connectRequest.mentee.toString() === userId.toString();
 
-            // FIX: extracted role-marking into applyMark() to reduce cognitive complexity
             applyMark({ slot, slotRef: connectRequest.selectedSlots[idx], isMentee, isMentor });
 
-            const bothMarked =
+            bothMarked =
                 connectRequest.selectedSlots[idx].menteeMarked &&
                 connectRequest.selectedSlots[idx].mentorMarked;
 
@@ -324,58 +321,73 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
             connectRequest.markModified("selectedSlots");
             await connectRequest.save({ session: mongoSession });
 
-            const { activeSlots, totalSlots, completedSlots, progress } =
-                computeProgress(connectRequest.selectedSlots);
+            const computed = computeProgress(connectRequest.selectedSlots);
+            totalSlots = computed.totalSlots;
+            completedSlots = computed.completedSlots;
+            progress = computed.progress;
 
-            const allComplete =
-                activeSlots.length > 0 &&
-                activeSlots.every((s) => s.menteeMarked && s.mentorMarked);
+            allComplete =
+                computed.activeSlots.length > 0 &&
+                computed.activeSlots.every((s) => s.menteeMarked && s.mentorMarked);
 
-            let releaseResult = null;
+            releaseResult = null;
             if (allComplete) {
                 releaseResult = await releaseEscrow(escrowRepo, connectRequestId, mongoSession);
             }
 
             await mongoSession.commitTransaction();
-            await cache.del(cache.NS.PLATFORM_SETTINGS);
-            const socketPayload = {
-                connectRequestId,
-                slots: connectRequest.selectedSlots,
-                totalSlots,
-                completedSlots,
-                progress,
-                allComplete,
-            };
-            emitSlotUpdate(connectRequest, socketPayload);
 
-            // FIX: extracted nested ternary into buildCompleteMessage()
-            const message = buildCompleteMessage(allComplete, bothMarked, isMentee);
-
-            return {
-                slot: connectRequest.selectedSlots[idx],
-                slotIndex: idx,
-                bothMarked,
-                allComplete,
-                completedSlots,
-                totalSlots,
-                progress,
-                escrowRelease: releaseResult,
-                message,
-            };
         } catch (err) {
             await mongoSession.abortTransaction();
-            logger.error("Unhandled error in session.service", {
+            logger.error("markSlotComplete transaction failed", {
                 error: err.message,
-                stack: err.stack
+                stack: err.stack,
             });
             throw err;
         } finally {
             mongoSession.endSession();
         }
 
+        // ── Post-transaction work (cache, socket, return) ─────────────────
+        // Nothing here can abortTransaction — the session is already closed.
+
+        // Invalidate platform stats cache — active session count may have changed
+        if (allComplete) {
+            try {
+                await cache.del(cache.NS.PLATFORM_SETTINGS);
+            } catch (cacheErr) {
+                logger.warn("cache.del PLATFORM_SETTINGS failed after markSlotComplete", {
+                    error: cacheErr.message,
+                });
+            }
+        }
+
+        const socketPayload = {
+            connectRequestId,
+            slots: connectRequest.selectedSlots,
+            totalSlots,
+            completedSlots,
+            progress,
+            allComplete,
+        };
+        emitSlotUpdate(connectRequest, socketPayload);
+
+        const message = buildCompleteMessage(allComplete, bothMarked, isMentee);
+
+        return toMarkCompleteDTO({
+            slot: connectRequest.selectedSlots[idx],
+            slotIndex: idx,
+            bothMarked,
+            allComplete,
+            completedSlots,
+            totalSlots,
+            progress,
+            escrowRelease: releaseResult,
+            message,
+        });
     };
 
-    // POST /api/sessions/:connectRequestId/add-slot
+    // ── POST /api/sessions/:connectRequestId/add-slot ─────────────────────────
 
     const addSlot = async (connectRequestId, body, userId) => {
         let { day, date, startTime, endTime } = body;
@@ -424,7 +436,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         connectRequest.markModified("selectedSlots");
         await connectRequest.save({ validateBeforeSave: false });
 
-        // FIX: .at(-1) instead of [….length - 1]
         const savedAdditionalSlot = connectRequest.additionalSlots.at(-1);
 
         const { totalSlots, completedSlots, progress } = computeProgress(
@@ -441,7 +452,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         };
         emitSlotUpdate(connectRequest, socketPayload);
 
-        // Non-blocking email — populate then send
         sendNotificationAfterPopulate(connectRequestId, sendAdditionalSlotEmail, (populated) => ({
             connectRequestId,
             mentorName: populated.mentor.name,
@@ -458,9 +468,8 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         };
     };
 
-    // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel
+    // ── PATCH /api/sessions/:connectRequestId/slots/:slotIndex/cancel ─────────
 
-    // FIX: moved `reason` default param to last position
     const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) => {
         const { connectRequest, idx } = await loadAndValidateSlot(connectRequestId, slotIndex, userId);
         const slot = connectRequest.selectedSlots[idx];
@@ -482,7 +491,6 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         connectRequest.markModified("selectedSlots");
         await connectRequest.save({ validateBeforeSave: false });
 
-        // Non-blocking partial refund
         let refundResult = null;
         try {
             if (connectRequest.paymentStatus === "paid") {
@@ -537,7 +545,7 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         };
     };
 
-    // PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule
+    // ── PATCH /api/sessions/:connectRequestId/slots/:slotIndex/reschedule ─────
 
     const rescheduleSlot = async ({ connectRequestId, slotIndex, body, userId }) => {
         const { date, startTime, endTime } = body;
@@ -569,14 +577,12 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
 
         const newDay = dayFromDate(date);
 
-        // Cancel old slot, mark as rescheduled
         connectRequest.selectedSlots[idx].status = "cancelled";
         connectRequest.selectedSlots[idx].cancelledBy = "mentee";
         connectRequest.selectedSlots[idx].cancelledAt = new Date();
         connectRequest.selectedSlots[idx].cancellationReason = "rescheduled";
         connectRequest.selectedSlots[idx].isRescheduled = true;
 
-        // Append new slot
         const newSlot = {
             day: newDay, date, startTime, endTime,
             meetingLink: "", menteeMarked: false, mentorMarked: false,
@@ -618,7 +624,7 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
         };
     };
 
-    // GET /api/sessions/:connectRequestId/mentor-availability
+    // ── GET /api/sessions/:connectRequestId/mentor-availability ───────────────
 
     const getMentorAvailability = async (connectRequestId, userId, duration = 60) => {
         const connectRequest = await sessionRepo.findSessionForRead(connectRequestId);
@@ -628,12 +634,10 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
             connectRequest.mentor
         );
 
-        // FIX: optional chain instead of || for length check
         if (!availability?.specificDates?.length) {
             return { slots: [], timezone: PLATFORM_TIMEZONE };
         }
 
-        // All non-cancelled slots are blocked in the picker
         const bookedSlots = [
             ...(connectRequest.selectedSlots || []).filter((s) => s.status !== "cancelled"),
             ...(connectRequest.additionalSlots || []),
@@ -645,16 +649,23 @@ const createSessionService = (sessionRepo, escrowRepo, { logger }) => {
             bookedSlots
         );
 
-        return {
+        return toAvailabilityDTO({
             slots: grouped,
             timezone: availability.timezone || PLATFORM_TIMEZONE,
             sessionDurations: availability.sessionDurations || [30, 60],
-        };
+        });
     };
 
     return {
-        getSlots, setMeetingLink, markSlotComplete, addSlot, cancelSlot, rescheduleSlot, getMentorAvailability,
+        getSlots,
+        setMeetingLink,
+        markSlotComplete,
+        addSlot,
+        cancelSlot,
+        rescheduleSlot,
+        getMentorAvailability,
         _helpers: { isValidMeetingLink, isParticipant, parseSlotIndex, computeProgress, dayFromDate },
     };
 };
+
 module.exports = createSessionService;

@@ -1,8 +1,10 @@
 // backend/services/admin.service.js
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/appError");
+const cache = require("../utils/cache");
 const { withTransaction } = require("../utils/withTransaction");
 const { escapeRegex } = require("../utils/escapeRegex");
+const { toAdminDTO } = require("../utils/mappers/adminUser.mapper");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const createAdminService = (repo, { logger }) => {
@@ -43,14 +45,7 @@ const createAdminService = (repo, { logger }) => {
         setAdminCookie(res, accessToken);   // ← set as httpOnly cookie, not in response body
 
         return {
-            // accessToken intentionally NOT returned — it is in the httpOnly cookie
-            admin: {
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                isSuperAdmin: admin.isSuperAdmin,
-                lastLoginAt: admin.lastLoginAt,
-            },
+            admin: toAdminDTO(admin),
         };
     };
 

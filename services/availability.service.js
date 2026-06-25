@@ -1,23 +1,16 @@
 // services/availability.service.js
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+const { toAvailabilityDTO, toPublicAvailabilityDTO, toAvailableSlotsDTO } = require("../utils/mappers/availability.mapper");
 const AppError = require("../utils/appError");
 const createAvailabilityService = (availabilityRepository, { logger }) => {
   const getMyAvailability = async (mentorId) => {
     const availability = await availabilityRepository.findAvailabilityByMentor(mentorId);
 
     if (!availability) {
-      return {
-        mentor: mentorId,
-        timezone: PLATFORM_TIMEZONE,
-        sessionDurations: [30, 60],
-        googleCalendarConnected: false,
-        specificDates: [],
-        isNew: true,
-      };
+      return toAvailabilityDTO(null, mentorId);  
     }
-
-    return availability;
+    return toAvailabilityDTO(availability);
   };
 
   const createAvailability = async (mentorId, body) => {
@@ -64,11 +57,7 @@ const createAvailabilityService = (availabilityRepository, { logger }) => {
       throw new AppError(404, "Availability not set by this mentor");
     }
 
-    return {
-      timezone: availability.timezone,
-      sessionDurations: availability.sessionDurations,
-      specificDates: availability.specificDates,
-    };
+    return toPublicAvailabilityDTO(availability);
   };
 
   const deleteAvailability = async (mentorId) => {
@@ -120,11 +109,8 @@ const createAvailabilityService = (availabilityRepository, { logger }) => {
       allBlockedSlots
     );
 
-    return {
-      timezone: availability.timezone,
-      sessionDurations: availability.sessionDurations,
-      slots: grouped,
-    };
+    return toAvailableSlotsDTO({ timezone: availability.timezone, sessionDurations: availability.sessionDurations, slots: grouped });
+
   };
 
   return { getMyAvailability, createAvailability, updateAvailability, getMentorAvailability, deleteAvailability, getAvailableSlots };
