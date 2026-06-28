@@ -9,11 +9,89 @@ const { aiLimiter } = require("../middleware/rateLimiter");
 logger.info("Groq API key status", { loaded: !!process.env.GROQ_API_KEY });
 
 /**
- * POST /api/ai/chat
- * Body: { messages: [...], systemPrompt: "..." }
- * Proxies to Groq (free, fast LLM API)
+ * @openapi
+ * /ai/chat:
+ *   post:
+ *     tags: [AI]
+ *     summary: Groq-powered help center chat proxy
+ *     description: Rate-limited via aiLimiter. Forwards messages + systemPrompt to Groq (llama-3.1-8b-instant), 10s timeout.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [messages]
+ *             properties:
+ *               messages:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role:
+ *                       type: string
+ *                       enum: [user, assistant]
+ *                     content:
+ *                       type: string
+ *               systemPrompt:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: AI response, reformatted to match the shape HelpCenter.jsx expects.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         example: text
+ *                       text:
+ *                         type: string
+ *       400:
+ *         description: messages array missing or not an array.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *             example:
+ *               error: "messages array is required"
+ *       401:
+ *         description: Missing or invalid access token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       502:
+ *         description: Groq API returned an error (raw vendor error is never forwarded to the client).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "AI service temporarily unavailable"
+ *       504:
+ *         description: Groq API did not respond within 10 seconds.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "AI service timed out"
  */
-router.post("/chat", authenticate, aiLimiter, async (req, res) =>  {
+router.post("/chat", authenticate, aiLimiter, async (req, res) => {
   try {
     const { messages, systemPrompt } = req.body;
 

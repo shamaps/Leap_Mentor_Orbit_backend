@@ -74,26 +74,7 @@ const createEarningsService = (earningsRepo, { logger }) => {
             earningsRepo.findPayouts(query, skip, safeLimit),
         ]);
 
-        const rows = payouts.map((r) => ({
-            id: r._id,
-            date: r.completedAt
-                ? new Date(r.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : "—",
-            menteeName: r.mentee?.name || "—",
-            menteeEmail: r.mentee?.email || "—",
-            sessionType: r.confirmedSlot?.day || "—",
-            duration: r.confirmedSlot
-                ? (() => {
-                    const [sh, sm] = (r.confirmedSlot.startTime || "0:0").split(":").map(Number);
-                    const [eh, em] = (r.confirmedSlot.endTime || "0:0").split(":").map(Number);
-                    const mins = (eh * 60 + em) - (sh * 60 + sm);
-                    return `${mins} mins`;
-                })()
-                : "—",
-            amount: r.totalAmount || 0,
-            status: r.paymentStatus || "paid",
-        }));
-
+        
         return toPayoutHistoryDTO({ payouts, pagination: { totalCount, currentPage: safePage, totalPages: Math.ceil(totalCount / safeLimit), hasMore: safePage < Math.ceil(totalCount / safeLimit) } });
     };
 

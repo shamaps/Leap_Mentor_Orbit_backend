@@ -3,9 +3,8 @@ const { generateICS } = require("./generateICS");
 const { PLATFORM_TIMEZONE } = require("../config/constants");
 const transporter = require("./mailer");
 const logger = require("../utils/logger");
+const config = require("../config/env");
 const {
-  formatTime,
-  formatDate,
   BRAND_GRADIENT,
   wrapEmail,
   buildHeader,
@@ -112,14 +111,14 @@ const sendCalendarInvite = async ({
 
   await Promise.all([
     transporter.sendMail({
-      from: `"Leapmentor" <${process.env.SMTP_USER}>`,
+      from: `"Leapmentor" <${config.smtpUser}>`,
       to: menteeEmail,
       subject: `✅ ${slotCount} Session${slotCount > 1 ? "s" : ""} Confirmed with ${mentorName}`,
       html: menteeHtml,
       attachments: [icsAttachment],
     }),
     transporter.sendMail({
-      from: `"Leapmentor" <${process.env.SMTP_USER}>`,
+      from: `"Leapmentor" <${config.smtpUser}>`,
       to: mentorEmail,
       subject: `📅 ${slotCount} New Session${slotCount > 1 ? "s" : ""} with ${menteeName}`,
       html: mentorHtml,

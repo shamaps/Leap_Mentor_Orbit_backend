@@ -54,13 +54,13 @@ const selectedSlotSchema = new mongoose.Schema(
     cancelledAt:          { type: Date,   default: null },
     cancellationReason: { type: String, default: "", maxlength: 500 },
 
-    // ✅ NEW — reschedule fields
+    // NEW — reschedule fields
     // isRescheduled: true on BOTH the old (cancelled) slot and the new slot
     isRescheduled:        { type: Boolean, default: false },
     // On the new slot: which index was the original slot it replaced
     rescheduledFromIndex: { type: Number,  default: null  },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const connectRequestSchema = new mongoose.Schema(
@@ -85,7 +85,7 @@ const connectRequestSchema = new mongoose.Schema(
       type: [selectedSlotSchema],
       required: true,
       validate: {
-        // ✅ FIX: Only enforce the 1–5 limit when the document is NEW.
+        //  FIX: Only enforce the 1–5 limit when the document is NEW.
         // After creation (ongoing session), additional slots are pushed here
         // for session tracking. Blocking .save() at that point breaks
         // meeting links, mark-complete, and pay-additional flows.
@@ -128,7 +128,7 @@ const connectRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    // ── Payment / Escrow fields ───────────────────────────────
+    // Payment / Escrow fields
     sessionRate: {
       type: Number,
       default: null,
@@ -157,13 +157,14 @@ const connectRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    requestedAt: { type: Date, default: Date.now },
     respondedAt:  { type: Date, default: null },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
-    // ── Commission fields (populated on escrow release) ───────
+    // ── Commission fields (populated on escrow release) 
     commissionRate: {
       type:    Number,
       default: null,
@@ -181,18 +182,21 @@ const connectRequestSchema = new mongoose.Schema(
       min:     0,
     },
 
-    // ── Additional Sessions ───────────────────────────────────
+    //Additional Sessions 
     additionalSlots: {
-      type:    [additionalSlotSchema],
+      type: [additionalSlotSchema],
       default: [],
+      validate: {
+        validator: (arr) => arr.length <= 50,
+        message: "Cannot exceed 50 additional slots per session",
+      },
     },
   },
   BASE_SCHEMA_OPTIONS
 );
 
-// ── Indexes ───────────────────────────────────────────────────
-connectRequestSchema.index({ mentor: 1, status: 1 });
-connectRequestSchema.index({ mentee: 1, status: 1 });
+//  Indexes
+
 connectRequestSchema.index({ paymentStatus: 1 });
 connectRequestSchema.index({ mentee: 1, requestedAt: -1 });
 connectRequestSchema.index({ mentee: 1, status: 1, paidAt: -1 });

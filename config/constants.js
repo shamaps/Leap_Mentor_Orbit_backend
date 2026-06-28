@@ -1,5 +1,5 @@
 // config/constants.js
-
+const config = require("../config/env");
 const ACTIVE_SESSION_STATUSES = ["ongoing", "completed"];
 const VALID_REQUEST_STATUSES = ["pending", "accepted", "rejected", "referred"];
 const VALID_RESPOND_STATUSES = ["accepted", "rejected"];
@@ -12,7 +12,7 @@ const LEAP_REFILL_AMOUNT = 500;  // LP added when admin approves a leap request
 
 // Platform defaults
 const DEFAULT_COMMISSION_RATE = 5;  // % platform fee, fallback if not set in AdminUser
-const PLATFORM_TIMEZONE = process.env.PLATFORM_TIMEZONE || "Asia/Kolkata";
+const PLATFORM_TIMEZONE = config.platformTimezone;
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 module.exports = {
     ACTIVE_SESSION_STATUSES,

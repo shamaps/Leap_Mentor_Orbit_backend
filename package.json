@@ -9,11 +9,13 @@
     "yarn": ">=1.22.0"
   },
   "scripts": {
+    "check:indexes": "node scripts/checkIndexRam.js",
     "start": "cross-env NODE_ENV=production node server.js",
     "dev": "cross-env NODE_ENV=development nodemon server.js",
-    "test": "cross-env NODE_ENV=test jest --coverage",
-    "test:watch": "cross-env NODE_ENV=test jest --watch",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage --coverageReporters=text --coverageReporters=lcov",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --runInBand --bail --forceExit --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -24,33 +26,34 @@
     "seed:commission": "node scripts/seedPlatformCommission.js",
     "migrate:up": "migrate-mongo up",
     "migrate:down": "migrate-mongo down",
-    "migrate:status": "migrate-mongo status"
+    "migrate:status": "migrate-mongo status",
+    "sonar": "sonar-scanner -Dsonar.token=$SONAR_TOKEN"
   },
-  "jest": {
-    "testEnvironment": "node",
-    "testMatch": [
-      "**/__tests__/**/*.test.js"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/__tests__/setup.js"
-    ],
-    "testTimeout": 30000,
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "services/*.js",
-      "controllers/*.js",
-      "controllers/admin/*.js",
-      "middleware/*.js",
-      "repositories/*.js",
-      "utils/*.js",
-      "!utils/emails/**"
-    ],
-    "coverageReporters": [
-      "text",
-      "lcov",
-      "html"
-    ]
-  },
+    "jest": {
+      "testEnvironment": "node",
+      "testMatch": [
+        "**/__tests__/**/*.test.js"
+      ],
+      "coverageDirectory": "coverage",
+      "collectCoverageFrom": [
+        "services/**/*.js",
+        "controllers/**/*.js",
+        "repositories/**/*.js",
+        "utils/**/*.js",
+        "middleware/**/*.js",
+        "!**/node_modules/**"
+      ],
+      "coverageThreshold": {
+        "global": {
+          "branches": 80,
+          "functions": 80,
+          "lines": 80,
+          "statements": 80
+        }
+      },
+      "bail": 1,
+      "testTimeout": 10000
+    },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -87,6 +90,7 @@
     "resend": "^6.9.4",
     "socket.io": "^4.8.3",
     "streamifier": "^0.1.1",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.19.0"
   },

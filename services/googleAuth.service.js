@@ -5,6 +5,7 @@ const { provisionWallet } = require("../utils/wallet")
 const AppError = require("../utils/appError");
 const { withTimeout } = require("../utils/withTimeout");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
+const config = require("../config/env");
 
 const createGoogleAuthService = (repo, { logger }) => {
     /**
@@ -17,7 +18,7 @@ const createGoogleAuthService = (repo, { logger }) => {
     const verifyGoogleCredential = async (credential) => {
         const decodedToken = jwt.decode(credential);
         const tokenAudience = decodedToken?.aud;
-        const envAudience = process.env.GOOGLE_CLIENT_ID?.trim();
+        const envAudience = config.googleClientId?.trim();
 
         if (!envAudience)
             throw new AppError(500, "GOOGLE_CLIENT_ID is undefined in .env");

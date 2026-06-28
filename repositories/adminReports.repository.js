@@ -92,6 +92,7 @@ module.exports = {
     findUserIdsByName,
     countReports,
     findReports,
+    findMyProfileSkills,
     // single
     findReportById,
     findReportByIdWithSession,

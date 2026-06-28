@@ -1,3 +1,5 @@
+const config = require("../config/env");
+
 const createPushSubscriptionService = (repo, { logger }) => {
 const subscribe = async ({ userId, subscription }) => {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
@@ -15,7 +17,7 @@ const unsubscribe = async ({ userId, endpoint }) => {
 
 const getVapidPublicKey = () => ({
     status: 200,
-    body: { publicKey: process.env.VAPID_PUBLIC_KEY },
+    body: { publicKey: config.vapidPublicKey },
 });
 
     return { subscribe, unsubscribe, getVapidPublicKey };

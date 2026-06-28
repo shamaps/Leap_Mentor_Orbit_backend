@@ -49,7 +49,7 @@ const aggregateMentorIndustries = () =>
 // in admin.service.fetchUsers (filter.isDeleted), so this only resolves name matches.
 const findUserIdsByName = async (term) => {
     const users = await findUsersByName(term, { includeDeleted: true });
-    return users.map((u) => u._id);
+    return users.map((u) => u._id.toString());
 };
 
 const countUsers = (filter) =>

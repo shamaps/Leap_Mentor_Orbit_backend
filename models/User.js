@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { emailValidator } = require("../utils/emailValidator");
 const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 const userSchema = new mongoose.Schema(
   {
@@ -17,7 +18,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
+      match: emailValidator,
     },
 
     password: {
@@ -61,7 +62,7 @@ userSchema.methods.matchPassword = async function (candidatePassword) {
   if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
-
+userSchema.index({ createdAt: -1 });
 userSchema.index({ roles: 1 });
 userSchema.set("toJSON", {
   transform: (doc, ret) => {

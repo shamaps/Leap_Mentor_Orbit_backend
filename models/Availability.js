@@ -33,7 +33,7 @@ const specificDateSchema = new mongoose.Schema(
     date: { type: String, required: true, maxlength: 10 }, // "YYYY-MM-DD"
     slots: { type: [timeSlotSchema], default: [] },
   },
-  { _id: false }
+  { _id: true }
 );
 
 // ─── Availability ─────────────────────────────────────────────
@@ -81,8 +81,11 @@ const availabilitySchema = new mongoose.Schema(
     specificDates: {
       type: [specificDateSchema],
       default: [],
+      validate: {
+        validator: (arr) => arr.length <= 365,
+        message: "Cannot store more than 365 specific date overrides",
+      },
     },
-
     googleCalendarConnected: { type: Boolean, default: false },
 
     googleCalendarToken: {

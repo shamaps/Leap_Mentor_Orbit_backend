@@ -1,5 +1,6 @@
 // backend/utils/generateICS.js
 const { PLATFORM_TIMEZONE } = require("../config/constants");
+const config = require("../config/env");
 const toICSDate = (date, time) => {
   const datePart = date.replaceAll("-", "");
   const timePart = time.replaceAll(":", "") + "00";
@@ -52,7 +53,7 @@ const generateVEVENT = ({
     `DTEND;TZID=${timezone}:${dtEnd}`,
     `SUMMARY:${summary}`,
     `DESCRIPTION:${description}`,
-    `ORGANIZER;CN=LeapMentor:mailto:${extractEmail(process.env.FROM_EMAIL) || process.env.SMTP_USER}`,
+    `ORGANIZER;CN=LeapMentor:mailto:${extractEmail(config.fromEmail) || config.smtpUser}`,
     `ATTENDEE;CN=${mentorName};ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:${mentorEmail}`,
     `ATTENDEE;CN=${menteeName};ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:${menteeEmail}`,
     "STATUS:CONFIRMED",

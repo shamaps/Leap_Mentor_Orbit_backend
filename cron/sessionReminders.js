@@ -1,7 +1,9 @@
 // optimal/cron/sessionReminders.js
 const cron            = require("node-cron");
 const ConnectRequest  = require("../models/ConnectRequest");
-const createNotification = require("../utils/createNotification");
+const makeCreateNotification = require("../utils/createNotification");
+const notifRepo = require("../repositories/notification.repository");
+const createNotification = makeCreateNotification(notifRepo);
 const { PLATFORM_TIMEZONE, IST_OFFSET_MS } = require("../config/constants");
 const logger = require("../utils/logger"); 
 

@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const transporter = require("../utils/mailer");
 const { makeOtp } = require("../utils/auth.utils");
+const config = require("../config/env");
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationService = (repo, { logger }) => {
 /**
@@ -21,14 +22,12 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
 
     await repo.createVerificationToken({ user: user._id, otp: otpHash, token: tokenHash, expiresAt });
 
-    const base = process.env.APP_BASE_URL;
-if (!base){
-    throw new Error("APP_BASE_URL is not set");
-}
+    const base = config.appBaseUrl;
+    if (!base) throw new AppError(500, "APP_BASE_URL is not configured");
     const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
     await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
+        from: config.fromEmail,
         to: user.email,
         subject: `LeapMentor Email Verification${subjectSuffix}`,
         text: `

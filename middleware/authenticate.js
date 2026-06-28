@@ -4,7 +4,7 @@ const User = require("../models/User");
 const Sentry = require("@sentry/node");
 const logger = require("../utils/logger");
 const { maskEmail } = require("../utils/mask");
-
+const config = require("../config/env");
 const authenticate = async (req, res, next) => {
   try {
     const token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
@@ -17,7 +17,7 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: "No token" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwtSecret);
 
     const user = await User.findById(decoded.id).select("-password");
     if (!user) {
@@ -30,7 +30,7 @@ const authenticate = async (req, res, next) => {
 
     req.user = user;
 
-    // ✅ Masked email — ne***@yopmail.com instead of full email
+    //  Masked email — ne***@yopmail.com instead of full email
     Sentry.setUser({
       id: user._id.toString(),
       email: maskEmail(user.email),
@@ -40,7 +40,7 @@ const authenticate = async (req, res, next) => {
     logger.info("Authenticated request", {
       userId: user._id.toString(),
       role: user.role,
-      email: maskEmail(user.email), // ✅ masked
+      email: maskEmail(user.email), 
       route: req.path,
       method: req.method,
     });
@@ -71,7 +71,7 @@ const requireRole = (...roles) => {
     if (!hasRole) {
       logger.warn("Insufficient role access attempt", {
         userId: req.user?._id?.toString(),
-        email: maskEmail(req.user?.email || ""),  // ✅ masked
+        email: maskEmail(req.user?.email || ""),
         userRoles,
         requiredRoles: roles,
         route: req.path,

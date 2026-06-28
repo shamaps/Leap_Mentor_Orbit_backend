@@ -1,8 +1,8 @@
 // utils/tokenCrypto.js
 const crypto = require("node:crypto");
-
+const config = require("../config/env");
 const ALGORITHM = "aes-256-gcm";
-const rawKey = process.env.CALENDAR_TOKEN_ENC_KEY;
+const rawKey = config.calendarTokenEncKey;
 
 if (!rawKey || !/^[0-9a-fA-F]{64}$/.test(rawKey)) {
     throw new Error(

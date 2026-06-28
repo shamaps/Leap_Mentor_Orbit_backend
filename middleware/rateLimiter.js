@@ -3,6 +3,7 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const {RedisStore}= require("rate-limit-redis");
 const Redis = require("ioredis");
 const logger = require("../utils/logger");
+const config = require("../config/env");
 // ─────────────────────────────────────────────────────────────
 // Redis client
 // Set these in your .env:
@@ -12,10 +13,10 @@ const logger = require("../utils/logger");
 //   REDIS_TLS=false               (set true on Railway/Render)
 // ─────────────────────────────────────────────────────────────
 const redisClient = new Redis({
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
-    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    host: config.redisHost,
+    port: config.redisPort,
+    password: config.redisPassword,
+    tls: config.redisTls ? {} : undefined,
 });
 
 redisClient.on("connect", () => logger.info("Redis connected (rate limiter)"));

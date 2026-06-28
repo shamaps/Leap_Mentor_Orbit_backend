@@ -6,8 +6,8 @@ const AppError = require("../utils/appError");
 const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
 
     const getAllMentorVerifications = async ({ page = 1, limit = 20, search } = {}) => {
-        const safePage = Math.max(1, parseInt(page) || 1);
-        const safeLimit = Math.min(50, parseInt(limit) || 20);
+        const safePage = Math.max(1, Number.parseInt(page) || 1);
+        const safeLimit = Math.min(50, Number.parseInt(limit) || 20);
         const skip = (safePage - 1) * safeLimit;
 
         const filter = {};

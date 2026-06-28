@@ -11,7 +11,7 @@ const registerSchema = Joi.object({
         .required(),
     termsAccepted: Joi.boolean().valid(true).required()
         .messages({ "any.only": "You must accept terms to continue" }),
-});
+}).unknown(false);
 
 const loginSchema = Joi.object({
     email: Joi.string().email().required(),

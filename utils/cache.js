@@ -24,15 +24,15 @@
 //                                                           unblockUser()
 //                                                           mentorProfile publish/update
 
-
+const config = require("../config/env");
 const Redis = require("ioredis");
 const logger = require("./logger");
 
 const redisClient = new Redis({
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
-    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    host: config.redisHost,
+    port: config.redisPort,
+    password: config.redisPassword,
+    tls: config.redisTls ? {} : undefined,
     lazyConnect: true,
     enableOfflineQueue: false,
 });
@@ -57,6 +57,7 @@ const get = async (key) => {
         const raw = await redisClient.get(key);
         return raw ? JSON.parse(raw) : null;
     } catch {
+        logger.warn("Cache parse error — returning null", { raw });
         return null;
     }
 };

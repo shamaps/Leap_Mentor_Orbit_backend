@@ -4,9 +4,6 @@ const ConnectRequest = require("../models/ConnectRequest");
 const { logger } = require("@sentry/node");
 // Track online users per room: { connectRequestId: Set<userId> }
 const onlineUsers = new Map();
-// TODO: Replace in-memory Maps with @socket.io/redis-adapter for horizontal scalability.
-//       Currently breaks if more than one server instance is running — socket events
-//       won't cross pod boundaries. See: https://socket.io/docs/v4/redis-adapter/
 
 // Track connected sockets per user: { userId: Set<socketId> }
 // Set instead of single socketId — supports multiple simultaneous connections per user

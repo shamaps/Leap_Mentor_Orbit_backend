@@ -63,7 +63,6 @@ slotIndex: {
   BASE_SCHEMA_OPTIONS
 );
 
-milestoneSchema.index({ goal: 1, order: 1 });
 milestoneSchema.index({ connectRequest: 1 });
 milestoneSchema.index({ goal: 1, slotIndex: 1, order: 1 }); 
 applySoftDelete(milestoneSchema)

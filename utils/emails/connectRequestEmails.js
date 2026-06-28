@@ -2,6 +2,7 @@ const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL, buildSlotRows, formatTime, formatDate,BRAND_GRADIENT } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
 const logger = require("../logger");
+const config = require("../../config/env");
 // Email 1: Mentor notified when mentee sends a connect request
 const sendConnectRequestEmail = async ({
   mentorName,
@@ -14,8 +15,7 @@ const sendConnectRequestEmail = async ({
   const safeMessage = escapeHtml(message);
   const slotCount = slots.length;
   const slotRowsHtml = buildSlotRows(slots);
-  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
-
+  const dashboardLink = `${config.appBaseUrl}/dashboard/mentor?tab=requests`;
   const html = wrapEmail(`
     ${buildHeader(
     BRAND_GRADIENT,
@@ -69,7 +69,7 @@ const sendConnectRequestEmail = async ({
   `);
 
   await transporter.sendMailWithRetry({
-    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    from: `"LeapMentor" <${config.smtpUser}>`,
     to: mentorEmail,
     subject: `New Connect Request from ${menteeName.replaceAll(/[\r\n]/g, "")} — LeapMentor`,
     html,
@@ -90,7 +90,7 @@ const sendRequestAcceptedEmail = async ({
 
   const displaySlots = confirmedSlot ? [confirmedSlot] : slots;
   const slotRowsHtml = buildSlotRows(displaySlots);
-  const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentee?tab=history`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/mentee?tab=history`;
 
   const html = wrapEmail(`
     ${buildHeader(

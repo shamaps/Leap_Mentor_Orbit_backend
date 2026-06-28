@@ -1,11 +1,12 @@
 // utils/generateToken.js
 const jwt = require("jsonwebtoken");
 const crypto = require("node:crypto");
+const config = require("../config/env");
 
 // Short-lived — sent in response body / memory only
 const generateAccessToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  return jwt.sign({ id: userId }, config.jwtSecret, {
+  expiresIn: config.jwtAccessExpiresIn,
   });
 };
 

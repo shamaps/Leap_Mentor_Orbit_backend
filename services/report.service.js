@@ -40,7 +40,7 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
     let screenshotUrl = "";
     let screenshotPublicId = "";
     let screenshotOriginalName = "";
-
+   
     if (file) {
         const uploaded = await uploadToCloudinary(file.buffer, {
             resource_type: "image",
@@ -55,8 +55,7 @@ const submitReport = async ({ connectRequestId, complaintType, description, repo
         screenshotUrl = uploaded.secure_url;
         screenshotPublicId = uploaded.public_id;
         screenshotOriginalName = file.originalname;
-        screenshotThumbnailUrl = uploaded.eager?.[0]?.secure_url || "";
-        
+
     }
 
     const report = await repo.createReport({

@@ -1,181 +1,153 @@
-// swagger-gen.js
-const swaggerAutogen = require("swagger-autogen")({ openapi: "3.0.0" });
+// swagger.js
+//
+// Replaces both the old swagger-autogen setup AND the separate swagger/*.paths.js
+// mirror approach. Uses swagger-jsdoc to scan JSDoc @openapi comment blocks written
+// directly above each route in routes/*.routes.js (and routes/admin/*.routes.js).
+//
+// Why this is better than a separate paths file:
+//   The spec for a route lives in the SAME file as the route, directly above it.
+//   If someone adds/changes an endpoint and forgets to update its doc comment,
+//   the mismatch is visually obvious in code review — there's no second file to
+//   remember to touch, and no risk of the doc silently drifting out of sync.
+//
+// Run with: npm run swagger
+// Output:   ./swagger-output.json  (loaded by app.js at /api-docs)
 
-const doc = {
-  info: {
-    title: "LeapMentor API",
-    description: "Full API documentation for the LeapMentor mentorship platform",
-    version: "1.0.0",
-  },
-  servers: [
-    { url: "http://localhost:5000", description: "Local development" },
-  ],
-  components: {
-    securitySchemes: {
-      bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
-    },
-    schemas: {
-      // ── Auth 
-      RegisterBody: {
-        type: "object",
-        required: ["name", "email", "password", "roles", "termsAccepted"],
-        properties: {
-          name: { type: "string", example: "John Doe" },
-          email: { type: "string", example: "john@example.com" },
-          password: { type: "string", example: "SecurePass123!" },
-          roles: { type: "array", items: { type: "string", enum: ["mentor", "mentee"] } },
-          termsAccepted: { type: "boolean", example: true },
-        },
-      },
-      LoginBody: {
-        type: "object",
-        required: ["email", "password"],
-        properties: {
-          email: { type: "string", example: "john@example.com" },
-          password: { type: "string", example: "SecurePass123!" },
-        },
-      },
-      // ── Connect Request 
-      ConnectRequestBody: {
-        type: "object",
-        required: ["mentorId", "selectedSlots"],
-        properties: {
-          mentorId: { type: "string", example: "64f2a3b1c9e4a5d600000001" },
-          message: { type: "string", example: "I'd like to learn backend architecture" },
-          sessionRate: { type: "number", example: 500 },
-          sessionCount: { type: "number", example: 3 },
-          selectedSlots: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                day: { type: "string", example: "Monday" },
-                date: { type: "string", example: "2025-07-07" },
-                startTime: { type: "string", example: "10:00" },
-                endTime: { type: "string", example: "11:00" },
-              },
-            },
-          },
-        },
-      },
-      // ── Escrow
-      PayBody: {
-        type: "object",
-        required: ["connectRequestId"],
-        properties: {
-          connectRequestId: { type: "string", example: "64f2a3b1c9e4a5d600000002" },
-        },
-      },
-      EscrowActionBody: {
-        type: "object",
-        required: ["action"],
-        properties: {
-          action: { type: "string", enum: ["release", "refund"], example: "release" },
-        },
-      },
-      // ── Feedback 
-      FeedbackBody: {
-        type: "object",
-        required: ["connectRequestId", "rating"],
-        properties: {
-          connectRequestId: { type: "string" },
-          rating: { type: "number", minimum: 1, maximum: 5, example: 5 },
-          comment: { type: "string", example: "Great mentor!" },
-          slotIndex: { type: "number", example: 0 },
-        },
-      },
-      // ── Report 
-      ReportBody: {
-        type: "object",
-        required: ["connectRequestId", "reportedUserId", "complaintType", "description"],
-        properties: {
-          connectRequestId: { type: "string" },
-          reportedUserId: { type: "string" },
-          complaintType: {
-            type: "string",
-            enum: ["inappropriate_behavior", "session_misconduct", "fake_credentials", "spam_scam", "refund", "other"],
-          },
-          description: { type: "string", example: "Mentor did not show up for the session." },
-        },
-      },
-      // ── Goal
-      GoalBody: {
-        type: "object",
-        required: ["connectRequestId", "title"],
-        properties: {
-          connectRequestId: { type: "string" },
-          title: { type: "string", example: "Master Node.js internals" },
-          description: { type: "string" },
-          startDate: { type: "string", example: "2025-07-01" },
-          endDate: { type: "string", example: "2025-09-01" },
-        },
-      },
-      MilestoneBody: {
-        type: "object",
-        required: ["title"],
-        properties: {
-          title: { type: "string", example: "Complete event loop deep-dive" },
-          description: { type: "string" },
-          dueDate: { type: "string", example: "2025-07-20" },
-          slotIndex: { type: "number" },
-        },
-      },
-      // ── Support ─────────────────────────────────
-      SupportMessageBody: {
-        type: "object",
-        required: ["email", "subject", "message"],
-        properties: {
-          email: { type: "string", example: "user@example.com" },
-          subject: { type: "string", example: "Payment issue" },
-          message: { type: "string", example: "I was charged but session was not booked." },
-          role: { type: "string", enum: ["mentor", "mentee", "user"] },
-        },
-      },
-    },
-  },
-  security: [{ bearerAuth: [] }],
-  // Tags define the groups visible in Swagger UI sidebar
-  tags: [
-    { name: "Auth", description: "Register, login, OAuth, token refresh, password" },
-    { name: "Verification", description: "Email OTP verification" },
-    { name: "Users", description: "Logged-in user info" },
-    { name: "Mentor Profile", description: "Create and manage mentor profile" },
-    { name: "Mentee Profile", description: "Create and manage mentee profile" },
-    { name: "Mentor Search", description: "Search and discover mentors" },
-    { name: "Availability", description: "Mentor availability and slot management" },
-    { name: "Connect Requests", description: "Send, respond to, and manage session requests" },
-    { name: "Slot Locks", description: "Temporary slot reservations during booking" },
-    { name: "Sessions", description: "Session slots, meeting links, completion marking" },
-    { name: "Escrow", description: "Payments, wallet, escrow hold and release" },
-    { name: "Invoices", description: "Download payment invoices" },
-    { name: "Messages", description: "In-session chat messages" },
-    { name: "Notes", description: "Shared session notes and file uploads" },
-    { name: "Private Notes", description: "Personal notes visible only to the author" },
-    { name: "Goals", description: "Session goals and milestones" },
-    { name: "Feedback", description: "Post-session feedback and ratings" },
-    { name: "Reports", description: "Dispute and misconduct reports" },
-    { name: "Notifications", description: "In-app notifications" },
-    { name: "Earnings", description: "Mentor earnings summary and payout history" },
-    { name: "Google Calendar", description: "Google Calendar OAuth integration" },
-    { name: "Upload", description: "Profile picture and document uploads" },
-    { name: "AI", description: "LeapBuddy AI chat proxy" },
-    { name: "Support", description: "Help Centre support messages" },
-    { name: "Leap Requests", description: "Mentor wallet top-up requests" },
-    { name: "Push Notifications", description: "Web push subscription management" },
-    { name: "Admin — Auth", description: "Admin login and session" },
-    { name: "Admin — Users", description: "User management" },
-    { name: "Admin — Stats", description: "Platform statistics and charts" },
-    { name: "Admin — Engagements", description: "Connect request engagement tracking" },
-    { name: "Admin — Payments", description: "Revenue, transactions, escrow" },
-    { name: "Admin — Reports", description: "Dispute resolution" },
-    { name: "Admin — Verifications", description: "Mentor profile verification" },
-    { name: "Admin — Settings", description: "Commission rate, admin management" },
-    { name: "Admin — Leap Requests", description: "Wallet top-up approvals" },
-    { name: "Images", description: "Resized Cloudinary profile images" },
-  ],
+const fs = require("fs");
+const path = require("path");
+const swaggerJsdoc = require("swagger-jsdoc");
+
+const sharedSchemas = require("./swagger/_shared");
+
+const info = {
+  title: "LeapMentor API",
+  version: "1.0.0",
+  description: `REST API documentation for LeapMentor — a peer mentorship platform.
+
+## Authentication
+Most endpoints require a Bearer token in the \`Authorization\` header.
+Admin endpoints use a separate admin token obtained via \`POST /api/v1/admin/auth/login\`.
+
+## Base URL
+All endpoints are prefixed with \`/api/v1\`
+
+## Changelog
+### v1.0.0 (current)
+- Auth: register, OTP verification, login, password reset, Google OAuth, Clerk SSO
+- Profiles: mentor & mentee profile creation and management
+- Mentor Discovery: search and autocomplete
+- Availability: mentor slot management
+- Connect Requests: full lifecycle — send, respond, refer, cancel
+- Slot Locking: optimistic concurrency control during booking
+- Escrow: token-based payment flow — pay, release, refund
+- Sessions: slot scheduling, meeting links, status transitions
+- Goals & Milestones: per-session goal tracking
+- Messages: real-time chat history (REST layer)
+- Notes: shared and private note uploads
+- Feedback: post-session ratings
+- Reports: dispute management
+- Notifications: in-app notification feed
+- Push: Web Push subscription management
+- Invoices: PDF invoice download
+- Earnings: mentor payout dashboard
+- Google Calendar: OAuth integration & busy-slot sync
+- AI: Groq-powered help center proxy
+- Admin: dashboard, analytics, user management, verifications, payments, reports, settings
+- Support: help center message submission`,
 };
 
-const outputFile = "./swagger-output.json";
-const routeFiles = ["./app.js"];
+const servers = [{ url: "http://localhost:5000/api/v1", description: "Local development" }];
 
-swaggerAutogen(outputFile, routeFiles, doc);
+const tags = [
+  { name: "Auth", description: "Register, login, OTP verification, password reset, OAuth" },
+  { name: "Verification", description: "Email OTP send / resend / verify" },
+  { name: "Users", description: "Logged-in user's own account data" },
+  { name: "MentorProfile", description: "Mentor profile CRUD" },
+  { name: "MenteeProfile", description: "Mentee profile CRUD" },
+  { name: "MentorSearch", description: "Search and autocomplete mentors" },
+  { name: "Availability", description: "Mentor availability slot management" },
+  { name: "SlotLock", description: "Temporary slot locking during booking flow" },
+  { name: "ConnectRequest", description: "Mentee-Mentor connect request lifecycle" },
+  { name: "Escrow", description: "Token-based escrow — pay, release, refund" },
+  { name: "Session", description: "Session slots, meeting links, status transitions" },
+  { name: "Goals", description: "Per-session goals and milestones" },
+  { name: "Messages", description: "Chat message history (REST)" },
+  { name: "Notes", description: "Shared and private session notes" },
+  { name: "PrivateNotes", description: "Private per-user notes for a session" },
+  { name: "Feedback", description: "Post-session feedback and ratings" },
+  { name: "Reports", description: "Dispute / misconduct reports" },
+  { name: "Notifications", description: "In-app notification feed" },
+  { name: "Push", description: "Web Push subscription management" },
+  { name: "Upload", description: "Profile picture and verification document upload" },
+  { name: "Images", description: "Resized profile image proxy" },
+  { name: "Invoices", description: "PDF invoice download" },
+  { name: "Earnings", description: "Mentor earnings and payout history" },
+  { name: "GoogleCalendar", description: "Google Calendar OAuth integration" },
+  { name: "LeapRequests", description: "Mentee wallet top-up / leap requests" },
+  { name: "Support", description: "Help center message submission" },
+  { name: "AI", description: "Groq-powered AI help center proxy" },
+  { name: "Admin", description: "Admin auth, stats, user management" },
+  { name: "AdminPayments", description: "Admin payment stats and transaction history" },
+  { name: "AdminReports", description: "Admin report management and refunds" },
+  { name: "AdminVerifications", description: "Admin mentor verification approvals" },
+  { name: "AdminSettings", description: "Admin settings, commission, admin accounts" },
+];
+
+const securitySchemes = {
+  bearerAuth: {
+    type: "http",
+    scheme: "bearer",
+    bearerFormat: "JWT",
+    description: "JWT access token obtained from login or refresh endpoints",
+  },
+};
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info,
+    servers,
+    tags,
+    components: {
+      securitySchemes,
+      schemas: sharedSchemas,
+    },
+    security: [{ bearerAuth: [] }],
+  },
+  // swagger-jsdoc scans these files for /** @openapi ... */ comment blocks.
+  // All 31 *.routes.js files (including the 4 admin* ones) live at the root of
+  // routes/ — only routes/admin/index.js (a pure re-router with no JSDoc) is
+  // inside the admin/ subfolder, so a single glob covers every annotated route.
+  apis: [path.join(__dirname, "routes/*.routes.js")],
+};
+
+function buildSpec() {
+  return swaggerJsdoc(options);
+}
+
+function main() {
+  const spec = buildSpec();
+  const outputFile = path.join(__dirname, "swagger-output.json");
+  fs.writeFileSync(outputFile, JSON.stringify(spec, null, 2));
+
+  const pathCount = Object.keys(spec.paths || {}).length;
+  const operationCount = Object.values(spec.paths || {}).reduce(
+    (sum, methods) => sum + Object.keys(methods).length,
+    0
+  );
+
+  console.log(`✅ swagger-output.json written (${pathCount} paths, ${operationCount} operations)`);
+
+  if (operationCount === 0) {
+    console.warn(
+      "⚠️  No operations found. Check that routes/*.routes.js files contain " +
+      "/** @openapi ... */ JSDoc comment blocks above each route."
+    );
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { buildSpec };

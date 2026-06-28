@@ -63,8 +63,6 @@ const reportSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS
 );
 
-reportSchema.index({ connectRequest: 1 });
-reportSchema.index({ reportedBy: 1 });
 reportSchema.index({ reportedUser: 1 });
 reportSchema.index({ status: 1 });
 reportSchema.index({ createdAt: -1 });

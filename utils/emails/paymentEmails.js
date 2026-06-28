@@ -1,6 +1,7 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL,BRAND_GRADIENT, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
+const config = require("../../config/env");
 // Email 3: Mentor notified when mentee completes payment
 
 const sendPaymentReceivedEmail = async ({
@@ -16,7 +17,7 @@ const sendPaymentReceivedEmail = async ({
   const safeMenteeName = escapeHtml(menteeName);
     const slotCount = slots.length;
     const slotRowsHtml = buildSlotRows(slots);
-    const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor?tab=requests`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/mentor?tab=requests`;
 
     const html = wrapEmail(`
     ${buildHeader(
@@ -88,7 +89,7 @@ const sendPaymentReceivedEmail = async ({
 `);
 
     await transporter.sendMailWithRetry({
-        from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      from: `"LeapMentor" <${config.smtpUser}>`,
         to: mentorEmail,
       subject: `Payment received from ${menteeName.replaceAll(/[\r\n]/g, "")} — ${mentorPayout} tokens in escrow`,
         html,
@@ -101,7 +102,7 @@ const sendPaymentReceivedEmail = async ({
 // Email 8: Mentor notified when they successfully upload verification documents
 
 const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
-    const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/mentor`;
   const safeMentorName = escapeHtml(mentorName);
     const html = wrapEmail(`
     ${buildHeader(
@@ -168,7 +169,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
   `);
 
     await transporter.sendMailWithRetry({
-        from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      from: `"LeapMentor" <${config.smtpUser}>`,
         to: mentorEmail,
         subject: `We received your documents — Application under review`,
         html,
@@ -181,7 +182,7 @@ const sendDocumentsSubmittedEmail = async ({ mentorName, mentorEmail }) => {
 // Email 9: Mentor notified when admin verifies their profile
 
 const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
-    const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/mentor`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/mentor`;
     const safeMentorName = escapeHtml(mentorName);
     const html = wrapEmail(`
     ${buildHeader(
@@ -252,7 +253,7 @@ const sendMentorVerifiedEmail = async ({ mentorName, mentorEmail }) => {
   `);
 
     await transporter.sendMailWithRetry({
-        from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      from: `"LeapMentor" <${config.smtpUser}>`,
         to: mentorEmail,
         subject: `Your account is verified — Welcome to LeapMentor! 🎉`,
         html,

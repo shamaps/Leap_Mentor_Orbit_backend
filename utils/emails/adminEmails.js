@@ -1,7 +1,7 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER, LOGO_URL, formatTime, formatDate } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
-
+const config = require("../../config/env");
 // Email 4: User notified when admin resolves their support ticket
 
 const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
@@ -38,7 +38,7 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
   `);
 
   await transporter.sendMailWithRetry({
-    from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+    from: `"LeapMentor" <${config.smtpUser}>`,
     to: toEmail,
     subject: `Your support request has been resolved — LeapMentor`,
     html,
@@ -50,7 +50,7 @@ const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
 // Email 10: Reporter notified when they successfully submit a report
 
 const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaintType, description, reporterRole }) => {
-    const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
   const safeReporterName = escapeHtml(reporterName);
   const safeDescription = escapeHtml(description);
     const formattedType = complaintType
@@ -106,7 +106,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
   `);
 
     await transporter.sendMailWithRetry({
-        from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      from: `"LeapMentor" <${config.smtpUser}>`,
         to: reporterEmail,
         subject: `Your report has been received — LeapMentor`,
         html,
@@ -119,7 +119,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
 // Email 11: Reporter notified when admin resolves/dismisses their report
 
 const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintType, status, adminNote, reporterRole }) => {
-    const dashboardLink = `${process.env.APP_BASE_URL}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
+  const dashboardLink = `${config.appBaseUrl}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
   const safeAdminNote = escapeHtml(adminNote);
     const isResolved = status === "resolved";
 
@@ -191,7 +191,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
   `);
 
     await transporter.sendMailWithRetry({
-        from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+      from: `"LeapMentor" <${config.smtpUser}>`,
         to: reporterEmail,
         subject: `Your report has been ${statusLabel.toLowerCase()} — LeapMentor`,
         html,

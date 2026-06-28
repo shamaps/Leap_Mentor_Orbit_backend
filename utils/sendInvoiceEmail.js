@@ -2,6 +2,7 @@
 const generateInvoice = require("./generateInvoice");
 const transporter = require("./mailer");
 const logger = require("../utils/logger");
+const config = require("../config/env");
 const {
   wrapEmail,
   buildHeader,
@@ -69,7 +70,7 @@ const sendInvoiceEmail = async (params) => {
   `);
 
   await transporter.sendMail({
-    from: `"Leapmentor" <${process.env.SMTP_USER}>`,
+    from: `"Leapmentor" <${config.smtpUser}>`,
     to: menteeEmail,
     subject: `Your Invoice #${invoiceNumber} — Leapmentor`,
     html,

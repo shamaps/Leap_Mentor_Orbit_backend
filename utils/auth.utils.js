@@ -4,19 +4,19 @@ const crypto = require("node:crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { createClerkClient } = require("@clerk/backend");
 const RefreshToken = require("../models/RefreshToken");
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-
+const config = require("../config/env");
+const googleClient = new OAuth2Client(config.googleClientId);
+const clerkClient = createClerkClient({ secretKey: config.clerkSecretKey });
 const makeOtp = () => String(crypto.randomInt(100000, 1000000));
 // ── helpers ──────────────────────────────────────────────────
 const getRefreshMs = () => {
-  const days = Number.parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || "7", 10);
+  const days = config.jwtRefreshExpiresInDays;
   return days * 24 * 60 * 60 * 1000;
 };
 
 const signToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  return jwt.sign({ id: userId }, config.jwtSecret, {
+  expiresIn: config.jwtAccessExpiresIn,
   });
 };
 
@@ -45,11 +45,11 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString("hex");
 const setRefreshCookie = (res, refreshToken) => {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: config.isProduction,
+    sameSite: config.isProduction ? "strict" : "lax",
     maxAge: getRefreshMs(),
     path: "/",
-    domain: process.env.COOKIE_DOMAIN || undefined,
+    domain: config.cookieDomain,
   });
 };
 
@@ -63,8 +63,8 @@ const issueTokens = async (res, userId) => {
   // Set BOTH tokens as httpOnly cookies
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: config.isProduction,
+    sameSite: config.isProduction ? "strict" : "lax",
     maxAge: 15 * 60 * 1000,  // 15 minutes
     path: "/",
   });

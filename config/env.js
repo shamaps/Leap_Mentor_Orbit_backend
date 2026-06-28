@@ -33,6 +33,7 @@ const config = {
     smtpPort: Number.parseInt(optional("SMTP_PORT", "587"), 10),
     smtpUser: optional("SMTP_USER"),
     smtpPass: optional("SMTP_PASS"),
+    smtpSecure: optional("SMTP_SECURE") === "true",
     fromEmail: optional("FROM_EMAIL", "noreply@leapmentor.com"),
 
     cloudinaryCloudName: required("CLOUDINARY_CLOUD_NAME"),
@@ -48,7 +49,8 @@ const config = {
     vapidPublicKey: optional("VAPID_PUBLIC_KEY"),
     vapidPrivateKey: optional("VAPID_PRIVATE_KEY"),
     vapidEmail: optional("VAPID_EMAIL"),
-
+    vapidMailto: optional("VAPID_MAILTO"),
+    
     sentryDsn: optional("SENTRY_DSN"),
     logtailToken: optional("LOGTAIL_TOKEN"),
     groqApiKey: optional("GROQ_API_KEY"),

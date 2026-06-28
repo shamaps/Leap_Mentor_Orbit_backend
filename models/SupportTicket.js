@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { emailValidator } = require("../utils/emailValidator");
 const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const supportTicketSchema = new mongoose.Schema(
   {
@@ -11,7 +12,7 @@ const supportTicketSchema = new mongoose.Schema(
       required: true,
       trim: true,
       lowercase: true,
-      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
+      match: emailValidator,
     },
     message: {
       type: String,
@@ -31,5 +32,6 @@ const supportTicketSchema = new mongoose.Schema(
   },
   BASE_SCHEMA_OPTIONS
 );
+supportTicketSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("SupportTicket", supportTicketSchema);

@@ -20,8 +20,8 @@ const attemptUpload = (buffer, options) =>
         const optionsWithTrace = {
             ...options,
             context: {
-                ...(options.context || {}),
-                traceId: getTraceId(),                       
+                ...options.context,
+                traceId: getTraceId(),
             },
         };
         const stream = cloudinary.uploader.upload_stream(

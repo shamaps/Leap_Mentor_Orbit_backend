@@ -74,7 +74,6 @@ const validateNoteOwnership = async (req, res, next) => {
         code: "NOTE_NOT_FOUND",
       });
     }
-
     if (note.uploadedBy.toString() !== req.user._id.toString()) {
       // ✅ Return 404 instead of 403 to conceal note existence from non-authors
       return res.status(404).json({

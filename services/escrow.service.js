@@ -160,13 +160,12 @@ const createEscrowService = (repo, { logger }) => {
 
       await repo.saveWallet(menteeWallet, session);
       await repo.saveWallet(mentorWallet, session);
-      await repo.creditAdmin(admin._id, commissionAmount);
+      await repo.creditAdmin(admin._id, commissionAmount, session);
 
       connectRequest.status = "completed";
       connectRequest.completedAt = new Date();
       await repo.saveConnectRequest(connectRequest, session);
-      await repo.incrementMentorSessions(mentorId);
-
+      await repo.incrementMentorSessions(mentorId, session);
       await repo.createTransactions([
         {
           user: menteeId, type: "escrow_release", amount: totalAmount,

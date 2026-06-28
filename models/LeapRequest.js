@@ -26,8 +26,6 @@ const leapRequestSchema = new mongoose.Schema(
   },
     BASE_SCHEMA_OPTIONS
 );
-leapRequestSchema.index({ mentee: 1 });
-leapRequestSchema.index({ status: 1 });
 leapRequestSchema.index({ mentee: 1, status: 1 }); 
 
 module.exports = mongoose.model("LeapRequest", leapRequestSchema);

@@ -2,6 +2,7 @@
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/appError");
 const cache = require("../utils/cache");
+const config = require("../config/env");
 const { withTransaction } = require("../utils/withTransaction");
 const { escapeRegex } = require("../utils/escapeRegex");
 const { toAdminDTO } = require("../utils/mappers/adminUser.mapper");
@@ -10,8 +11,8 @@ const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const createAdminService = (repo, { logger }) => {
     //Token helper 
     const signToken = (id) =>
-        jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_ADMIN_EXPIRES_IN || "7d",
+        jwt.sign({ id, role: "admin" }, config.jwtSecret, {
+        expiresIn: config.jwtAdminExpiresIn,
         });
 
     // Set admin token as httpOnly cookie 
@@ -19,8 +20,8 @@ const createAdminService = (repo, { logger }) => {
     const setAdminCookie = (res, token) => {
         res.cookie("adminAccessToken", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            secure: config.isProduction,
+            sameSite: config.isProduction ? "strict" : "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
             path: "/",
         });

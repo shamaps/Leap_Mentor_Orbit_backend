@@ -1,0 +1,36 @@
+# Secrets — never bake into image
+.env
+.env.*
+*.pem
+*.key
+*.cert
+
+# Git history
+.git
+.gitignore
+
+# Dev tooling
+.eslintrc*
+.prettierrc*
+sonar-project.properties
+.editorconfig
+
+# Test artifacts
+__tests__/
+coverage/
+*.test.js
+*.spec.js
+
+# Local dev
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Docker files themselves (no need to copy in)
+Dockerfile
+.dockerignore
+docker-compose*.yml

@@ -7,9 +7,9 @@
 const sanitise = (str) =>
     str
         .toLowerCase()
-        .replace(/[^a-z0-9._-]/g, "-")   // replace anything not safe with hyphen
-        .replace(/-+/g, "-")              // collapse multiple hyphens
-        .replace(/^-|-$/g, "")           // strip leading/trailing hyphens
+        .replaceAll("[^a-z0-9._-]", "-")   // replace anything not safe with hyphen
+        .replaceAll("-+", "-")              // collapse multiple hyphens
+        .replaceAll("^-|-$", "")           // strip leading/trailing hyphens
         .slice(0, 80);                    // max 80 chars for the filename portion
 
 /**

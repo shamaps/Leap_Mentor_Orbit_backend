@@ -10,9 +10,13 @@ const logger = require("../utils/logger");
 const findActiveAdmin = () =>
   AdminUser.findOne({ isActive: true }).select("commissionRate walletBalance");
 
-const creditAdmin = (adminId, amount) => {
+const creditAdmin = (adminId, amount, session) => {
   logger.debug("creditAdmin called", { adminId: adminId?.toString(), amount });
-  return AdminUser.findByIdAndUpdate(adminId, { $inc: { walletBalance: amount } });
+  return AdminUser.findByIdAndUpdate(
+    adminId,
+    { $inc: { walletBalance: amount } },
+    session ? { session } : {}
+  );
 };
 // ─── Connect Request ──────────────────────────────────────────
 const findConnectRequestById = (id, session) =>
@@ -52,9 +56,13 @@ const findMentorTimezone = (mentorId) =>
   Availability.findOne({ mentor: mentorId }).select("timezone").lean();
 
 // ─── Mentor Profile ───────────────────────────────────────────
-const incrementMentorSessions = (mentorId) => {
+const incrementMentorSessions = (mentorId, session) => {
   logger.debug("incrementMentorSessions called", { mentorId: mentorId?.toString() });
-  return MentorProfile.findOneAndUpdate({ user: mentorId }, { $inc: { totalSessions: 1 } });
+  return MentorProfile.findOneAndUpdate(
+    { user: mentorId },
+    { $inc: { totalSessions: 1 } },
+    session ? { session } : {}
+  );
 };
 module.exports = {
   findActiveAdmin,

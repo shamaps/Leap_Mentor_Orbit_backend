@@ -4,7 +4,7 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 const { withTimeout } = require("../utils/withTimeout");
 const { withRetry } = require("../utils/withRetry");
 const { getTraceId } = require("../utils/requestContext");
-
+const config = require("../config/env");
 const createGoogleCalendarService = (repo, { logger }) => {
 
     /**
@@ -13,9 +13,10 @@ const createGoogleCalendarService = (repo, { logger }) => {
      */
     const createOAuthClient = () =>
         new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URI
+            config.googleClientId,
+            config.googleClientSecret,
+            config.googleRedirectUri
+
         );
 
     /**
@@ -48,7 +49,7 @@ const createGoogleCalendarService = (repo, { logger }) => {
         try {
             return JSON.parse(tokenJson);
         } catch {
-            return null;
+            throw new AppError(500, "Stored Google token is corrupted");
         }
     };
 

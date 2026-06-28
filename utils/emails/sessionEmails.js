@@ -1,6 +1,7 @@
 const transporter = require("../mailer");
 const { wrapEmail, buildHeader, FOOTER,BRAND_GRADIENT, LOGO_URL, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
+const config = require("../../config/env");
 // Email 5: Both mentor and mentee notified when a slot is cancelled
 
 const sendSlotCancelledEmail = async ({
@@ -12,7 +13,7 @@ const sendSlotCancelledEmail = async ({
     reason = "",
 }) => {
     const cancelledByName = cancelledBy === "mentor" ? mentorName : menteeName;
-    const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
+    const dashboardLink = `${config.appBaseUrl}/shared-dashboard/${connectRequestId}`;
   const safeCancelledByName = escapeHtml(cancelledByName);
   const safeReason = escapeHtml(reason);
     const buildHtml = (recipientName) => wrapEmail(`
@@ -75,13 +76,13 @@ const sendSlotCancelledEmail = async ({
 
     await Promise.all([
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+        from: `"LeapMentor" <${config.smtpUser}>`,
             to: mentorEmail,
             subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
             html: buildHtml(mentorName),
         }),
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+        from: `"LeapMentor" <${config.smtpUser}>`,
             to: menteeEmail,
             subject: `Session slot cancelled — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
             html: buildHtml(menteeName),
@@ -101,7 +102,7 @@ const sendSlotRescheduledEmail = async ({
     oldSlot,
     newSlot,
 }) => {
-    const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
+  const dashboardLink = `${config.appBaseUrl}/shared-dashboard/${connectRequestId}`;
   const safeMenteeName = escapeHtml(menteeName);
     const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
@@ -168,13 +169,13 @@ const sendSlotRescheduledEmail = async ({
 
     await Promise.all([
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+        from: `"LeapMentor" <${config.smtpUser}>`,
             to: mentorEmail,
           subject: `Session rescheduled by ${menteeName.replaceAll(/[\r\n]/g, "")} — ${formatDate(newSlot.date)}`,
             html: buildHtml(mentorName),
         }),
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+        from: `"LeapMentor" <${config.smtpUser}>`,
             to: menteeEmail,
             subject: `Session rescheduled — New time: ${formatDate(newSlot.date)} at ${formatTime(newSlot.startTime)}`,
             html: buildHtml(menteeName),
@@ -194,8 +195,7 @@ const sendAdditionalSlotEmail = async ({
     slot,
 }) => {
   const safeMenteeName = escapeHtml(menteeName);
-    const dashboardLink = `${process.env.APP_BASE_URL}/shared-dashboard/${connectRequestId}`;
-
+  const dashboardLink = `${config.appBaseUrl}/shared-dashboard/${connectRequestId}`;
     const buildHtml = (recipientName) => wrapEmail(`
     ${buildHeader(
         BRAND_GRADIENT,
@@ -248,13 +248,13 @@ const sendAdditionalSlotEmail = async ({
 
     await Promise.all([
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
-            to: mentorEmail,
+          from: `"LeapMentor" <${config.smtpUser}>`,
+          to: mentorEmail,
           subject: `New session slot added by ${menteeName.replaceAll(/[\r\n]/g, "")} — LeapMentor`,
             html: buildHtml(mentorName),
         }),
       transporter.sendMailWithRetry({
-            from: `"LeapMentor" <${process.env.SMTP_USER}>`,
+            from: `"LeapMentor" <${config.smtpUser}>`,
             to: menteeEmail,
             subject: `Session slot confirmed — ${formatDate(slot.date)} at ${formatTime(slot.startTime)}`,
             html: buildHtml(menteeName),

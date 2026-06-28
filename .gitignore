@@ -41,3 +41,7 @@ coverage/
 optimal/.git
 backend/.git
 frontend/.git
+
+sonar-project.properties
+
+.scannerwork/

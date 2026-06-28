@@ -13,11 +13,10 @@ const findPendingByMenteeOne = (menteeId) =>
 const createRequest = (data) =>
     LeapRequest.create(data);
 
-const findAllRequests = (skip = 0, limit = 50) =>
-    LeapRequest.find()
+const findAllRequests = (afterId = null, limit = 50) =>
+    LeapRequest.find(afterId ? { _id: { $lt: afterId } } : {})
         .populate("mentee", "name email profilePicture")
-        .sort({ createdAt: -1 })
-        .skip(skip)
+        .sort({ _id: -1 })
         .limit(limit)
         .lean();
 

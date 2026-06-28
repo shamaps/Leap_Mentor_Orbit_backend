@@ -121,9 +121,9 @@ const createClerkSSOService = (repo, { logger }) => {
 
         logger.debug("User found in DB", { found: !!user });
         if (user) {
-            const rolesBefore = [...user.roles];
+            const rolesBefore = new Set(user.roles);
             await mergeRoles(user, roles, repo.saveUser);
-            const addedRoles = user.roles.filter((r) => !rolesBefore.includes(r));
+            const addedRoles = user.roles.filter((r) => !rolesBefore.has(r));
 
             for (const role of addedRoles) {
                 const existingWallet = await repo.findWalletByUserAndRole(user._id, role);
