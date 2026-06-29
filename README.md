@@ -90,36 +90,73 @@ Install with `npm install`. Key production packages:
 Dev dependencies: `jest`, `supertest`, `mongodb-memory-server`, `nodemon`, `eslint`, `prettier`
 
 
-## Project Structure
-├── app.js                  # Pure Express app (no DB connect, no server start) — what Jest imports
-├── server.js               # Entry point — connects DB, starts HTTP server + Socket.IO + cron
+# Project Structure
+
+The backend follows a layered architecture that separates routing, business logic, data access, and infrastructure concerns.
+
+```text
+.
+├── app.js                        # Pure Express app (no DB connection, no server start) — imported by Jest
+├── server.js                     # Entry point — connects DB, starts HTTP server, Socket.IO, and cron jobs
+│
 ├── config/
-│   ├── env.js               # Centralized env var loading/validation
-│   ├── database.js          # MongoDB connection
-│   ├── cloudinary.js        # Cloudinary config
-│   └── container.js         # Dependency-injection wiring (repo → service → controller)
-├── controllers/             # Route handler logic (one file per feature)
-│   └── admin/                # Admin-specific controllers
-├── models/                  # Mongoose schemas
+│   ├── env.js                    # Centralized environment variable loading and validation
+│   ├── database.js               # MongoDB connection configuration
+│   ├── cloudinary.js             # Cloudinary configuration
+│   └── container.js              # Dependency Injection wiring (Repository → Service → Controller)
+│
+├── controllers/                  # Route handler logic (one file per feature)
+│   └── admin/                    # Admin-specific controllers
+│
+├── models/                       # Mongoose schemas
+│
 ├── routes/
-│   └── admin/                # Admin sub-routes, mounted once at /admin
+│   └── admin/                    # Admin sub-routes mounted under /admin
+│
 ├── middleware/
-│   ├── authenticate.js       # JWT auth guard (regular users)
-│   ├── adminAuth.js          # Separate JWT auth guard for admin users (different cookie/model)
-│   ├── validate.js           # Joi schema validation middleware
-│   ├── noteAccess.js         # Note/session ownership checks
-│   └── upload.middleware.js  # Multer + Cloudinary upload
+│   ├── authenticate.js           # JWT authentication middleware for users
+│   ├── adminAuth.js              # JWT authentication middleware for admins
+│   ├── validate.js               # Joi validation middleware
+│   ├── noteAccess.js             # Note/session ownership validation
+│   └── upload.middleware.js      # Multer + Cloudinary upload middleware
+│
 ├── socket/
-│   ├── socketAuth.js         # Socket.IO JWT middleware
-│   └── socketHandler.js      # Real-time event handlers
-├── services/                 # Business logic layer
-├── repositories/             # DB query abstraction
-├── validators/                # Joi schemas per feature
-├── utils/                    # Helpers — tokens, slots, emails, invoices, push, cache, retry
-├── cron/                      # Scheduled jobs
-├── scripts/                   # One-time seed scripts
-└── tests/
----
+│   ├── socketAuth.js             # Socket.IO authentication middleware
+│   └── socketHandler.js          # Real-time Socket.IO event handlers
+│
+├── services/                     # Business logic layer
+│
+├── repositories/                 # Database query abstraction layer
+│
+├── validators/                   # Joi validation schemas (one per feature)
+│
+├── utils/                        # Shared helpers (tokens, emails, invoices, cache, retry, etc.)
+│
+├── cron/                         # Scheduled background jobs
+│
+├── scripts/                      # One-time seed and maintenance scripts
+│
+└── tests/                        # Unit, integration, and other test suites
+```
+
+## Folder Responsibilities
+
+| Folder            | Responsibility                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| **config/**       | Application configuration, environment variables, dependency injection, and external service setup |
+| **controllers/**  | Accept requests, invoke services, and return API responses                                         |
+| **services/**     | Contains all business logic                                                                        |
+| **repositories/** | Performs all MongoDB/Mongoose operations                                                           |
+| **models/**       | Mongoose schema definitions                                                                        |
+| **routes/**       | Express route definitions and API endpoints                                                        |
+| **middleware/**   | Authentication, validation, authorization, and upload middleware                                   |
+| **validators/**   | Joi request validation schemas                                                                     |
+| **socket/**       | Socket.IO authentication and real-time event handling                                              |
+| **utils/**        | Shared utility functions and reusable helpers                                                      |
+| **cron/**         | Scheduled background jobs                                                                          |
+| **scripts/**      | Manual scripts for seeding and maintenance                                                         |
+| **tests/**        | Unit and integration tests                                                                         |
+
 
 
 ## Getting Started
