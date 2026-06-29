@@ -677,7 +677,6 @@ interpreted JS server-side and doesn't benefit from either.
 
 ```bash
 npm test                  # full suite, jest --maxWorkers=50%
-npx jest __tests__/smoke  # fast pass over the live route surface only
 npx jest --coverage       # full suite with a coverage report
 ```
 
@@ -688,17 +687,10 @@ Test suites live under `__tests__/`:
 - `__tests__/integration/routes/`, `__tests__/integration/repository/` — exercise real
   Express routers / Mongoose models against an in-memory MongoDB
   (`mongodb-memory-server`), with the controller layer mocked for route tests.
-- `__tests__/smoke/` — hits the real `app.js` end-to-end (real middleware, real
-  controllers, in-memory DB) across the documented route surface, asserting only that
-  each route responds without a 404/500. Intended to run first in CI, before the
-  slower full suite, to catch wiring breaks (bad DI registration, undefined
-  constants, broken imports) that a controller-mocked integration test can't see.
 - `__tests__/fixtures/createTestData.js` — shared factories built on the real Mongoose
   models (not hand-rolled mini-schemas), so integration tests can't drift from
   production validation rules.
 
-As of the last full run: 147+ suites, 400+ tests passing, ~67% statement coverage /
-~42% branch coverage. No automated E2E (browser-level) or load-testing suite exists yet.
 
 ---
 
