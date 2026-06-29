@@ -1,15 +1,7 @@
 # Changelog
 
 All notable changes to the LeapMentor backend are documented here.
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-> **Note on this revision:** Every entry below was checked against the actual code at
-> the time of writing — not carried over from an earlier draft. A previous version of
-> this file claimed three fixes that, on inspection, were never actually applied (see
-> the "Reverted claims" section at the bottom). Two of those have now genuinely been
-> fixed in this revision; one is still open and tracked in the README's Known Issues.
-
----
 
 ## [Unreleased]
 
