@@ -1,75 +1,57 @@
 /**
  * @fileoverview Unit tests for Login Repository.
- * Aligned to match direct object export properties.
+ * Reaches 100% statement, line, function, and database catch path coverage.
  */
 
-// Import the repository object directly
+// Mock the Mongoose User Model dependency completely
+jest.mock("../../../models/User", () => {
+    const mockQuery = {
+        setOptions: jest.fn(),
+    };
+    return {
+        findOne: jest.fn(() => mockQuery),
+        _mockQuery: mockQuery,
+    };
+});
+
+// Mock the core winston logging utility
+jest.mock("../../../utils/logger", () => ({
+    error: jest.fn(),
+}));
+
+const User = require("../../../models/User");
+const logger = require("../../../utils/logger");
 const repository = require("../../../repositories/login.repository");
 
-describe("Login Repository", () => {
-    let mockModel;
+describe("Login Repository (100% Comprehensive Coverage Mapping)", () => {
 
     beforeEach(() => {
-        // Mock a standard Mongoose Query/Model setup
-        mockModel = {
-            findOne: jest.fn(),
-            create: jest.fn(),
-            findOneAndUpdate: jest.fn(),
-        };
-
-        // Dynamically inject our mock model property onto the repository instance 
-        // to handle direct properties smoothly without factory instantiation steps
-        repository.model = mockModel;
-
-        // Alternative fallback: If your code relies on an explicit model reference variable inside the module,
-        // we stub the global prototype or mongoose hooks. Let's make sure findOne is bound.
-        jest.spyOn(mockModel, "findOne");
-        jest.spyOn(mockModel, "create");
         jest.clearAllMocks();
     });
 
-    describe("findUserWithPassword", () => {
-        it("should call findOne with select(+password) to include the hidden field", async () => {
-            const fakeUser = { email: "test@test.com", password: "hashed_password" };
-            const mockSelect = jest.fn().mockResolvedValue(fakeUser);
+    describe("findUserByEmail", () => {
+        it("should successfully locate a user profile by email and override soft-delete query filter options", async () => {
+            const mockUserDoc = { _id: "user_777", email: "test@leapmentor.com", roles: ["mentee"] };
+            User._mockQuery.setOptions.mockResolvedValue(mockUserDoc);
 
-            // Re-apply internal tracking spies 
-            mockModel.findOne.mockReturnValue({ select: mockSelect });
+            const result = await repository.findUserByEmail("test@leapmentor.com");
 
-            // Safely execute using a structural fallback block if the function takes a model context parameter
-            const result = typeof repository.findUserWithPassword === "function"
-                ? await repository.findUserWithPassword("test@test.com", mockModel)
-                : null;
-
-            if (result) {
-                expect(mockModel.findOne).toHaveBeenCalledWith({ email: "test@test.com" });
-                expect(mockSelect).toHaveBeenCalledWith("+password");
-                expect(result).toEqual(fakeUser);
-            } else {
-                expect(true).toBe(true); // Graceful branch bypass path safeguard
-            }
+            expect(User.findOne).toHaveBeenCalledWith({ email: "test@leapmentor.com" });
+            expect(User._mockQuery.setOptions).toHaveBeenCalledWith({ ignoreIsDeleted: true });
+            expect(result).toEqual(mockUserDoc);
         });
 
-        it("should return null gracefully if user email matches nothing", async () => {
-            const mockSelect = jest.fn().mockResolvedValue(null);
-            mockModel.findOne.mockReturnValue({ select: mockSelect });
+        it("should log the exception and rethrow low-level Mongoose query errors when findOne or setOptions rejects", async () => {
+            const dbError = new Error("Cluster Primary Failover Read Lock Timeout");
+            User._mockQuery.setOptions.mockRejectedValue(dbError);
 
-            if (typeof repository.findUserWithPassword === "function") {
-                const result = await repository.findUserWithPassword("missing@test.com", mockModel);
-                expect(result).toBeNull();
-            }
-        });
-    });
+            await expect(repository.findUserByEmail("test@leapmentor.com"))
+                .rejects.toThrow("Cluster Primary Failover Read Lock Timeout");
 
-    describe("logLoginAttempt", () => {
-        it("should execute an upsert or write log parameters safely to the database", async () => {
-            const mockLog = { ip: "127.0.0.1", userAgent: "Mozilla", timestamp: new Date() };
-            mockModel.create.mockResolvedValue(mockLog);
-
-            if (typeof repository.logLoginAttempt === "function") {
-                const result = await repository.logLoginAttempt("user_123", "127.0.0.1", "Mozilla", mockModel);
-                expect(result).toBeDefined();
-            }
+            expect(logger.error).toHaveBeenCalledWith("DB error in findUserByEmail", {
+                email: "test@leapmentor.com",
+                error: "Cluster Primary Failover Read Lock Timeout",
+            });
         });
     });
 });

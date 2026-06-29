@@ -45,6 +45,43 @@ describe("Google Calendar Controller (Unit)", () => {
             expect(mockService.getAuthUrl).toHaveBeenCalledWith("mentor_abc_123");
             expect(ok).toHaveBeenCalledWith(res, { url: "https://accounts.google.com/o/oauth2" });
         });
+
+        it("should forward service errors to handleError", async () => {
+            const err = new Error("OAuth config missing");
+            mockService.getAuthUrl.mockRejectedValue(err);
+
+            await controller.getAuthUrl(req, res);
+
+            expect(handleError).toHaveBeenCalledWith(res, err, "googleCalendar.getAuthUrl");
+        });
+    });
+
+    describe("getStatus", () => {
+        it("should return the integration connection status for the authenticated user", async () => {
+            mockService.getStatus.mockResolvedValue(true);
+
+            await controller.getStatus(req, res);
+
+            expect(mockService.getStatus).toHaveBeenCalledWith("mentor_abc_123");
+            expect(ok).toHaveBeenCalledWith(res, { connected: true });
+        });
+
+        it("should return false when the user has no active Google Calendar integration", async () => {
+            mockService.getStatus.mockResolvedValue(false);
+
+            await controller.getStatus(req, res);
+
+            expect(ok).toHaveBeenCalledWith(res, { connected: false });
+        });
+
+        it("should forward service errors to handleError", async () => {
+            const err = new Error("Token lookup failed");
+            mockService.getStatus.mockRejectedValue(err);
+
+            await controller.getStatus(req, res);
+
+            expect(handleError).toHaveBeenCalledWith(res, err, "googleCalendar.handleCallback");
+        });
     });
 
     describe("handleCallback", () => {
@@ -66,6 +103,86 @@ describe("Google Calendar Controller (Unit)", () => {
 
             expect(mockService.handleCallback).not.toHaveBeenCalled();
             expect(res.send).toHaveBeenCalledWith(expect.stringContaining("GOOGLE_CALENDAR_ERROR"));
+        });
+
+        it("should send GOOGLE_CALENDAR_ERROR postMessage when the service throws during token exchange", async () => {
+            req.query = { code: "bad_code", state: "state_b64" };
+            const err = new Error("Token exchange failed");
+            mockService.handleCallback.mockRejectedValue(err);
+
+            await controller.handleCallback(req, res);
+
+            expect(mockLogger.error).toHaveBeenCalledWith(
+                "Google Calendar callback error",
+                expect.objectContaining({ error: "Token exchange failed" })
+            );
+            expect(res.send).toHaveBeenCalledWith(expect.stringContaining("GOOGLE_CALENDAR_ERROR"));
+        });
+    });
+
+    describe("disconnect", () => {
+        it("should call service disconnect with user id and return 204 no content", async () => {
+            mockService.disconnect.mockResolvedValue();
+
+            await controller.disconnect(req, res);
+
+            expect(mockService.disconnect).toHaveBeenCalledWith("mentor_abc_123");
+            expect(noContent).toHaveBeenCalledWith(res);
+        });
+
+        it("should forward service errors to handleError", async () => {
+            const err = new Error("Token revocation failed");
+            mockService.disconnect.mockRejectedValue(err);
+
+            await controller.disconnect(req, res);
+
+            expect(handleError).toHaveBeenCalledWith(res, err, "googleCalendar.getBusySlots");
+        });
+    });
+
+    describe("getBusySlots", () => {
+        it("should pass date range query params to service and return busy slot array", async () => {
+            req.query = { startDate: "2026-07-01", endDate: "2026-07-07" };
+            const busySlots = [{ start: "2026-07-02T10:00:00Z", end: "2026-07-02T11:00:00Z" }];
+            mockService.getBusySlots.mockResolvedValue(busySlots);
+
+            await controller.getBusySlots(req, res);
+
+            expect(mockService.getBusySlots).toHaveBeenCalledWith("mentor_abc_123", "2026-07-01", "2026-07-07");
+            expect(ok).toHaveBeenCalledWith(res, { busy: busySlots });
+        });
+
+        it("should forward service errors to handleError", async () => {
+            req.query = { startDate: "2026-07-01", endDate: "2026-07-07" };
+            const err = new Error("Google API rate limit");
+            mockService.getBusySlots.mockRejectedValue(err);
+
+            await controller.getBusySlots(req, res);
+
+            expect(handleError).toHaveBeenCalledWith(res, err, "googleCalendar.getEvents");
+        });
+    });
+
+    describe("getEvents", () => {
+        it("should pass date range query params to service and return events array", async () => {
+            req.query = { startDate: "2026-07-01", endDate: "2026-07-07" };
+            const events = [{ id: "evt_1", summary: "Mentorship session" }];
+            mockService.getEvents.mockResolvedValue(events);
+
+            await controller.getEvents(req, res);
+
+            expect(mockService.getEvents).toHaveBeenCalledWith("mentor_abc_123", "2026-07-01", "2026-07-07");
+            expect(ok).toHaveBeenCalledWith(res, { events });
+        });
+
+        it("should forward service errors to handleError", async () => {
+            req.query = { startDate: "2026-07-01", endDate: "2026-07-07" };
+            const err = new Error("Calendar API unreachable");
+            mockService.getEvents.mockRejectedValue(err);
+
+            await controller.getEvents(req, res);
+
+            expect(handleError).toHaveBeenCalledWith(res, err, "googleCalendar.disconnect");
         });
     });
 });
