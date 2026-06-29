@@ -1,13 +1,14 @@
 // backend/models/ConnectRequest.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 
 // Additional session slot schema — tracks per-slot payment for extra sessions
 const additionalSlotSchema = new mongoose.Schema(
   {
-    day:       { type: String, required: true },
-    date:      { type: String, required: true },
-    startTime: { type: String, required: true },
-    endTime:   { type: String, required: true },
+day:       { type: String, required: true, maxlength: 9  }, // "Wednesday" = 9 chars
+date:      { type: String, required: true, maxlength: 10 }, // "YYYY-MM-DD"
+startTime: { type: String, required: true, maxlength: 5  }, // "HH:MM"
+endTime:   { type: String, required: true, maxlength: 5  }, // "HH:MM"
 
     // per-slot session tracking (mirrors selectedSlotSchema)
     meetingLink:  { type: String,  default: "" },
@@ -27,13 +28,13 @@ const additionalSlotSchema = new mongoose.Schema(
 // Single slot schema — reused in array
 const selectedSlotSchema = new mongoose.Schema(
   {
-    day:       { type: String, required: true },
-    date:      { type: String, required: true },
-    startTime: { type: String, required: true },
-    endTime:   { type: String, required: true },
+    day: { type: String, required: true, maxlength: 9 }, // "Wednesday" = 9 chars
+    date: { type: String, required: true, maxlength: 10 }, // "YYYY-MM-DD"
+    startTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
+    endTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
 
     // per-slot session tracking
-    meetingLink:  { type: String,  default: "" },
+    meetingLink: { type: String, default: "", maxlength: 2048 }, // URL
     menteeMarked: { type: Boolean, default: false },
     mentorMarked: { type: Boolean, default: false },
     completedAt:  { type: Date,    default: null  },
@@ -51,15 +52,15 @@ const selectedSlotSchema = new mongoose.Schema(
       default: null,
     },
     cancelledAt:          { type: Date,   default: null },
-    cancellationReason:   { type: String, default: ""   },
+    cancellationReason: { type: String, default: "", maxlength: 500 },
 
-    // ✅ NEW — reschedule fields
+    // NEW — reschedule fields
     // isRescheduled: true on BOTH the old (cancelled) slot and the new slot
     isRescheduled:        { type: Boolean, default: false },
     // On the new slot: which index was the original slot it replaced
     rescheduledFromIndex: { type: Number,  default: null  },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const connectRequestSchema = new mongoose.Schema(
@@ -84,7 +85,7 @@ const connectRequestSchema = new mongoose.Schema(
       type: [selectedSlotSchema],
       required: true,
       validate: {
-        // ✅ FIX: Only enforce the 1–5 limit when the document is NEW.
+        //  FIX: Only enforce the 1–5 limit when the document is NEW.
         // After creation (ongoing session), additional slots are pushed here
         // for session tracking. Blocking .save() at that point breaks
         // meeting links, mark-complete, and pay-additional flows.
@@ -127,7 +128,7 @@ const connectRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    // ── Payment / Escrow fields ───────────────────────────────
+    // Payment / Escrow fields
     sessionRate: {
       type: Number,
       default: null,
@@ -156,10 +157,14 @@ const connectRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    requestedAt:  { type: Date, default: Date.now },
+    requestedAt: { type: Date, default: Date.now },
     respondedAt:  { type: Date, default: null },
-
-    // ── Commission fields (populated on escrow release) ───────
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    // ── Commission fields (populated on escrow release) 
     commissionRate: {
       type:    Number,
       default: null,
@@ -177,20 +182,25 @@ const connectRequestSchema = new mongoose.Schema(
       min:     0,
     },
 
-    // ── Additional Sessions ───────────────────────────────────
+    //Additional Sessions 
     additionalSlots: {
-      type:    [additionalSlotSchema],
+      type: [additionalSlotSchema],
       default: [],
+      validate: {
+        validator: (arr) => arr.length <= 50,
+        message: "Cannot exceed 50 additional slots per session",
+      },
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
-// ── Indexes ───────────────────────────────────────────────────
-connectRequestSchema.index({ mentor: 1, status: 1 });
-connectRequestSchema.index({ mentee: 1, status: 1 });
-connectRequestSchema.index({ paymentStatus: 1 });
+//  Indexes
 
+connectRequestSchema.index({ paymentStatus: 1 });
+connectRequestSchema.index({ mentee: 1, requestedAt: -1 });
+connectRequestSchema.index({ mentee: 1, status: 1, paidAt: -1 });
+connectRequestSchema.index({ mentor: 1, status: 1, paidAt: -1 });
 // One pending request per mentee-mentor pair at a time
 connectRequestSchema.index(
   { mentee: 1, mentor: 1, status: 1 },
@@ -199,5 +209,19 @@ connectRequestSchema.index(
     partialFilterExpression: { status: "pending" },
   }
 );
+// Returns true if escrow is currently held (payment made, not yet released)
+connectRequestSchema.methods.isPaid = function () {
+  return this.escrowStatus === "held";
+};
 
+// Returns true if the connect request is in completed status
+connectRequestSchema.methods.isCompleted = function () {
+  return this.status === "completed";
+};
+
+// Returns true if request is still pending and hasn't been responded to
+connectRequestSchema.methods.isPending = function () {
+  return this.status === "pending";
+};
+applySoftDelete(connectRequestSchema);
 module.exports = mongoose.model("ConnectRequest", connectRequestSchema);

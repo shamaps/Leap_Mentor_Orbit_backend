@@ -1,5 +1,6 @@
 // backend/utils/generateICS.js
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
+const config = require("../config/env");
 const toICSDate = (date, time) => {
   const datePart = date.replaceAll("-", "");
   const timePart = time.replaceAll(":", "") + "00";
@@ -9,7 +10,12 @@ const toICSDate = (date, time) => {
 const generateUID = (requestId, index = 0) => {
   return `leapmentor-session-${requestId}-slot${index}@leapmentor.app`;
 };
-
+const extractEmail = (raw) => {
+  if (!raw) return undefined;
+  const lt = raw.indexOf("<");
+  const gt = raw.indexOf(">", lt);
+  return lt !== -1 && gt !== -1 ? raw.slice(lt + 1, gt) : raw.trim();
+};
 const nowICSDate = () => {
   return new Date().toISOString().replaceAll(/[-:]/g, "").split(".")[0] + "Z";
 };
@@ -36,7 +42,7 @@ const generateVEVENT = ({
   const uid         = generateUID(requestId, slotIndex);
   const summary     = `LeapMentor Session: ${menteeName} with ${mentorName}`;
   const description = message
-    ? `Mentorship session on LeapMentor.\\n\\nMessage from ${menteeName}: ${message}`
+    ? String.raw`Mentorship session on LeapMentor.\n\nMessage from ${menteeName}: ${message}`
     : `Mentorship session on LeapMentor between ${menteeName} and ${mentorName}.`;
 
   return [
@@ -47,7 +53,7 @@ const generateVEVENT = ({
     `DTEND;TZID=${timezone}:${dtEnd}`,
     `SUMMARY:${summary}`,
     `DESCRIPTION:${description}`,
-    `ORGANIZER;CN=LeapMentor:mailto:${process.env.FROM_EMAIL?.match(/<(.+)>/)?.[1] || process.env.SMTP_USER}`,
+    `ORGANIZER;CN=LeapMentor:mailto:${extractEmail(config.fromEmail) || config.smtpUser}`,
     `ATTENDEE;CN=${mentorName};ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:${mentorEmail}`,
     `ATTENDEE;CN=${menteeName};ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:${menteeEmail}`,
     "STATUS:CONFIRMED",
@@ -85,7 +91,7 @@ const generateICS = ({
   date,
   startTime,
   endTime,
-  timezone = "Asia/Kolkata",
+  timezone = PLATFORM_TIMEZONE,
   message = "",
 }) => {
   // ── Normalise: support both slots[] and legacy single slot ─

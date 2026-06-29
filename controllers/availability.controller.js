@@ -1,214 +1,133 @@
 // controllers/availability.controller.js
-const Availability   = require("../models/Availability");
-const ConnectRequest = require("../models/ConnectRequest");
-const SlotLock       = require("../models/SlotLock");
-const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
+const { handleError } = require("../utils/appError");
+const { ok, created, noContent } = require("../utils/response");
 
-const { logger } = require("@sentry/node");
-// GET /api/availability/me
-const getMyAvailability = async (req, res) => {
-  try {
-    let availability = await Availability.findOne({ mentor: req.user._id });
+/**
+ * @typedef {Object} AvailabilityService
+ * @property {(mentorId: string) => Promise<Object>} getMyAvailability
+ * @property {(mentorId: string, body: Object) => Promise<Object>} createAvailability
+ * @property {(mentorId: string, body: Object) => Promise<Object>} updateAvailability
+ * @property {(mentorId: string) => Promise<Object>} getMentorAvailability
+ * @property {(mentorId: string) => Promise<void>} deleteAvailability
+ * @property {(mentorId: string, duration: number, userId: string) => Promise<Object>} getAvailableSlots
+ */
 
-    if (!availability) {
+/**
+ * Factory constructing the structural Express presentation controllers.
+ * * @param {AvailabilityService} availabilityService - Wired underlying operations logic context worker.
+ * @param {{ logger: Logger }} dependencies - Global application tracking dependencies parameter.
+ * @returns {Object} Bundle containing endpoint action mappings for routers.
+ */
+const createAvailabilityController = (availabilityService, { logger }) => {
+
+  /**
+   * Express Route Handler reading self properties.
+   * * @async
+   * @function getMyAvailability
+   * @param {import('express').Request & { user: { _id: string } }} req - Augmented network request interface.
+   * @param {import('express').Response} res - Standard connection output channel.
+   */
+  const getMyAvailability = async (req, res) => {
+    try {
+      const data = await availabilityService.getMyAvailability(req.user._id);
       logger.info("getMyAvailability completed successfully");
-      return res.status(200).json({
-        mentor: req.user._id,
-        timezone: "Asia/Kolkata",
-        sessionDurations: [30, 60],
-        googleCalendarConnected: false,
-        specificDates: [],
-        isNew: true,
-      });
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "availability.getMyAvailability");
     }
+  };
 
-    logger.info("getMyAvailability completed successfully");
-    return res.json(availability);
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// POST /api/availability
-// ─────────────────────────────────────────────────────────────
-const createAvailability = async (req, res) => {
-  try {
-    const existing = await Availability.findOne({ mentor: req.user._id });
-    if (existing) {
-      return res.status(409).json({
-        message: "Availability already exists. Use PATCH /api/availability/me to update.",
-      });
+  /**
+   * Express Route Handler writing base scheduling structures.
+   * * @async
+   * @function createAvailability
+   * @param {import('express').Request & { user: { _id: string } }} req - Request payload interface context.
+   * @param {import('express').Response} res - Success presentation execution pipeline.
+   */
+  const createAvailability = async (req, res) => {
+    try {
+      const availability = await availabilityService.createAvailability(req.user._id, req.body);
+      logger.info("createAvailability completed successfully");
+      return created(res, { message: "Availability created successfully", availability });
+    } catch (err) {
+      return handleError(res, err, "availability.createAvailability");
     }
+  };
 
-    const { timezone, sessionDurations, specificDates } = req.body;
-
-    const availability = await Availability.create({
-      mentor:           req.user._id,
-      timezone:         timezone         || "Asia/Kolkata",
-      sessionDurations: sessionDurations || [30, 60],
-      specificDates:    specificDates    || [],
-    });
-
-    logger.info("createAvailability completed successfully");
-    return res.status(201).json({ message: "Availability created successfully", availability });
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/availability/me
-// ─────────────────────────────────────────────────────────────
-const updateAvailability = async (req, res) => {
-  try {
-    const allowedFields = [
-      "timezone",
-      "sessionDurations",
-      "specificDates",
-      "googleCalendarConnected",
-    ];
-
-    const updates = {};
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
-    });
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: "No valid fields provided to update" });
+  /**
+   * Express Route Handler updating select configuration details.
+   * * @async
+   * @function updateAvailability
+   * @param {import('express').Request & { user: { _id: string } }} req - Request transaction parameter mapping.
+   * @param {import('express').Response} res - Content return socket adapter.
+   */
+  const updateAvailability = async (req, res) => {
+    try {
+      const availability = await availabilityService.updateAvailability(req.user._id, req.body);
+      logger.info("updateAvailability completed successfully");
+      return ok(res, { message: "Availability updated successfully", availability });
+    } catch (err) {
+      return handleError(res, err, "availability.updateAvailability");
     }
+  };
 
-    const availability = await Availability.findOneAndUpdate(
-      { mentor: req.user._id },
-      { $set: updates },
-      { new: true, runValidators: true, upsert: true }
-    );
-
-    logger.info("updateAvailability completed successfully");
-    return res.json({ message: "Availability updated successfully", availability });
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// GET /api/availability/:mentorId  (public)
-// ─────────────────────────────────────────────────────────────
-const getMentorAvailability = async (req, res) => {
-  try {
-    const availability = await Availability.findOne({ mentor: req.params.mentorId });
-
-    if (!availability) {
-      return res.status(404).json({ message: "Availability not set by this mentor" });
+  /**
+   * Express Route Handler exposing sanitization maps publicly.
+   * * @async
+   * @function getMentorAvailability
+   * @param {import('express').Request} req - Route parameters pipeline mapping variables.
+   * @param {import('express').Response} res - Outbound data pipeline interface.
+   */
+  const getMentorAvailability = async (req, res) => {
+    try {
+      const data = await availabilityService.getMentorAvailability(req.params.mentorId);
+      logger.info("getMentorAvailability completed successfully");
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "availability.getMentorAvailability");
     }
+  };
 
-    logger.info("getMentorAvailability completed successfully");
-    return res.json({
-      timezone:         availability.timezone,
-      sessionDurations: availability.sessionDurations,
-      specificDates:    availability.specificDates,
-    });
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// DELETE /api/availability/me
-// ─────────────────────────────────────────────────────────────
-const deleteAvailability = async (req, res) => {
-  try {
-    await Availability.findOneAndDelete({ mentor: req.user._id });
-    logger.info("deleteAvailability completed successfully");
-    return res.json({ message: "Availability cleared successfully" });
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// GET /api/availability/:mentorId/slots?duration=60
-// ─────────────────────────────────────────────────────────────
-const getAvailableSlots = async (req, res) => {
-  try {
-    const { mentorId } = req.params;
-    const duration = Number.parseInt(req.query.duration) || 60;
-
-    if (![30, 45, 60].includes(duration)) {
-      return res.status(400).json({ message: "Duration must be 30, 45, or 60 minutes" });
+  /**
+   * Express Route Handler discarding administrative profiles records.
+   * * @async
+   * @function deleteAvailability
+   * @param {import('express').Request & { user: { _id: string } }} req - Request verification state container.
+   * @param {import('express').Response} res - Termination state handler framework.
+   */
+  const deleteAvailability = async (req, res) => {
+    try {
+      await availabilityService.deleteAvailability(req.user._id);
+      logger.info("deleteAvailability completed successfully");
+      return noContent(res);
+    } catch (err) {
+      return handleError(res, err, "availability.deleteAvailability");
     }
+  };
 
-    const availability = await Availability.findOne({ mentor: mentorId });
-    if (!availability) {
-      return res.status(404).json({ message: "Availability not set by this mentor" });
-    }
-
-   const bookedRequests = await ConnectRequest.find({
-      mentor: mentorId,
-      status: { $in: ["pending", "accepted","ongoing"] },
-    }).select("selectedSlots selectedSlot").lean();
-
-    const bookedSlots = bookedRequests.flatMap((r) => {
-      const slots = r.selectedSlots || (r.selectedSlot ? [r.selectedSlot] : []);
-      return slots.map((slot) => ({
-        date:      slot.date,
-        startTime: slot.startTime,
-        endTime:   slot.endTime,
-      }));
-    });
-
-    // Fetch active locks from other mentees and merge with booked slots
-    const activeLocks = await SlotLock.find({
-      mentorId: mentorId,
-      lockedBy: { $ne: req.user._id },
-    }).lean();
-
-    const lockedSlots = activeLocks.map((l) => ({
-      date:      l.date,
-      startTime: l.startTime,
-      endTime:   l.endTime,
-    }));
-
-    const allBlockedSlots = [...bookedSlots, ...lockedSlots];
-
-    if (!availability.specificDates?.length) {
+  /**
+   * Express Route Handler to resolve calculated open appointments.
+   * * @async
+   * @function getAvailableSlots
+   * @param {import('express').Request & { user: { _id: string } }} req - Processing pipeline parameters and query arguments context.
+   * @param {import('express').Response} res - Final structural payload output socket channel.
+   */
+  const getAvailableSlots = async (req, res) => {
+    try {
+      const duration = Number.parseInt(req.query.duration) || 60;
+      const data = await availabilityService.getAvailableSlots(
+        req.params.mentorId,
+        duration,
+        req.user._id
+      );
       logger.info("availability.controller completed successfully");
-      return res.json({
-        timezone:         availability.timezone,
-        sessionDurations: availability.sessionDurations,
-        slots: [],
-      });
+      return ok(res, data);
+    } catch (err) {
+      return handleError(res, err, "availability.getAvailableSlots");
     }
+  };
 
-    const grouped = generateSlotsFromSpecificDates(
-      availability.specificDates,
-      duration,
-      allBlockedSlots 
-    );
-    logger.info("availability.controller completed successfully");
-    return res.json({
-      timezone:         availability.timezone,
-      sessionDurations: availability.sessionDurations,
-      slots:            grouped,
-    });
-  } catch (err) {
-    logger.error("Unhandled error in availability.controller", { error: err.message, stack: err.stack });
-    return res.status(500).json({ message: err.message });
-  }
+  return { getMyAvailability, createAvailability, updateAvailability, getMentorAvailability, deleteAvailability, getAvailableSlots };
 };
 
-module.exports = {
-  getMyAvailability,
-  createAvailability,
-  updateAvailability,
-  getMentorAvailability,
-  deleteAvailability,
-  getAvailableSlots,
-};
+module.exports = createAvailabilityController;

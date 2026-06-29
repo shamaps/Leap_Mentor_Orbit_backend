@@ -1,6 +1,6 @@
 // backend/models/Wallet.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const walletSchema = new mongoose.Schema(
   {
     user: {
@@ -22,7 +22,7 @@ const walletSchema = new mongoose.Schema(
       min: 0, // points held, not yet released to mentor
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("Wallet", walletSchema);

@@ -1,11 +1,13 @@
 // models/Availability.js
 const mongoose = require("mongoose");
+const { PLATFORM_TIMEZONE } = require("../config/constants");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 
 // ─── Time Slot ────────────────────────────────────────────────
 const timeSlotSchema = new mongoose.Schema(
   {
-    startTime: { type: String, required: true }, // "HH:MM"
-    endTime:   { type: String, required: true }, // "HH:MM"
+    startTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
+    endTime: { type: String, required: true, maxlength: 5 }, // "HH:MM"
   },
   { _id: true }
 );
@@ -28,10 +30,10 @@ const dayScheduleSchema = new mongoose.Schema(
 // e.g. mentor marks Mar 15 available with custom hours
 const specificDateSchema = new mongoose.Schema(
   {
-    date:  { type: String, required: true }, // "YYYY-MM-DD"
+    date: { type: String, required: true, maxlength: 10 }, // "YYYY-MM-DD"
     slots: { type: [timeSlotSchema], default: [] },
   },
-  { _id: false }
+  { _id: true }
 );
 
 // ─── Availability ─────────────────────────────────────────────
@@ -46,10 +48,11 @@ const availabilitySchema = new mongoose.Schema(
 
     timezone: {
       type: String,
-      default: "Asia/Kolkata",
+      default: PLATFORM_TIMEZONE,
       trim: true,
+      maxlength: 50,
     },
-
+    
     sessionDurations: {
       type: [Number],
       default: [30, 60],
@@ -59,7 +62,7 @@ const availabilitySchema = new mongoose.Schema(
       },
     },
 
-    // ✅ EXISTING — weekly recurring schedule
+    // EXISTING — weekly recurring schedule
     weeklyHours: {
       type: [dayScheduleSchema],
       default: () => [
@@ -73,13 +76,16 @@ const availabilitySchema = new mongoose.Schema(
       ],
     },
 
-    // ✅ NEW — specific date availability (calendar picker)
+    // NEW — specific date availability (calendar picker)
     // Takes priority over weeklyHours for the same date
     specificDates: {
       type: [specificDateSchema],
       default: [],
+      validate: {
+        validator: (arr) => arr.length <= 365,
+        message: "Cannot store more than 365 specific date overrides",
+      },
     },
-
     googleCalendarConnected: { type: Boolean, default: false },
 
     googleCalendarToken: {
@@ -88,7 +94,7 @@ const availabilitySchema = new mongoose.Schema(
       select: false,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 module.exports = mongoose.model("Availability", availabilitySchema);

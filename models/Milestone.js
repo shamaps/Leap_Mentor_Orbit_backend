@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 
 const milestoneSchema = new mongoose.Schema(
   {
@@ -27,6 +28,7 @@ const milestoneSchema = new mongoose.Schema(
     dueDate: {
       type: String, // "YYYY-MM-DD"
       default: null,
+      maxlength: 10,
     },
     isCompleted: {
       type: Boolean,
@@ -45,6 +47,11 @@ const milestoneSchema = new mongoose.Schema(
       type: Number,
       default: 0, // for future drag-to-reorder
     },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     //  NEW — which session slot this milestone belongs to
 // null  = goal-level milestone (general, not tied to a session)
 // 0,1,2 = belongs to selectedSlots[0], selectedSlots[1], selectedSlots[2]
@@ -53,11 +60,10 @@ slotIndex: {
   default: null,
 },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
-milestoneSchema.index({ goal: 1, order: 1 });
 milestoneSchema.index({ connectRequest: 1 });
 milestoneSchema.index({ goal: 1, slotIndex: 1, order: 1 }); 
-
+applySoftDelete(milestoneSchema)
 module.exports = mongoose.model("Milestone", milestoneSchema);

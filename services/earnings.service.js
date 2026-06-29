@@ -1,181 +1,117 @@
 // services/earnings.service.js
-const earningsRepo = require("../repositories/earnings.repository");
+const { buildMonthlyBuckets, buildWeeklyBuckets } = require("../utils/earningsChart");
+const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO, toPayoutRowDTO } = require("../utils/mappers/earnings.mapper");
 
-const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentor/earnings
-// ─────────────────────────────────────────────────────────────
-const getEarningsSummary = async (mentorId) => {
-    const completed = await earningsRepo.findCompletedSessions(mentorId);
+/**
+ * @typedef {Object} EarningsRepository
+ * @property {(mentorId: string) => Promise<Object[]>} findCompletedSessions - Fetches completed mentorship interaction documents.
+ * @property {(mentorId: string) => Promise<Object|null>} findMentorProfileStats - Resolves profile scores and total metrics.
+ * @property {(mentorId: string) => Promise<Object[]>} findOngoingPaidSessions - Tracks ongoing matches where financial capture is verified.
+ * @property {(mentorId: string) => Promise<Object|null>} findWallet - Pulls current wallet information.
+ * @property {(mentorId: string, startDate: Date) => Promise<Object[]>} findCompletedSessionsSince - Pulls sequential records bounded by date targets.
+ * @property {(search: string) => Promise<Object[]>} findUserIdsByName - Maps wildcard search text to array sets of account indices.
+ * @property {(query: Object) => Promise<number>} countPayouts - Quantifies historical matching records.
+ * @property {(query: Object, skip: number, limit: number) => Promise<Object[]>} findPayouts - Executes a structured paginated search return.
+ */
 
-    const totalEarnings = completed.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string) => void} info
+ * @property {(message: string, error: any) => void} error
+ */
 
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sessionsThisMonth = completed.filter(
-        (r) => r.completedAt && new Date(r.completedAt) >= monthStart
-    ).length;
+/**
+ * Factory function constructing the specialized Mentor Earnings Service layer.
+ * * @param {EarningsRepository} earningsRepo - Data layer persistence abstraction interface.
+ * @param {{ logger: Logger }} dependencies - Application telemetry tracing infrastructure.
+ * @returns {Object} Configured object map exposing financial reporting methods.
+ */
+const createEarningsService = (earningsRepo, { logger }) => {
 
-    const mentorProfile = await earningsRepo.findMentorProfileStats(mentorId);
-    const avgRating = mentorProfile?.avgRating || 0;
+    /**
+     * Aggregates completed earnings, current active month velocity, feedback ratings, locked escrow pipelines, and active liquidity balances.
+     * * @async
+     * @function getEarningsSummary
+     * @param {string} mentorId - System identifier string matching host profile.
+     * @returns {Promise<Object>} Formatted summary DTO displaying metrics card properties.
+     */
+    const getEarningsSummary = async (mentorId) => {
+        const completed = await earningsRepo.findCompletedSessions(mentorId);
+        const totalEarnings = completed.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
 
-    const ongoingSessions = await earningsRepo.findOngoingPaidSessions(mentorId);
-    const pendingPayout = ongoingSessions.reduce(
-        (sum, r) => sum + (r.mentorPayout || 0), 0
-    );
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const sessionsThisMonth = completed.filter(
+            (r) => r.completedAt && new Date(r.completedAt) >= monthStart
+        ).length;
 
-    const wallet = await earningsRepo.findWallet(mentorId);
+        const mentorProfile = await earningsRepo.findMentorProfileStats(mentorId);
+        const avgRating = mentorProfile?.avgRating || 0;
 
-    return {
-        totalEarnings,
-        sessionsThisMonth,
-        avgRating,
-        pendingPayout,
-        walletBalance: wallet?.balance || 0,
+        const ongoingSessions = await earningsRepo.findOngoingPaidSessions(mentorId);
+        const pendingPayout = ongoingSessions.reduce((sum, r) => sum + (r.mentorPayout || 0), 0);
+
+        const wallet = await earningsRepo.findWallet(mentorId);
+        return toEarningsSummaryDTO({ totalEarnings, sessionsThisMonth, avgRating, pendingPayout, walletBalance: wallet?.balance || 0 });
     };
-};
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentor/earnings/chart?period=monthly|weekly
-// ─────────────────────────────────────────────────────────────
-const getEarningsChart = async (mentorId, periodParam) => {
-    const period = periodParam === "weekly" ? "weekly" : "monthly";
-    const now = new Date();
-    let data = [];
+    /**
+     * Resolves timeline buckets computing localized revenue spikes across defined historical intervals.
+     * * @async
+     * @function getEarningsChart
+     * @param {string} mentorId - Profile tracker identifier index parameter.
+     * @param {string} periodParam - Timeline tracking resolution selector key ("monthly" or "weekly").
+     * @returns {Promise<{period: string, data: {label: string, amount: number}[]}>} Complete structural map representing graph coordinates.
+     */
+    const getEarningsChart = async (mentorId, periodParam) => {
+        const period = periodParam === "weekly" ? "weekly" : "monthly";
+        const now = new Date();
 
-    if (period === "monthly") {
-        const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
-
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const label = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
-            const amount = completed
-                .filter((r) => {
-                    const c = new Date(r.completedAt);
-                    return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth();
-                })
-                .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-            data.push({ label, amount });
+        if (period === "monthly") {
+            const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+            const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
+            return toEarningsChartDTO({ period, data: buildMonthlyBuckets(completed, now) });
         }
-    } else {
+
         const startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 55);
         const completed = await earningsRepo.findCompletedSessionsSince(mentorId, startDate);
+        return toEarningsChartDTO({ period, data: buildWeeklyBuckets(completed, now) });
+    };
 
-        for (let i = 7; i >= 0; i--) {
-            const weekStart = new Date(now);
-            weekStart.setDate(weekStart.getDate() - i * 7);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 7);
+    /**
+     * Compiles a searchable, paginated ledger list containing finalized billing distributions.
+     * * @async
+     * @function getPayoutHistory
+     * @param {string} mentorId - Target query host system reference identity.
+     * @param {Object} options - Search constraints and pagination boundaries package context.
+     * @param {number|string} [options.page] - Dynamic target page selector parameter index.
+     * @param {number|string} [options.limit] - Bounds density configuration parameter determining list element counts.
+     * @param {string} [options.search] - Case-insensitive wildcard user literal matching candidate profiles.
+     * @returns {Promise<{payouts: Array, pagination: {totalCount: number, currentPage: number, totalPages: number, hasMore: boolean}}>} Formatted historical data transfer result payload.
+     */
+    const getPayoutHistory = async (mentorId, { page, limit, search }) => {
+        const safePage = Math.max(1, Number.parseInt(page) || 1);
+        const safeLimit = Math.min(20, Number.parseInt(limit) || 10);
+        const safeSearch = search?.trim() || "";
+        const skip = (safePage - 1) * safeLimit;
 
-            const label = `W${8 - i}`;
-            const amount = completed
-                .filter((r) => {
-                    const c = new Date(r.completedAt);
-                    return c >= weekStart && c < weekEnd;
-                })
-                .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-            data.push({ label, amount });
+        const query = { mentor: mentorId, status: "completed" };
+
+        if (safeSearch) {
+            const matchingUsers = await earningsRepo.findUserIdsByName(safeSearch);
+            query.mentee = { $in: matchingUsers.map((u) => u._id) };
         }
-    }
 
-    return { period, data };
-};
+        const [totalCount, payouts] = await Promise.all([
+            earningsRepo.countPayouts(query),
+            earningsRepo.findPayouts(query, skip, safeLimit),
+        ]);
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentor/earnings/payouts?page=1&limit=10&search=
-// ─────────────────────────────────────────────────────────────
-const getPayoutHistory = async (mentorId, { page, limit, search }) => {
-    const safePage = Math.max(1, Number.parseInt(page) || 1);
-    const safeLimit = Math.min(20, Number.parseInt(limit) || 10);
-    const safeSearch = search?.trim() || "";
-    const skip = (safePage - 1) * safeLimit;
-
-    const query = { mentor: mentorId, status: "completed" };
-
-    if (safeSearch) {
-        const matchingUsers = await earningsRepo.findUserIdsByName(safeSearch);
-        query.mentee = { $in: matchingUsers.map((u) => u._id) };
-    }
-
-    const [totalCount, payouts] = await Promise.all([
-        earningsRepo.countPayouts(query),
-        earningsRepo.findPayouts(query, skip, safeLimit),
-    ]);
-
-    const rows = payouts.map((r) => ({
-        id: r._id,
-        date: r.completedAt
-            ? new Date(r.completedAt).toLocaleDateString("en-US", {
-                month: "short", day: "numeric", year: "numeric",
-            })
-            : "—",
-        menteeName: r.mentee?.name || "—",
-        menteeEmail: r.mentee?.email || "—",
-        sessionType: r.confirmedSlot?.day || "—",
-        duration: r.confirmedSlot
-            ? (() => {
-                const [sh, sm] = (r.confirmedSlot.startTime || "0:0").split(":").map(Number);
-                const [eh, em] = (r.confirmedSlot.endTime || "0:0").split(":").map(Number);
-                const mins = (eh * 60 + em) - (sh * 60 + sm);
-                return `${mins} mins`;
-            })()
-            : "—",
-        amount: r.totalAmount || 0,
-        status: r.paymentStatus || "paid",
-    }));
-
-    return {
-        payouts: rows,
-        pagination: {
-            totalCount,
-            currentPage: safePage,
-            totalPages: Math.ceil(totalCount / safeLimit),
-            hasMore: safePage < Math.ceil(totalCount / safeLimit),
-        },
+        return toPayoutHistoryDTO({ payouts, pagination: { totalCount, currentPage: safePage, totalPages: Math.ceil(totalCount / safeLimit), hasMore: safePage < Math.ceil(totalCount / safeLimit) } });
     };
+
+    return { getEarningsSummary, getEarningsChart, getPayoutHistory };
 };
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/mentor/earnings/withdraw
-// ─────────────────────────────────────────────────────────────
-const withdrawEarnings = async (mentorId) => {
-    const wallet = await earningsRepo.findWalletDocument(mentorId);
-
-    if (!wallet) {
-        const err = new Error("Wallet not found");
-        err.statusCode = 404;
-        throw err;
-    }
-    if (wallet.balance <= 0) {
-        const err = new Error("No balance available to withdraw");
-        err.statusCode = 400;
-        throw err;
-    }
-
-    const withdrawn = wallet.balance;
-    wallet.balance = 0;
-    await wallet.save();
-
-    await earningsRepo.createTransaction({
-        user: mentorId,
-        type: "withdrawal",
-        amount: withdrawn,
-        description: "Mentor withdrawal request",
-        balanceAfter: 0,
-    });
-
-    return {
-        message: "Withdrawal request submitted successfully",
-        withdrawn,
-        newBalance: 0,
-    };
-};
-
-module.exports = {
-    getEarningsSummary,
-    getEarningsChart,
-    getPayoutHistory,
-    withdrawEarnings,
-};
+module.exports = createEarningsService;

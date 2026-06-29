@@ -2,7 +2,8 @@
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const {RedisStore}= require("rate-limit-redis");
 const Redis = require("ioredis");
-
+const logger = require("../utils/logger");
+const config = require("../config/env");
 // ─────────────────────────────────────────────────────────────
 // Redis client
 // Set these in your .env:
@@ -12,14 +13,14 @@ const Redis = require("ioredis");
 //   REDIS_TLS=false               (set true on Railway/Render)
 // ─────────────────────────────────────────────────────────────
 const redisClient = new Redis({
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
-    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    host: config.redisHost,
+    port: config.redisPort,
+    password: config.redisPassword,
+    tls: config.redisTls ? {} : undefined,
 });
 
-redisClient.on("connect", () => console.log("✅ Redis connected (rate limiter)"));
-redisClient.on("error", (err) => console.error("❌ Redis error:", err.message));
+redisClient.on("connect", () => logger.info("Redis connected (rate limiter)"));
+redisClient.on("error", (err) => logger.error("Redis client error", { error: err.message, stack: err.stack }));
 
 // ─────────────────────────────────────────────────────────────
 // Factory — creates a Redis-backed store with a unique prefix
@@ -37,7 +38,7 @@ const makeStore = (prefix) =>
 // IP-based limiter factory
 // Used for unauthenticated routes — no user identity available
 // ─────────────────────────────────────────────────────────────
-const makeIpLimiter = (prefix, windowMs, max, message) =>
+const makeIpLimiter = ({prefix, windowMs, max, message}) =>
     rateLimit({
         windowMs,
         max,
@@ -53,7 +54,7 @@ const makeIpLimiter = (prefix, windowMs, max, message) =>
 // Used for authenticated routes — uses userId from JWT
 // Falls back to IP if user not available
 // ─────────────────────────────────────────────────────────────
-const makeUserLimiter = (prefix, windowMs, max, message) =>
+const makeUserLimiter = ({prefix, windowMs, max, message}) =>
     rateLimit({
         windowMs,
         max,
@@ -80,63 +81,79 @@ exports.globalLimiter = rateLimit({
     skip: (req) => req.method === "GET",  // ← only count POST/PUT/PATCH/DELETE
 });
 // AUTH
-exports.loginLimiter = makeIpLimiter(
-    "rl:login:",
-    15 * 60 * 1000, 5,
-    "Too many login attempts. Try again after 15 minutes."
-);
+exports.loginLimiter = makeIpLimiter({
+    prefix: "rl:login:",
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: "Too many login attempts. Try again after 15 minutes.",
+});
 
-exports.registerLimiter = makeIpLimiter(
-    "rl:register:",
-    60 * 60 * 1000, 10,
-    "Too many registrations from this IP. Try again after an hour."
-);
+exports.registerLimiter = makeIpLimiter({
+    prefix: "rl:register:",
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: "Too many registrations from this IP. Try again after an hour.",
+});
 
-exports.oauthLimiter = makeIpLimiter(
-    "rl:oauth:",
-    15 * 60 * 1000, 10,
-    "Too many auth attempts. Try again after 15 minutes."
-);
+exports.oauthLimiter = makeIpLimiter({
+    prefix: "rl:oauth:",
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: "Too many auth attempts. Try again after 15 minutes.",
+});
 
-exports.forgotPasswordLimiter = makeIpLimiter(
-    "rl:forgot:",
-    60 * 60 * 1000, 5,
-    "Too many password reset requests. Try again after an hour."
-);
+exports.forgotPasswordLimiter = makeIpLimiter({
+    prefix: "rl:forgot:",
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: "Too many password reset requests. Try again after an hour.",
+});
 
-exports.otpLimiter = makeIpLimiter(
-    "rl:otp:",
-    15 * 60 * 1000, 5,
-    "Too many OTP attempts. Try again after 15 minutes."
-);
+exports.otpLimiter = makeIpLimiter({
+    prefix: "rl:otp:",
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: "Too many OTP attempts. Try again after 15 minutes.",
+});
 
-exports.resendLimiter = makeIpLimiter(
-    "rl:resend:",
-    60 * 60 * 1000, 3,
-    "Too many resend requests. Try again after an hour."
-);
+exports.resendLimiter = makeIpLimiter({
+    prefix: "rl:resend:",
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: "Too many resend requests. Try again after an hour.",
+});
 
-exports.adminLoginLimiter = makeIpLimiter(
-    "rl:adminlogin:",
-    15 * 60 * 1000, 3,
-    "Too many admin login attempts. Try again after 15 minutes."
-);
+exports.adminLoginLimiter = makeIpLimiter({
+    prefix: "rl:adminlogin:",
+    windowMs: 15 * 60 * 1000,
+    max: 3,
+    message: "Too many admin login attempts. Try again after 15 minutes.",
+});
 
-exports.supportLimiter = makeIpLimiter(
-    "rl:support:",
-    60 * 60 * 1000, 10,
-    "Too many support messages. Try again after an hour."
-);
+exports.supportLimiter = makeIpLimiter({
+    prefix: "rl:support:",
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: "Too many support messages. Try again after an hour.",
+});
 
+exports.aiLimiter = makeUserLimiter({  
+    prefix: "rl:ai:",
+    windowMs: 60 * 60 * 1000,  
+    max: 50,                   
+    message: "AI request limit reached. Try again in an hour.",
+});
 // AUTHENTICATED
-exports.uploadLimiter = makeUserLimiter(
-    "rl:upload:",
-    60 * 60 * 1000, 10,
-    "Too many upload requests. Try again after an hour."
-);
+exports.uploadLimiter = makeUserLimiter({
+    prefix: "rl:upload:",
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: "Too many upload requests. Try again after an hour.",
+});
 
-exports.reportLimiter = makeUserLimiter(
-    "rl:report:",
-    60 * 60 * 1000, 10,
-    "Too many report submissions. Try again after an hour."
-);
+exports.reportLimiter = makeUserLimiter({
+    prefix: "rl:report:",
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: "Too many report submissions. Try again after an hour.",
+});

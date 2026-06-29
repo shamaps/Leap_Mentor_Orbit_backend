@@ -1,5 +1,6 @@
 // backend/models/Note.js
 const mongoose = require("mongoose");
+const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 
 const noteSchema = new mongoose.Schema(
   {
@@ -46,17 +47,19 @@ const noteSchema = new mongoose.Schema(
       type:    Number,
       default: 0,
     },
-    // ✅ NEW — private notes only visible to uploader
+    thumbnailUrl: { type: String, default: "" }, 
+    // NEW — private notes only visible to uploader
     isPrivate: {
       type:    Boolean,
       default: false,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 noteSchema.index({ connectRequest: 1, createdAt: -1 });
 noteSchema.index({ uploadedBy: 1 });
 noteSchema.index({ connectRequest: 1, uploadedBy: 1, isPrivate: 1 });
 
+applySoftDelete(noteSchema);
 module.exports = mongoose.model("Note", noteSchema);

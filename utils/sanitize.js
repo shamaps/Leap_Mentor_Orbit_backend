@@ -7,6 +7,7 @@ const REDACTED_KEYS = new Set([
     "idToken", "sessionToken", "apiKey", "secret", "otp", "otpCode",
     "magicLink", "resetToken", "verificationToken", "cardNumber",
     "cvv", "cvc", "ssn", "pin",
+    "calendarTokenEncKey", "encryptionKey",
 ]);
 
 const PARTIAL_KEYS = new Set([

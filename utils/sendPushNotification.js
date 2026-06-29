@@ -1,10 +1,11 @@
 const webpush = require("web-push");
 const PushSubscription = require("../models/PushSubscription");
-
+const logger = require("../utils/logger");
+const config = require("../config/env");
 webpush.setVapidDetails(
-  process.env.VAPID_MAILTO,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+  config.vapidMailto,
+  config.vapidPublicKey,
+  config.vapidPrivateKey
 );
 
 /**
@@ -31,7 +32,7 @@ const sendPushNotification = async (userId, { title, message, type = "info", url
       })
     );
   } catch (err) {
-    console.error("❌ Push notification failed:", err.message);
+    logger.error("Push notification failed", { error: err.message, stack: err.stack });
   }
 };
 

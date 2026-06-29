@@ -1,17 +1,24 @@
 const mongoose = require("mongoose");
-
+const bcrypt = require("bcryptjs");
+const { emailValidator } = require("../utils/emailValidator");
+const { BASE_SCHEMA_OPTIONS,applySoftDelete } = require("../utils/baseSchema");
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+      trim: true,                                           
+      minlength: [2, "Name must be at least 2 characters"], // ADD minlength
+      maxlength: [100, "Name cannot exceed 100 characters"],// ADD maxlength
     },
-
+    
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
+      match: emailValidator,
     },
 
     password: {
@@ -47,31 +54,24 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
-    deletedAt: {
-      type: Date,
-      default: null,
-    },
   },
-  { timestamps: true },
+  BASE_SCHEMA_OPTIONS,
 );
 // No changes to schema fields — isDeleted and deletedAt are correct ✅
-
-// Replace your pre-find middleware with this:
-userSchema.pre(/^find/, function (next) {
-  if (typeof next !== "function") return;
-
-  const options = this.getOptions() || {};
-  const filter = this.getFilter() || {};
-
-  if (options.ignoreIsDeleted) return next();
-  if (filter.isDeleted === true) return next();
-
-  this.where({ isDeleted: { $ne: true } });
-  next();
-});
+userSchema.methods.matchPassword = async function (candidatePassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidatePassword, this.password);
+};
+userSchema.index({ createdAt: -1 });
 userSchema.index({ roles: 1 });
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password;
+    delete ret.passwordChangedAt;
+    delete ret.__v;
+    return ret;
+  }
+});
+
+applySoftDelete(userSchema);
 module.exports = mongoose.model("User", userSchema);

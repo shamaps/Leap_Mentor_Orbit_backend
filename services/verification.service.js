@@ -1,21 +1,11 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
-const repo = require("../repositories/verification.repository");
-
-const { logger } = require("@sentry/node");
-// ── Mailer ────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
-
-// ── Helpers ───────────────────────────────────────────────────
-const makeOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const transporter = require("../utils/mailer");
+const { makeOtp } = require("../utils/auth.utils");
+const config = require("../config/env");
+const AppError = require("../utils/appError");
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
-
+const createVerificationService = (repo, { logger }) => {
 /**
  * Generates OTP + magic link, saves BOTH to DB, sends ONE email with both options.
  */
@@ -33,11 +23,12 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
 
     await repo.createVerificationToken({ user: user._id, otp: otpHash, token: tokenHash, expiresAt });
 
-    const base = process.env.APP_BASE_URL || "http://localhost:5173";
+    const base = config.appBaseUrl;
+    if (!base) throw new AppError(500, "APP_BASE_URL is not configured");
     const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
     await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
+        from: config.fromEmail,
         to: user.email,
         subject: `LeapMentor Email Verification${subjectSuffix}`,
         text: `
@@ -70,7 +61,6 @@ ${otpPlain}
     });
 };
 
-// ─────────────────────────────────────────────────────────────
 
 const sendVerification = async ({ email }) => {
     if (!email) return { status: 400, body: { message: "email is required" } };
@@ -127,7 +117,7 @@ const verifyLink = async ({ token, email }) => {
 
     if (record.expiresAt < new Date()) {
         await repo.deleteTokensByUser(user._id);
-        return { status: 400, body: { message: "Link expired. Please resend." } };
+        return { status: 400, body: { message: "Link expired. Please resend" } };
     }
 
     const ok = await bcrypt.compare(String(token).trim(), record.token);
@@ -138,9 +128,6 @@ const verifyLink = async ({ token, email }) => {
     return { status: 200, body: { message: "Email verified successfully", role: user.role } };
 };
 
-module.exports = {
-    sendVerification,
-    resendVerification,
-    verifyOtp,
-    verifyLink,
+    return { sendVerification, resendVerification, verifyOtp, verifyLink };
 };
+module.exports = createVerificationService;

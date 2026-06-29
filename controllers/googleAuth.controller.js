@@ -1,29 +1,48 @@
 // controllers/googleAuth.controller.js
-const service = require("../services/googleAuth.service");
-const { logger } = require("@sentry/node");
-const { issueTokens } = require("../utils/auth.utils");   // ← ADD
+const { issueTokens } = require("../utils/auth.utils");
+const { ok } = require("../utils/response");
+const { handleError } = require("../utils/appError");
 
-const googleAuth = async (req, res, next) => {
-  try {
-    const { credential, roles, termsAccepted } = req.body;
+/**
+ * @typedef {Object} GoogleAuthService
+ * @property {(body: Object) => Promise<{ user: Object, isNewUser: boolean }>} googleAuth - Orchestrates verification logic for Google token attributes.
+ */
 
-    // Service now returns { user, isNewUser } — no token
-    const { user, isNewUser } = await service.googleAuth({ credential, roles, termsAccepted });
+/**
+ * Factory assembling presentation entry controllers layer handling HTTP routing boundaries.
+ * * @param {GoogleAuthService} service - Core single sign-on execution service orchestration worker instance.
+ * @param {{ logger: Logger }} dependencies - Performance trace logger framework capturing diagnostics analytics.
+ * @returns {Object} Grouped controller routes callback actions mapping container.
+ */
+const createGoogleAuthController = (service, { logger }) => {
+  /**
+   * Express Route Handler receiving third-party Google assertions to authenticate sessions, record user states, and issue security tokens.
+   * * @async
+   * @function googleAuth
+   * @param {import('express').Request} req - Inbound transaction request envelope containing request body properties metrics.
+   * @param {import('express').Response} res - Dispatched execution result interface transport link pipeline socket channel.
+   */
+  const googleAuth = async (req, res) => {
+    try {
+      const { credential, roles, termsAccepted } = req.body;
 
-    const accessToken = await issueTokens(res, user._id);  // ← ADD
+      const { user, isNewUser } = await service.googleAuth({ credential, roles, termsAccepted });
 
-    logger.info("googleAuth completed successfully");
-    return res.json({
-      message: "Google login successful",
-      accessToken,    // ← was "token"
-      user,
-      isNewUser,
-    });
-  } catch (err) {
-    next(err);
-  
-    logger.error("Unhandled error in googleAuth.controller", { error: err.message, stack: err.stack });
-}
+      const accessToken = await issueTokens(res, user._id);
+
+      logger.info("googleAuth completed successfully");
+      return ok(res, {
+        message: "Google login successful",
+        accessToken,
+        user,
+        isNewUser,
+      });
+    } catch (err) {
+      return handleError(res, err, "googleAuth.googleAuth");
+    }
+  };
+
+  return { googleAuth };
 };
 
-module.exports = { googleAuth };
+module.exports = createGoogleAuthController;

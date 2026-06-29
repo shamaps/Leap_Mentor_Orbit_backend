@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const oauthAccountSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -15,9 +15,21 @@ const oauthAccountSchema = new mongoose.Schema({
 
   providerId: {
     type: String,
-    required: true
-  }
+    required: true,
+    maxlength: 255, // Google sub IDs are ~21 chars; 255 gives headroom for any provider
+    trim: true,
+  },
 
-}, { timestamps: true });
+}, BASE_SCHEMA_OPTIONS);
+oauthAccountSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.__v;
+    return ret;
+  },
+});
+// Prevent same provider account being linked twice (to same or different users)
+oauthAccountSchema.index({ provider: 1, providerId: 1 }, { unique: true });
+// Prevent one user from linking same provider twice (e.g. two Google accounts)
+oauthAccountSchema.index({ user: 1, provider: 1 }, { unique: true });
 
 module.exports = mongoose.model("OAuthAccount", oauthAccountSchema);

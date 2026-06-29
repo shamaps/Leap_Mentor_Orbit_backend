@@ -1,178 +1,198 @@
 // backend/services/clerkSSO.service.js
 const jwt = require("jsonwebtoken");
-const repo = require("../repositories/clerkSSO.repository");
-const AppError = require("../utils/AppError");
-const { clerkClient, signToken, sanitizeUser, validateRoles } = require("../utils/auth.utils");
-
-const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
-// Pure helpers
-// ─────────────────────────────────────────────────────────────
-
-const extractClerkMeta = (clerkUser) => {
-    const email = clerkUser.emailAddresses?.[0]?.emailAddress?.toLowerCase().trim();
-    const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
-    const externalAccount = clerkUser.externalAccounts?.[0];
-    const provider = externalAccount?.provider?.replace("oauth_", "").replace("_oidc", "");
-
-    // FIX: externalId is deprecated — use providerUserId
-    const providerId = externalAccount?.providerUserId;
-
-    return { email, name, provider, providerId };
-};
-
-// ─────────────────────────────────────────────────────────────
-// Step helpers — extracted to reduce cognitive complexity
-// ─────────────────────────────────────────────────────────────
+const AppError = require("../utils/appError");
+const { withRetry } = require("../utils/withRetry");
+const { clerkClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
+const { provisionWallet } = require("../utils/wallet");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
 
 /**
- * Decodes the Clerk token and fetches the full user from Clerk API.
- * Extracted so the main function doesn't nest a try/catch inside its own try/catch.
+ * @typedef {Object} ClerkSSORepository
+ * @property {(email: string) => Promise<Object|null>} findUserByEmail - Looks up a user record by email.
+ * @property {(data: Object) => Promise<Object>} createUser - Inserts a fresh User document.
+ * @property {(user: Object) => Promise<Object>} saveUser - Persists mutations on an existing User document.
+ * @property {(provider: string, providerId: string) => Promise<Object|null>} findOAuthAccount - Looks up linked third-party account combinations.
+ * @property {(data: Object) => Promise<Object>} createOAuthAccount - Records a new third-party profile linkage mapping.
+ * @property {(userId: any, role: string) => Promise<Object|null>} findWalletByUserAndRole - Evaluates if a specialized ledger account exists.
  */
-const resolveClerkUser = async (clerkToken) => {
-    if (!clerkToken) throw new AppError(400, "Missing Clerk token");
-
-    const decoded = jwt.decode(clerkToken);
-    logger.info("🔑 Decoded Clerk token sub:", decoded?.sub);
-
-    if (!decoded?.sub) throw new AppError(401, "Invalid Clerk token");
-
-    try {
-        const clerkUser = await clerkClient.users.getUser(decoded.sub);
-        logger.info("✅ Clerk user fetched:", clerkUser.id);
-        return clerkUser;
-    } catch (err) {
-        logger.error("❌ Failed to fetch Clerk user:", err.message);
-        throw new AppError(401, "Could not fetch Clerk user");
-    }
-};
 
 /**
- * Creates wallet + optional welcome-bonus transaction.
- * Non-fatal — errors are logged, not re-thrown.
+ * @typedef {Object} Logger
+ * @property {(message: string, meta?: Object) => void} info
+ * @property {(message: string, meta?: Object) => void} debug
+ * @property {(message: string, meta?: Object) => void} error
  */
-const provisionWallet = async (userId, roles) => {
-    const isMentee = roles.includes("mentee");
-    const startingBalance = isMentee ? 500 : 0;
 
-    logger.info("💰 Creating wallet | isMentee:", isMentee, "| startingBalance:", startingBalance);
+/**
+ * Factory function creating the Clerk Single Sign-On (SSO) Service instance.
+ * * @param {ClerkSSORepository} repo - Data layer persistence abstraction instance.
+ * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
+ * @returns {Object} Operational map holding SSO transaction methodology handler.
+ */
+const createClerkSSOService = (repo, { logger }) => {
 
-    try {
-        const wallet = await repo.createWallet({ user: userId, balance: startingBalance, escrow: 0 });
-        logger.info("✅ Wallet created:", wallet._id, "| Balance:", wallet.balance);
+    /**
+     * Extracts identity information and third-party account telemetry from a raw Clerk payload.
+     * * @function extractClerkMeta
+     * @param {Object} clerkUser - Raw user schema block emitted by the Clerk integration library.
+     * @returns {{ email: string|undefined, name: string, provider: string|undefined, providerId: string|undefined }} Cleaned semantic data identity object.
+     */
+    const extractClerkMeta = (clerkUser) => {
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress?.toLowerCase().trim();
+        const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
+        const externalAccount = clerkUser.externalAccounts?.[0];
+        const provider = externalAccount?.provider?.replace("oauth_", "").replace("_oidc", "");
+        const providerId = externalAccount?.providerUserId;
 
-        if (isMentee) {
-            const tx = await repo.createTransaction({
-                user: userId,
-                type: "credit",
-                amount: 500,
-                description: "Welcome bonus — 500 points to get started",
-                balanceAfter: 500,
-            });
-            logger.info("✅ Transaction created:", tx._id);
+        return { email, name, provider, providerId };
+    };
+
+    /**
+     * Extracts token identities, validating sub claims prior to pinging external user registries via Clerk API.
+     * * @async
+     * @function resolveClerkUser
+     * @param {string} clerkToken - Unverified raw JSON Web Token string emitted by frontends.
+     * @throws {AppError} 400 - If token argument string parameters evaluate empty.
+     * @throws {AppError} 401 - If token parsing lacks a subject indicator or retrieval pings fail completely.
+     * @returns {Promise<Object>} Complete user management information context model output from upstream integration pools.
+     */
+    const resolveClerkUser = async (clerkToken) => {
+        if (!clerkToken) throw new AppError(400, "Missing Clerk token");
+
+        const decoded = jwt.decode(clerkToken);
+        logger.info("Decoded Clerk token", { sub: decoded?.sub });
+
+        if (!decoded?.sub) throw new AppError(401, "Invalid Clerk token");
+
+        try {
+            const clerkUser = await withRetry(
+                () => clerkClient.users.getUser(decoded.sub),
+                { retries: 2, label: "clerkSSO.getUser", logger }
+            );
+            logger.info("Clerk user fetched", { clerkUserId: clerkUser.id });
+            return clerkUser;
+        } catch (err) {
+            logger.error("Failed to fetch Clerk user", { error: err.message, stack: err.stack });
+            throw new AppError(401, "Could not fetch Clerk user");
         }
-    } catch (walletErr) {
-        logger.error("❌ Wallet/Transaction creation failed:", walletErr.message);
-    }
+    };
+
+    /**
+     * Executes initial account construction workflow incorporating terms tracking and ledger initialization.
+     * * @async
+     * @function createNewUser
+     * @param {Object} parameters - Core initial registration options container.
+     * @param {string} parameters.name - Derived human identity string context.
+     * @param {string} parameters.email - Validated, lowercased unique target user email address.
+     * @param {string[]} [parameters.roles] - Initial system roles requested during onboarding.
+     * @param {boolean} parameters.termsAccepted - Compliance verification status flag state.
+     * @throws {AppError} 400 - If explicit terms criteria are unaccepted or role schemas fail validity checks.
+     * @returns {Promise<Object>} Fully hydrated, persisted platform internal User document model instance.
+     */
+    const createNewUser = async ({ name, email, roles, termsAccepted }) => {
+        if (termsAccepted !== true)
+            throw new AppError(400, "You must accept terms to continue");
+
+        const incomingRoles = Array.isArray(roles) && roles.length ? roles : ["mentee"];
+        const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
+        if (!valid) throw new AppError(400, message);
+
+        logger.info("Creating new Clerk user", { roles: uniqueRoles });
+
+        const user = await repo.createUser({
+            name,
+            email,
+            roles: uniqueRoles,
+            isEmailVerified: true,
+            termsAccepted: true,
+            termsAcceptedAt: new Date(),
+        });
+
+        logger.info("Clerk user created", { userId: user._id.toString(), roles: user.roles });
+
+        try {
+            await provisionWallet(user._id, uniqueRoles);
+        } catch (walletErr) {
+            logger.error("Wallet provisioning failed during Clerk SSO", { error: walletErr.message, userId: user._id.toString() });
+        }
+
+        return user;
+    };
+
+    /**
+     * Establishes external federation structural linkage references inside internal index sets.
+     * * @async
+     * @function linkOAuthAccount
+     * @param {any} userId - Destination object identifier primary key tracking platform users.
+     * @param {string} provider - Federation channel system string tag.
+     * @param {string} providerId - Remote identification signature unique to upstream source provider.
+     * @returns {Promise<void>} Processing resolves on skipped duplicates or completed mappings.
+     */
+    const linkOAuthAccount = async (userId, provider, providerId) => {
+        if (!provider || !providerId) return;
+
+        const existingOAuth = await repo.findOAuthAccount(provider, providerId);
+
+        if (existingOAuth) {
+            logger.info("OAuthAccount already linked", { provider });
+            return;
+        }
+
+        await repo.createOAuthAccount({ user: userId, provider, providerId });
+        logger.info("OAuthAccount linked", { provider });
+    };
+
+    /**
+     * Main handler processing inbound Clerk assertions, matching email criteria, merging capabilities dynamically, and tracking registration states.
+     * * @async
+     * @function clerkSSO
+     * @param {Object} input - Network input parameters payload package context.
+     * @param {string} input.clerkToken - Base authorization exchange ticket string.
+     * @param {string[]} [input.roles] - Incoming capability profiles array configurations.
+     * @param {boolean} [input.termsAccepted] - Policy confirmation flag status tracker.
+     * @throws {AppError} 400 - If resolved assertion payloads provide no usable destination email contexts.
+     * @returns {Promise<{ user: Object, isNewUser: boolean }>} Sanitized profile DTO mapping combined with boolean flag tracking onboarding status.
+     */
+    const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
+        const clerkUser = await resolveClerkUser(clerkToken);
+        const { email, name, provider, providerId } = extractClerkMeta(clerkUser);
+
+        logger.info("Clerk SSO identity resolved", { provider, name });
+
+        if (!email) throw new AppError(400, "No email returned from provider");
+
+        let user = await repo.findUserByEmail(email);
+        let isNewUser = false;
+
+        logger.debug("User found in DB", { found: !!user });
+        if (user) {
+            const rolesBefore = new Set(user.roles);
+            await mergeRoles(user, roles, repo.saveUser);
+            const addedRoles = user.roles.filter((r) => !rolesBefore.has(r));
+
+            for (const role of addedRoles) {
+                const existingWallet = await repo.findWalletByUserAndRole(user._id, role);
+                if (!existingWallet) {
+                    try {
+                        await provisionWallet(user._id, role);
+                    } catch (walletErr) {
+                        logger.error("Wallet provisioning failed during Clerk SSO role merge", { error: walletErr.message, userId: user._id.toString() });
+                    }
+                }
+            }
+
+            logger.info("Existing Clerk user found", { roles: user.roles, addedRoles });
+        } else {
+            user = await createNewUser({ name, email, roles, termsAccepted });
+            isNewUser = true;
+        }
+
+        await linkOAuthAccount(user._id, provider, providerId);
+
+        return { user: toUserDTO(user), isNewUser };
+    };
+
+    return { clerkSSO };
 };
 
-/**
- * Validates terms + roles, creates user + wallet.
- * Extracted to eliminate deep nesting that drove cognitive complexity > 15.
- */
-const createNewUser = async ({ name, email, roles, termsAccepted }) => {
-    if (termsAccepted !== true)
-        throw new AppError(400, "You must accept terms to continue");
-
-    const incomingRoles = Array.isArray(roles) && roles.length ? roles : ["mentee"];
-    const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
-    if (!valid) throw new AppError(400, message);
-
-    logger.info("🆕 Creating new user with roles:", uniqueRoles);
-
-    const user = await repo.createUser({
-        name,
-        email,
-        roles: uniqueRoles,
-        isEmailVerified: true,
-        termsAccepted: true,
-        termsAcceptedAt: new Date(),
-    });
-
-    logger.info("✅ User created:", user._id, "| Roles:", user.roles);
-
-    await provisionWallet(user._id, uniqueRoles);
-
-    return user;
-};
-
-/**
- * Merges new roles onto an existing user if the set has changed.
- */
-const mergeRolesIfNeeded = async (user, roles) => {
-    if (!Array.isArray(roles) || !roles.length) return;
-
-    const mergedRoles = [...new Set([...user.roles, ...roles])];
-    if (mergedRoles.length !== user.roles.length) {
-        user.roles = mergedRoles;
-        await repo.saveUser(user);
-        logger.info("🔄 Roles updated:", user.roles);
-    }
-};
-
-/**
- * Links an OAuthAccount record if one doesn't already exist.
- * FIX: flipped negated condition `if (!existingOAuth)` → early-return on positive case.
- */
-const linkOAuthAccount = async (userId, provider, providerId) => {
-    if (!provider || !providerId) return;
-
-    const existingOAuth = await repo.findOAuthAccount(provider, providerId);
-
-    if (existingOAuth) {
-        logger.info("ℹ️ OAuthAccount already linked | Provider:", provider);
-        return;
-    }
-
-    await repo.createOAuthAccount({ user: userId, provider, providerId });
-    logger.info("🔗 OAuthAccount linked | Provider:", provider);
-};
-
-// ─────────────────────────────────────────────────────────────
-// Main service function
-// Cognitive complexity reduced from 31 → well under 15 by
-// extracting resolveClerkUser / createNewUser / mergeRolesIfNeeded / linkOAuthAccount
-// ─────────────────────────────────────────────────────────────
-
-const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
-    // 1) Validate token + fetch Clerk user
-    const clerkUser = await resolveClerkUser(clerkToken);
-    const { email, name, provider, providerId } = extractClerkMeta(clerkUser);
-
-    logger.info("📧 Email:", email, "| Provider:", provider, "| Name:", name);
-
-    if (!email) throw new AppError(400, "No email returned from provider");
-
-    // 2) Find or create user
-    // FIX: flipped negated condition `if (!user)` → positive branch first
-    let user = await repo.findUserByEmail(email);
-    let isNewUser = false;
-
-    logger.info("🔍 User found in DB:", !!user, "| Email:", email);
-
-    if (user) {
-        logger.info("⚠️ Existing user found — skipping wallet creation | Roles:", user.roles);
-        await mergeRolesIfNeeded(user, roles);
-    } else {
-        user = await createNewUser({ name, email, roles, termsAccepted });
-        isNewUser = true;
-    }
-
-    // 3) Link OAuth account
-    await linkOAuthAccount(user._id, provider, providerId);
-
-    // 4) Issue JWT
-    return { user: sanitizeUser(user), isNewUser };
-};
-
-module.exports = { clerkSSO };
+module.exports = createClerkSSOService;

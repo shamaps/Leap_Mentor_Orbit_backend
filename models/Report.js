@@ -1,6 +1,6 @@
 // backend/models/Report.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 const COMPLAINT_TYPES = [
   "inappropriate_behavior",
   "session_misconduct",
@@ -45,6 +45,8 @@ const reportSchema = new mongoose.Schema(
     },
     screenshotUrl: { type: String, default: "" },
     screenshotPublicId: { type: String, default: "" },
+    screenshotOriginalName: { type: String, default: "" },
+    screenshotThumbnailUrl: { type: String, default: "" },
     status: {
       type: String,
       enum: ["open", "under_review", "resolved", "dismissed"],
@@ -54,18 +56,16 @@ const reportSchema = new mongoose.Schema(
     resolvedAt: { type: Date, default: null },
     resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
-    // ✅ NEW — track if refund was processed by admin
+    //NEW — track if refund was processed by admin
     refundProcessed: { type: Boolean, default: false },
     refundedAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
-reportSchema.index({ connectRequest: 1 });
-reportSchema.index({ reportedBy: 1 });
 reportSchema.index({ reportedUser: 1 });
 reportSchema.index({ status: 1 });
 reportSchema.index({ createdAt: -1 });
 reportSchema.index({ connectRequest: 1, reportedBy: 1 }, { unique: true });
-
+applySoftDelete(reportSchema);
 module.exports = mongoose.model("Report", reportSchema);

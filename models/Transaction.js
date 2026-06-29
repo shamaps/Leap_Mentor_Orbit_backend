@@ -1,6 +1,6 @@
 // backend/models/Transaction.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS ,applySoftDelete} = require("../utils/baseSchema");
 const transactionSchema = new mongoose.Schema(
   {
     user: {
@@ -37,10 +37,12 @@ const transactionSchema = new mongoose.Schema(
     },
 
     // Human readable description
-    description: {
-      type: String,
-      default: "",
-    },
+      description: {
+        type: String,
+        default: "",
+        maxlength: 500,
+      },
+
 
     // Snapshot of balance after this transaction (for audit trail)
     balanceAfter: {
@@ -48,11 +50,12 @@ const transactionSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
 
 // ── Indexes for fast lookup ───────────────────────────────────
 transactionSchema.index({ user: 1, createdAt: -1 });
 transactionSchema.index({ connectRequest: 1 });
 transactionSchema.index({ type: 1 }); 
+applySoftDelete(transactionSchema);
 module.exports = mongoose.model("Transaction", transactionSchema);

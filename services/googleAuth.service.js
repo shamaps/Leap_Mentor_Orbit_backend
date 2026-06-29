@@ -1,169 +1,166 @@
 // services/googleAuth.service.js
 const jwt = require("jsonwebtoken");
-const repo = require("../repositories/googleAuth.repository");
-const { googleClient, sanitizeUser, validateRoles } = require("../utils/auth.utils");
-
-const { logger } = require("@sentry/node");
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Verify the Google credential and return the token payload.
- * Throws typed errors on failure.
- *
- * @param {string} credential - raw Google credential from req.body
- * @returns {Promise<Object>} payload - verified Google token payload
- */
-const verifyGoogleCredential = async (credential) => {
-    const decodedToken = jwt.decode(credential);
-    const tokenAudience = decodedToken?.aud;
-    const envAudience = process.env.GOOGLE_CLIENT_ID?.trim();
-
-    if (!envAudience)
-        throw Object.assign(new Error("GOOGLE_CLIENT_ID is undefined in .env"), { status: 500 });
-
-    const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
-        audience: [envAudience, tokenAudience],
-    });
-
-    const payload = ticket.getPayload();
-
-    // Log mismatch as a warning — not a hard failure (Google allows multiple client IDs)
-    if (payload.aud !== envAudience) {
-        logger.warn("⚠️ WARNING: Token was issued for a different Client ID. Check your .env!");
-    }
-
-    return payload;
-};
+const { googleClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
+const { provisionWallet } = require("../utils/wallet")
+const AppError = require("../utils/appError");
+const { withTimeout } = require("../utils/withTimeout");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
+const config = require("../config/env");
 
 /**
- * Create a brand-new user, wallet, and welcome transaction.
- * Called only when no existing user is found for this email.
- *
- * @param {Object} params
- * @param {string} params.name
- * @param {string} params.email          - already normalized
- * @param {Array}  params.roles
- * @param {boolean} params.termsAccepted
- * @param {boolean} params.emailVerified - from Google payload
- * @returns {Promise<Document>} newly created user
+ * @typedef {Object} GoogleAuthRepository
+ * @property {(email: string) => Promise<Object|null>} findUserByEmail - Resolves a user record by their normalized email address.
+ * @property {(data: Object) => Promise<Object>} createUser - Inserts a new user document into the database.
+ * @property {(user: Object) => Promise<Object>} saveUser - Persists updates or role changes on an existing user document.
+ * @property {(provider: string, providerId: string) => Promise<Object|null>} findOAuthAccount - Searches for an existing third-party federation record.
+ * @property {(userId: any, provider: string, providerId: string) => Promise<Object>} createOAuthAccount - Records a new federation link for a user.
  */
-const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerified }) => {
-    // ✅ Sonar fix 1: guard moved here — eliminates negated condition on `!user` in main fn
-    if (termsAccepted !== true)
-        throw Object.assign(new Error("You must accept terms to continue"), { status: 400 });
-
-    const incomingRoles = Array.isArray(roles) && roles.length ? roles : ["mentee"];
-    const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
-    if (!valid)
-        throw Object.assign(new Error(message), { status: 400 });
-
-    const user = await repo.createUser({
-        name,
-        email,
-        roles: uniqueRoles,
-        isEmailVerified: !!emailVerified,
-        termsAccepted: true,
-        termsAcceptedAt: new Date(),
-    });
-
-    // ✅ Create wallet — 500 points for mentee, 0 for mentor
-    const isMentee = uniqueRoles.includes("mentee");
-    const startingBalance = isMentee ? 500 : 0;
-
-    await repo.createWallet(user._id, startingBalance);
-
-    if (isMentee) {
-        await repo.createWelcomeTransaction(user._id);
-    }
-
-    return user;
-};
 
 /**
- * Merge any newly requested roles into an existing user's roles.
- * Only saves if roles actually changed.
- *
- * @param {Document} user
- * @param {Array}    roles - roles from req.body (may be empty)
- * @returns {Promise<void>}
+ * @typedef {Object} Logger
+ * @property {(message: string) => void} info
+ * @property {(message: string) => void} warn
+ * @property {(message: string, error: any) => void} error
  */
-const mergeRolesIfChanged = async (user, roles) => {
-    // ✅ Sonar fix 2: 'if' as only statement in else block — extracted into its own function
-    if (!Array.isArray(roles) || !roles.length) return;
-
-    const mergedRoles = [...new Set([...user.roles, ...roles])];
-    if (mergedRoles.length !== user.roles.length) {
-        user.roles = mergedRoles;
-        await repo.saveUser(user);
-    }
-};
 
 /**
- * Ensure an OAuthAccount link exists for this Google sub.
- * Creates one if it doesn't already exist.
- *
- * @param {ObjectId} userId
- * @param {string}   googleSub
- * @returns {Promise<void>}
+ * Factory function creating the Google OAuth Authentication Service instance.
+ * * @param {GoogleAuthRepository} repo - Data layer persistence abstraction interface.
+ * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
+ * @returns {Object} Configured object map containing the Google authentication service method.
  */
-const ensureOAuthAccount = async (userId, googleSub) => {
-    const existing = await repo.findOAuthAccount("google", googleSub);
-    if (!existing) {
-        await repo.createOAuthAccount(userId, "google", googleSub);
-    }
+const createGoogleAuthService = (repo, { logger }) => {
+    /**
+     * Decode, safely verify with timeout boundaries, and extract the Google ID token payload.
+     * Throws typed errors on configuration absence or verification timeouts.
+     *
+     * @private
+     * @async
+     * @function verifyGoogleCredential
+     * @param {string} credential - Raw Google credential token string from inbound request.
+     * @throws {AppError} 500 - If GOOGLE_CLIENT_ID is undefined inside environment configurations.
+     * @returns {Promise<Object>} The verified Google token payload containing claim profiles.
+     */
+    const verifyGoogleCredential = async (credential) => {
+        const decodedToken = jwt.decode(credential);
+        const tokenAudience = decodedToken?.aud;
+        const envAudience = config.googleClientId?.trim();
+
+        if (!envAudience)
+            throw new AppError(500, "GOOGLE_CLIENT_ID is undefined in .env");
+
+        const ticket = await withTimeout(googleClient.verifyIdToken({
+            idToken: credential,
+            audience: [envAudience, tokenAudience]
+        }), 8000, "Google token verification");
+
+        const payload = ticket.getPayload();
+
+        if (payload.aud !== envAudience) {
+            logger.warn("⚠️ WARNING: Token was issued for a different Client ID. Check your .env!");
+        }
+
+        return payload;
+    };
+
+    /**
+     * Provisions a brand-new user record and executes initial resource allocation.
+     * Called only when no existing user is found matching the verified email.
+     *
+     * @private
+     * @async
+     * @function registerNewUser
+     * @param {Object} params - Initial user parameters package context.
+     * @param {string} params.name - User human name string derived from identity claims.
+     * @param {string} params.email - Lowercased, stripped, unique user target email address.
+     * @param {string[]} params.roles - Requested system access level capabilities.
+     * @param {boolean} params.termsAccepted - Compliance flag state for policies acceptance.
+     * @param {boolean} params.emailVerified - Verification state flag provided directly by Google assertions.
+     * @throws {AppError} 400 - If terms are unaccepted or requested role shapes fail validation rules.
+     * @returns {Promise<Object>} The newly created, saved platform internal User document model.
+     */
+    const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerified }) => {
+        if (termsAccepted !== true)
+            throw new AppError(400, "You must accept terms to continue");
+
+        const incomingRoles = Array.isArray(roles) && roles.length ? roles : ["mentee"];
+        const { valid, message, uniqueRoles } = validateRoles(incomingRoles);
+        if (!valid)
+            throw new AppError(400, message);
+
+        const user = await repo.createUser({
+            name,
+            email,
+            roles: uniqueRoles,
+            isEmailVerified: !!emailVerified,
+            termsAccepted: true,
+            termsAcceptedAt: new Date(),
+        });
+
+        await provisionWallet(user._id, uniqueRoles);
+        return user;
+    };
+
+    /**
+     * Verifies presence or generates structural provider linkages tracking federated accounts.
+     *
+     * @private
+     * @async
+     * @function ensureOAuthAccount
+     * @param {any} userId - Target primary key tracking internal account user models.
+     * @param {string} googleSub - Upstream provider identifier index pointer.
+     * @returns {Promise<void>} Resolves upon confirmed presence or completed mapping record insertions.
+     */
+    const ensureOAuthAccount = async (userId, googleSub) => {
+        const existing = await repo.findOAuthAccount("google", googleSub);
+        if (!existing) {
+            await repo.createOAuthAccount(userId, "google", googleSub);
+        }
+    };
+
+    /**
+     * Main handler orchestrating Google OAuth login, registration fallback, and role expansion paths.
+     * Reduced complexity wrapper segregating operational orchestration.
+     *
+     * @async
+     * @function googleAuth
+     * @param {Object} params - Context parameter tracking structural state payload envelopes.
+     * @param {string} params.credential - Unverified raw Google identification token assertion string.
+     * @param {string[]} params.roles - Array map collection tracking requested capabilities.
+     * @param {boolean} params.termsAccepted - Policy validation confirmation status tracker flag.
+     * @throws {AppError} 400 - If credential parameters are absent or identity claims miss essential attributes.
+     * @returns {Promise<{ user: Object, isNewUser: boolean }>} Sanitized user model mapping DTO and registration status flag.
+     */
+    const googleAuth = async ({ credential, roles, termsAccepted }) => {
+        if (!credential)
+            throw new AppError(400, "Missing Google credential");
+
+        const payload = await verifyGoogleCredential(credential);
+
+        const email = payload?.email?.toLowerCase()?.trim();
+        const name = payload?.name || "User";
+        const googleSub = payload?.sub;
+        const emailVerified = payload?.email_verified;
+
+        if (!email || !googleSub)
+            throw new AppError(400, "Invalid Google payload (missing email/sub)");
+
+        let user = await repo.findUserByEmail(email);
+        let isNewUser = false;
+
+        if (user) {
+            await mergeRoles(user, roles, repo.saveUser);
+        } else {
+            user = await registerNewUser({ name, email, roles, termsAccepted, emailVerified });
+            isNewUser = true;
+        }
+
+        await ensureOAuthAccount(user._id, googleSub);
+
+        return { user: toUserDTO(user), isNewUser };
+    };
+
+    return { googleAuth };
 };
 
-// ─────────────────────────────────────────────────────────────
-// MAIN — googleAuth
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Handle Google OAuth login/registration.
- * Complexity reduced from 25 → under 15 by extracting helpers above.
- *
- * @param {Object} params
- * @param {string} params.credential    - Google credential token
- * @param {Array}  params.roles         - requested roles
- * @param {boolean} params.termsAccepted
- * @returns {Promise<{ token: string, user: Object, isNewUser: boolean }>}
- */
-const googleAuth = async ({ credential, roles, termsAccepted }) => {
-    if (!credential)
-        throw Object.assign(new Error("Missing Google credential"), { status: 400 });
-
-    // 1 — verify Google token
-    const payload = await verifyGoogleCredential(credential);
-
-    const email = payload?.email?.toLowerCase()?.trim();
-    const name = payload?.name || "User";
-    const googleSub = payload?.sub;
-    const emailVerified = payload?.email_verified;
-
-    if (!email || !googleSub)
-        throw Object.assign(new Error("Invalid Google payload (missing email/sub)"), { status: 400 });
-
-    // 2 — find or create user
-    // ✅ Sonar fix 3: flipped to positive condition (user exists) — eliminates negated condition
-    let user = await repo.findUserByEmail(email);
-    let isNewUser = false;
-
-    if (user) {
-        // existing user — merge roles if needed
-        await mergeRolesIfChanged(user, roles);
-    } else {
-        // new user — register, create wallet
-        user = await registerNewUser({ name, email, roles, termsAccepted, emailVerified });
-        isNewUser = true;
-    }
-
-    // 3 — ensure OAuth account link
-    await ensureOAuthAccount(user._id, googleSub);
-
-    // 4 — sign and return token
-    return { user: sanitizeUser(user), isNewUser };
-};
-
-module.exports = { googleAuth };
+module.exports = createGoogleAuthService;

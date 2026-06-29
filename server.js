@@ -5,30 +5,49 @@ require("./instrument");
 require("dotenv").config();
 
 const express = require("express");
-const http       = require("http");
+const http = require("node:http");
 const { Server } = require("socket.io");
-const mongoose   = require("mongoose");
-
-const app                  = require("./app");
-const socketAuth           = require("./socket/socketAuth");
-const socketHandler        = require("./socket/socketHandler");
+const Sentry = require("@sentry/node");
+const logger = require("./utils/logger");
+const app = require("./app");
+const socketAuth = require("./socket/socketAuth");
+const socketHandler = require("./socket/socketHandler");
 const { verifyConnection } = require("./config/cloudinary");
+const { connectDB } = require("./config/database");
+const config = require("./config/env"); 
+/* ===========================
+   🔹 PROCESS-LEVEL SAFETY NETS
+   Must be registered once, before anything else can throw/reject.
+=========================== */
+process.on("unhandledRejection", (reason) => {
+  Sentry.captureException(reason);
+  logger.error("Unhandled Promise Rejection", {
+    reason: reason?.message || reason,
+    stack: reason?.stack,
+  });
+});
 
+process.on("uncaughtException", (err) => {
+  Sentry.captureException(err);
+  logger.error("Uncaught Exception", {
+    error: err.message,
+    stack: err.stack,
+    isOperational: !!err.isOperational,
+  });
+  if (!err.isOperational) {
+    process.exit(1);
+  }
+});
 /* ===========================
    🔹 DATABASE CONNECTION
 =========================== */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("✅ MongoDB Connected");
-    verifyConnection();
-  })
-  .catch((err) => console.error("❌ MongoDB Error:", err.message));
-
+(async () => {
+await connectDB();
+verifyConnection();
 /* ===========================
    🔹 CRON JOBS
 =========================== */
-const { startCleanupCron }         = require("./cron/cleanupAvailability");
+const { startCleanupCron } = require("./cron/cleanupAvailability");
 const { startSessionReminderCron } = require("./cron/sessionReminders");
 startCleanupCron();
 startSessionReminderCron();
@@ -45,11 +64,11 @@ const io = new Server(httpServer, {
       "http://localhost:5174",
       "http://localhost:3000",
       "http://localhost:4173",
-      process.env.APP_BASE_URL, 
+      process.env.APP_BASE_URL,
     ],
     credentials: true,
   },
-  pingTimeout:  60000,
+  pingTimeout: 60000,
   pingInterval: 25000,
 });
 
@@ -61,7 +80,8 @@ socketHandler(io);
 =========================== */
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
-  console.log(`🔥 Server running on port ${PORT}`);
-  console.log(`🔌 Socket.io ready`);
-  console.log(`📡 Using Client ID: ${process.env.GOOGLE_CLIENT_ID ? "LOADED" : "NOT FOUND"}`);
+  logger.info(`🔥 Server running on port ${PORT}`);
+  logger.info(`🔌 Socket.io ready`);
+  logger.info(`📡 Using Client ID: ${process.env.GOOGLE_CLIENT_ID ? "LOADED" : "NOT FOUND"}`);
 });
+})();

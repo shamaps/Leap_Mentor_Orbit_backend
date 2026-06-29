@@ -1,47 +1,55 @@
 // repositories/googleCalendar.repository.js
 const Availability = require("../models/Availability");
+const { encrypt, decrypt } = require("../utils/tokenCrypto");
 
 /**
- * Find availability record for a mentor, including the calendar token.
- * @param {ObjectId} mentorId
- * @returns {Promise<Document|null>}
+ * Resolves availability records, crypto-decrypting credential hashes if located inside data pools.
+ * * @function findAvailabilityWithToken
+ * @param {any} mentorId - Target primary key tracking internal account user entries.
+ * @returns {Promise<Object|null>} Hydrated document pointer context layout mapping attributes or null.
  */
 const findAvailabilityWithToken = async (mentorId) => {
-    return await Availability.findOne({ mentor: mentorId }).select("+googleCalendarToken");
+    const doc = await Availability.findOne({ mentor: mentorId }).select("+googleCalendarToken");
+    if (doc?.googleCalendarToken) {
+        doc.googleCalendarToken = decrypt(doc.googleCalendarToken);
+    }
+    return doc;
 };
 
 /**
- * Save Google Calendar tokens to a mentor's availability record.
- * Creates the record if it doesn't exist (upsert).
- * @param {ObjectId} mentorId
- * @param {string}   tokenJson - JSON.stringify(tokens)
- * @returns {Promise<Document>}
+ * Commits token variable blocks under a dynamic crypto-encryption wrapper, mapping activation status parameters.
+ * * @function saveCalendarToken
+ * @param {any} mentorId - Target primary user unique locator tracking entries.
+ * @param {string} tokenJson - Serialized access credentials map parameter string.
+ * @returns {Promise<Object>} Persisted document confirmation verification data.
  */
 const saveCalendarToken = async (mentorId, tokenJson) => {
     return await Availability.findOneAndUpdate(
         { mentor: mentorId },
-        { googleCalendarConnected: true, googleCalendarToken: tokenJson },
+        { googleCalendarConnected: true, googleCalendarToken: encrypt(tokenJson) },
         { upsert: true, new: true }
     );
 };
 
 /**
- * Update only the token (used during auto-refresh).
- * @param {ObjectId} mentorId
- * @param {string}   tokenJson
- * @returns {Promise<Document>}
+ * Swaps outstanding encryption strings without altering visibility markers.
+ * * @function updateCalendarToken
+ * @param {any} mentorId - Target reference locator key.
+ * @param {string} tokenJson - Serialized updated token properties configuration.
+ * @returns {Promise<Object>} Updated database record template confirmation parameters.
  */
 const updateCalendarToken = async (mentorId, tokenJson) => {
     return await Availability.findOneAndUpdate(
         { mentor: mentorId },
-        { googleCalendarToken: tokenJson }
+        { googleCalendarToken: encrypt(tokenJson) }
     );
 };
 
 /**
- * Disconnect Google Calendar for a mentor.
- * @param {ObjectId} mentorId
- * @returns {Promise<Document>}
+ * Drops active synchronization markers, scrubbing authorization hashes out of targeted profiles.
+ * * @function disconnectCalendar
+ * @param {any} mentorId - Operational target primary selection criteria parameter.
+ * @returns {Promise<Object>} Operational execution database response metrics.
  */
 const disconnectCalendar = async (mentorId) => {
     return await Availability.findOneAndUpdate(

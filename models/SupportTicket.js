@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
-
+const { emailValidator } = require("../utils/emailValidator");
+const { BASE_SCHEMA_OPTIONS } = require("../utils/baseSchema");
 const supportTicketSchema = new mongoose.Schema(
   {
     user: {
@@ -9,10 +10,15 @@ const supportTicketSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
+      match: emailValidator,
     },
     message: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: [2000, "Message cannot exceed 2000 characters"],
     },
     category: {
       type: String,
@@ -24,7 +30,8 @@ const supportTicketSchema = new mongoose.Schema(
       default: "open",
     },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
+supportTicketSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("SupportTicket", supportTicketSchema);

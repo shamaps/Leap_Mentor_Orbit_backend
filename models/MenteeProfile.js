@@ -1,6 +1,7 @@
 // models/MenteeProfile.js
 const mongoose = require("mongoose");
-
+const { BASE_SCHEMA_OPTIONS, applySoftDelete } = require("../utils/baseSchema");
+const { baseProfileFields } = require("../utils/baseProfileSchema");
 const menteeProfileSchema = new mongoose.Schema(
   {
     user: {
@@ -9,95 +10,16 @@ const menteeProfileSchema = new mongoose.Schema(
       required: true,
       unique: true, // one profile per mentee
     },
-
-    currentRole: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    industry: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-    
-    company: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    yearsOfExperience: {
-  type:    String,
-  trim:    true,
-  default: "",
-},
-
-    bio: {
-      type: String,
-      trim: true,
-      maxlength: 1000,
-      default: "",
-    },
-
-    profilePicture: {
-      type: String, // URL or base64
-      default: "",
-    },
-
-    linkedInUrl: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    portfolioUrl: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    skills: {
-      type: [String],
-      default: [],
-    },
-
-    interestedFields: {
-      type: [String],
-      default: [],
-    },
-
-    communicationPreferences: {
-      type: [String],
-      enum: ["Chat", "Email", "Video Call", "Phone Call", "In-Person"],
-      default: [],
-    },
-
-    languages: {
-      type: [String],
-      default: ["English"],
-    },
-
-    isProfileComplete: {
-      type: Boolean,
-      default: false,
-    },
-
-    isProfilePublished: {
-      type: Boolean,
-      default: false,
-    },
-    emailNotifications: {
-      type: Boolean,
-      default: true,
-    },
-    marketingPreferences: {
-      type: Boolean,
-      default: false,
-    },
+    ...baseProfileFields, 
+    // Mentee-only fields
+    yearsOfExperience: { type: String, min: 0, max: 60, default: 0 },
+    skills: { type: [String], default: [] },
+    interestedFields: { type: [String], default: [] },
+    marketingPreferences: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  BASE_SCHEMA_OPTIONS
 );
-
+applySoftDelete(menteeProfileSchema);
+menteeProfileSchema.index({ interestedFields: 1 });
+menteeProfileSchema.index({ skills: 1 });
 module.exports = mongoose.model("MenteeProfile", menteeProfileSchema);

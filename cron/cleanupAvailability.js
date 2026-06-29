@@ -2,7 +2,8 @@
 const cron          = require("node-cron");
 const Availability  = require("../models/Availability");
 const MentorProfile = require("../models/MentorProfile");
-
+const { PLATFORM_TIMEZONE } = require("../config/constants");
+const logger = require("../utils/logger");
 // ── Helper ────────────────────────────────────────────────────
 const getTodayStr = () => {
   const now = new Date();
@@ -13,7 +14,7 @@ const getTodayStr = () => {
 const cleanupAvailability = async () => {
   try {
     const today = getTodayStr();
-    console.log(`[Cron] Running availability cleanup — ${today}`);
+    logger.info("Cron: availability cleanup running", { today });
 
     // Fetch all availability docs that have at least one date
     const allAvailability = await Availability.find({
@@ -48,18 +49,16 @@ const cleanupAvailability = async () => {
             { isProfilePublished: false }
           );
           totalUnpublished += 1;
-          console.log(`[Cron] Auto-unpublished mentor ${avail.mentor} — no future slots left`);
+          logger.info("Cron: mentor auto-unpublished", { mentorId: avail.mentor });
         }
       }
     }
 
-    console.log(`[Cron]  Cleanup complete:`);
-    console.log(`[Cron]    • Docs updated    : ${totalDocsUpdated}`);
-    console.log(`[Cron]    • Dates removed   : ${totalDatesRemoved}`);
-    console.log(`[Cron]    • Mentors unpublished: ${totalUnpublished}`);
+    logger.info("Cron: availability cleanup complete", { totalDocsUpdated, totalDatesRemoved, totalUnpublished });
+   
 
   } catch (err) {
-    console.error("[Cron] ❌ Cleanup error:", err.message);
+    logger.error("Cron: availability cleanup error", { error: err.message, stack: err.stack });
   }
 };
 
@@ -67,10 +66,10 @@ const cleanupAvailability = async () => {
 const startCleanupCron = () => {
   // Runs every day at midnight IST
   cron.schedule("0 0 * * *", cleanupAvailability, {
-    timezone: "Asia/Kolkata",
+    timezone: PLATFORM_TIMEZONE,
   });
 
-  console.log("[Cron]  Availability cleanup scheduled — runs daily at midnight IST");
+  logger.info("Cron: availability cleanup scheduled");
 };
 
 module.exports = { startCleanupCron, cleanupAvailability };

@@ -1,28 +1,46 @@
 // controllers/clerkSSO.controller.js
-const AppError = require("../utils/AppError");
-const clerkSSOService = require("../services/clerkSSO.service");
-const { logger } = require("@sentry/node");
-const { issueTokens } = require("../utils/auth.utils");   // ← ADD
+const { handleError } = require("../utils/appError");
+const { issueTokens } = require("../utils/auth.utils");
+const { ok } = require("../utils/response");
 
-const clerkSSO = async (req, res) => {
-  try {
-    // Service must return { user } — remove signToken from clerkSSO.service.js too
-    const result = await clerkSSOService.clerkSSO(req.body);
+/**
+ * @typedef {Object} ClerkSSOService
+ * @property {(body: Object) => Promise<{ user: Object, isNewUser: boolean }>} clerkSSO - Processing workflow verifying clerk parameters.
+ */
 
-    const accessToken = await issueTokens(res, result.user._id);  // ← ADD
+/**
+ * Factory assembling presenting layer controller bindings for network route routers.
+ * * @param {ClerkSSOService} clerkSSOService - Configured worker instance executing identification business constraints.
+ * @param {{ logger: Logger }} dependencies - Logging metrics trace block parameter elements.
+ * @returns {Object} Bundle containing endpoint context router action triggers.
+ */
+const createClerkSSOController = (clerkSSOService, { logger }) => {
 
-    logger.info("clerkSSO completed successfully");
-    return res.json({
-      message: "SSO login successful",
-      accessToken,    // ← was spread from result which had "token"
-      user: result.user,
-    });
-  } catch (err) {
-    if (err instanceof AppError)
-      return res.status(err.status).json({ message: err.message });
-    logger.error("❌ Clerk SSO error:", err);
-    return res.status(401).json({ message: "Clerk SSO authentication failed", error: err.message });
-  }
+  /**
+   * Express Route Handler receiving frontend token assertions to authorize sessions, issue tracking JWTs, and return user models.
+   * * @async
+   * @function clerkSSO
+   * @param {import('express').Request} req - Inbound interaction parameter context structure wrapper holding token credentials body.
+   * @param {import('express').Response} res - Response transport interface layer closing communication tracking pipeline loops.
+   */
+  const clerkSSO = async (req, res) => {
+    try {
+      const result = await clerkSSOService.clerkSSO(req.body);
+
+      const accessToken = await issueTokens(res, result.user._id);
+
+      logger.info("clerkSSO completed successfully");
+      return ok(res, {
+        message: "SSO login successful",
+        accessToken,
+        user: result.user,
+      });
+    } catch (err) {
+      return handleError(res, err, "clerkSSO.clerkSSO");
+    }
+  };
+
+  return { clerkSSO };
 };
 
-module.exports = { clerkSSO };
+module.exports = createClerkSSOController;

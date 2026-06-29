@@ -1,51 +1,53 @@
-const AppError = require("../utils/AppError");
-const loginService = require("../services/login.service");
-const { issueTokens, sanitizeUser } = require("../utils/auth.utils");
-const { logger } = require("@sentry/node");
+const { handleError } = require("../utils/appError");
+const { issueTokens } = require("../utils/auth.utils");
+const { ok } = require("../utils/response");
 
-const login = async (req, res) => {
-  try {
-    const result = await loginService.login(req.body.email, req.body.password);
+/**
+ * @typedef {Object} LoginService
+ * @property {(email: string, password: string) => Promise<{user: Object}>} login - Evaluates credential arguments against validation rules.
+ */
 
-    const accessToken = await issueTokens(res, result.user._id);
+/**
+ * Factory assembling presentation controller handlers processing incoming user credential payloads for HTTP routing.
+ * * @param {LoginService} loginService - Core identity authentication execution service orchestration instance.
+ * @param {{ logger: Logger }} dependencies - Application performance metric capture monitoring tool.
+ * @returns {Object} Grouped controller routes callback actions mapping container.
+ */
+const createLoginController = (loginService, { logger }) => {
 
-    // ✅ Successful login
-    logger.info("User logged in successfully", {
-      userId: result.user._id,
-      role: result.user.role,
-      email: result.user.email,
-    });
+  /**
+   * Express Route handler parsing user credentials, executing validations, issuing JWT cookies, and logging outcomes.
+   * * @async
+   * @function login
+   * @param {import('express').Request} req - Frame parsing context containing transmission credentials body parameters.
+   * @param {import('express').Response} res - Standard outbound data response transport connector pipeline socket.
+   */
+  const login = async (req, res) => {
+    try {
+      const result = await loginService.login(req.body.email, req.body.password);
 
-    logger.info("login completed successfully");
-    return res.json({
-      message: "Login successful",
-      accessToken,
-      user: sanitizeUser(result.user),
-    });
-  } catch (err) {
-    if (err instanceof AppError) {
-      // ✅ Known errors — warn level
-      logger.warn("Login rejected", {
-        email: req.body.email,
-        reason: err.message,
-        status: err.status,
-        isEmailVerified: err.isEmailVerified,
+      const accessToken = await issueTokens(res, result.user._id);
+
+      //  Successful login
+      logger.info("User logged in successfully", {
+        userId: result.user._id,
+        role: result.user.role,
+        email: result.user.email,
       });
 
-      const body = { message: err.message };
-      if (err.isEmailVerified !== undefined) body.isEmailVerified = err.isEmailVerified;
-      if (err.email) body.email = err.email;
-      return res.status(err.status).json(body);
+      logger.info("login completed successfully");
+      return ok(res, {
+        message: "Login successful",
+        accessToken,
+        user: result.user,
+        isNewUser: false
+      });
+    } catch (err) {
+      return handleError(res, err, "login.login");
     }
+  };
 
-    // ✅ Unexpected errors — error level
-    logger.error("Unexpected error during login", {
-      email: req.body.email,
-      error: err.message,
-    });
-
-    return res.status(500).json({ message: err.message });
-  }
+  return { login };
 };
 
-module.exports = { login };
+module.exports = createLoginController;
