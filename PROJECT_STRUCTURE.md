@@ -1,7 +1,5 @@
 # LeapMentor Backend — Project Structure
 
-This document maps every top-level folder in the backend to what it actually contains and why, based on a direct walk of the codebase (file counts and contents below are accurate as of this writing — not estimated). There was no prior dedicated structure doc; the README had only a shallow tree. This expands on that with real counts, sub-folder breakdowns, and the reasoning behind a few non-obvious splits.
-
 ---
 
 ## Top-level Layout
