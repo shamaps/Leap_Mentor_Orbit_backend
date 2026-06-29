@@ -1,7 +1,5 @@
 # LeapMentor Backend — Project Structure
 
----
-
 ## Top-level Layout
 
 ```text
