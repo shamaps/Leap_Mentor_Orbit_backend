@@ -2,9 +2,6 @@
 
 All notable changes to the LeapMentor backend are documented here.
 
-
-## [Unreleased]
-
 ### Added
 - Shared integration-test fixture module (`__tests__/fixtures/createTestData.js`)
   providing factory functions (`makeUser`, `makeAdminUser`, `makeConnectRequest`,
