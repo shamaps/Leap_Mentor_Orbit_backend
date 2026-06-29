@@ -1,10 +1,5 @@
 # LeapMentor Backend — Member Onboarding Guide
 
-> **Audience:** Backend engineers joining the LeapMentor project.
->
-> This guide explains how the backend is organized, how requests flow through the application, the conventions followed throughout the codebase, and the development workflow expected when contributing. For a complete folder-by-folder breakdown, refer to **PROJECT_STRUCTURE.md**.
-
----
 
 # Welcome
 
