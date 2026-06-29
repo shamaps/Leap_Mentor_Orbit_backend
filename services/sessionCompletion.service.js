@@ -3,9 +3,9 @@
  *
  * Single responsibility: marking a session slot as complete.
  * Isolated because it is the only slot operation that:
- *   - Runs inside a Mongoose transaction
- *   - Triggers escrow release
- *   - Invalidates the platform stats cache
+ * - Runs inside a Mongoose transaction
+ * - Triggers escrow release
+ * - Invalidates the platform stats cache
  */
 
 const mongoose = require("mongoose");
@@ -15,8 +15,25 @@ const { toMarkCompleteDTO } = require("../utils/mappers/session.mapper");
 const { computeProgress, buildCompleteMessage, applyMark } = require("./sessionHelpers");
 const AppError = require("../utils/appError");
 
+/**
+ * Service initialization factory closure encapsulating dependencies.
+ * * @param {Object} sessionRepo - Repository instance managing structural transaction queries.
+ * @param {Object} escrowRepo - Data access tier engine handling financial transfers.
+ * @param {Object} slotMutationService - Dependency processing state verification wrappers and event channels.
+ * @param {Object} configOptions - System settings wrapper block.
+ * @param {Object} configOptions.logger - App system logger implementation context instance.
+ * @returns {Object} Encapsulated framework object containing core transaction service operations.
+ */
 const createSessionCompletionService = (sessionRepo, escrowRepo, slotMutationService, { logger }) => {
 
+    /**
+     * Executes atomic steps needed to successfully process a single appointment completion request.
+     * * @param {string|import('mongoose').Types.ObjectId} connectRequestId - Connection record target pointer key.
+     * @param {string|number} slotIndex - Relative positional offset tracking pointer target inside structural arrays.
+     * @param {string|import('mongoose').Types.ObjectId} userId - Unique tracking hash representation mapping current user actor.
+     * @throws {AppError} 400 error if cancellation locks match or double-submitting triggers verification failures.
+     * @returns {Promise<Object>} Formatted Data Transfer Object summary highlighting outcome properties.
+     */
     const markSlotComplete = async (connectRequestId, slotIndex, userId) => {
         const mongoSession = await mongoose.startSession();
         mongoSession.startTransaction();

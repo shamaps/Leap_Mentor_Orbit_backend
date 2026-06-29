@@ -4,42 +4,53 @@ const OAuthAccount = require("../models/OAuthAccount");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const { WELCOME_BONUS_LP } = require("../config/constants");
+
 /**
- * Find a user by email.
- * @param {string} email - already normalized (lowercase + trimmed)
+ * Searches for a User record exactly matching the provided pre-normalized email address.
+ * * @function findUserByEmail
+ * @param {string} email - Case-insensitive email address query criteria.
+ * @returns {Promise<Object|null>} Found Mongoose tracking user document model or null.
  */
 const findUserByEmail = async (email) => {
     return await User.findOne({ email });
 };
 
 /**
- * Create a new user.
- * @param {Object} data
+ * Registers a new user entry document layout within system persistence stores.
+ * * @function createUser
+ * @param {Object} data - Schema criteria mapped properties tracking user registration attributes.
+ * @returns {Promise<Object>} Fully instantiated Mongoose document row.
  */
 const createUser = async (data) => {
     return await User.create(data);
 };
 
 /**
- * Save changes to an existing user document.
- * @param {Document} user
+ * Persists parameter changes or dynamic capabilities additions on an active User document model.
+ * * @function saveUser
+ * @param {Object} user - Hydrated database document instance model being written.
+ * @returns {Promise<Object>} Persistent save operation validation properties.
  */
 const saveUser = async (user) => {
     return await user.save();
 };
 
 /**
- * Create a wallet for a new user.
- * @param {ObjectId} userId
- * @param {number}   balance - starting balance
+ * Creates and initializes a distinct ledger account container tied to a unique user.
+ * * @function createWallet
+ * @param {any} userId - Destination user object identifier key tracking records.
+ * @param {number} balance - Floor allocation numeric options specifying starting funds context.
+ * @returns {Promise<Object>} Created model wallet entity record configuration parameters.
  */
 const createWallet = async (userId, balance) => {
     return await Wallet.create({ user: userId, balance, escrow: 0 });
 };
 
 /**
- * Create a welcome bonus transaction for mentees.
- * @param {ObjectId} userId
+ * Inserts an promotional ledger credit transaction row to support new consumer users.
+ * * @function createWelcomeTransaction
+ * @param {any} userId - Target primary account owner tracking index locator.
+ * @returns {Promise<Object>} Formed ledger audit welcome bonus document parameters.
  */
 const createWelcomeTransaction = async (userId) => {
     return await Transaction.create({
@@ -52,19 +63,23 @@ const createWelcomeTransaction = async (userId) => {
 };
 
 /**
- * Find an existing OAuth account by provider + providerId.
- * @param {string} provider   - e.g. "google"
- * @param {string} providerId - Google sub
+ * Searches for a federated linking relationship mapping matching specified credential combinations.
+ * * @function findOAuthAccount
+ * @param {string} provider - Canonical provider system identifier name tag (e.g., "google").
+ * @param {string} providerId - Upstream remote origin source identification tracking index value.
+ * @returns {Promise<Object|null>} Linked document metadata entity block or null.
  */
 const findOAuthAccount = async (provider, providerId) => {
     return await OAuthAccount.findOne({ provider, providerId });
 };
 
 /**
- * Create an OAuth account link between user and provider.
- * @param {ObjectId} userId
- * @param {string}   provider
- * @param {string}   providerId
+ * Connects an internal user registry index with an external third-party provider identity token statement.
+ * * @function createOAuthAccount
+ * @param {any} userId - Target reference locator indicator linking platform basic users.
+ * @param {string} provider - Federation channel label key string.
+ * @param {string} providerId - Upstream unique identity user reference string metadata.
+ * @returns {Promise<Object>} Formed integration linking verification parameters documentation.
  */
 const createOAuthAccount = async (userId, provider, providerId) => {
     return await OAuthAccount.create({ user: userId, provider, providerId });

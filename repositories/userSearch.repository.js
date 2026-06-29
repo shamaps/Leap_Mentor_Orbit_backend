@@ -3,15 +3,23 @@ const User = require("../models/User");
 const { escapeRegex } = require("../utils/escapeRegex");
 
 /**
+ * Search options parameters context configuring filter bounds.
+ * @typedef {Object} UserSearchOptions
+ * @property {string[]} [roles] - Array tracking requested access level scopes filtering (e.g., ["mentor"]).
+ * @property {boolean} [includeDeleted=false] - Operational toggle indicating whether soft-deleted entries are bypassed.
+ * @property {number} [limit=50] - Capacity threshold limit parameter defining page block slice thickness.
+ */
+
+/**
  * Search users by name using Atlas Search (user_name_search index on `users`).
  * Index fields: name [autocomplete edgeGram 1-15 + string/lucene.standard],
- *               roles [string], isDeleted [boolean].
- *
- * @param {string} query - search term
- * @param {object} [opts]
- * @param {string[]} [opts.roles] - optional roles filter, e.g. ["mentor"]
- * @param {boolean} [opts.includeDeleted=false] - if false, excludes isDeleted:true
- * @param {number} [opts.limit=50] - max results
+ * roles [string], isDeleted [boolean].
+ * * Pivots smoothly to a case-insensitive case regex pipeline if the cluster search indices fall back.
+ * * @async
+ * @function findUsersByName
+ * @param {string} query - Unprocessed character name string lookup criteria.
+ * @param {UserSearchOptions} [opts={}] - Sizing limits and criteria flags parameter layout details.
+ * @returns {Promise<Array<{_id: any, name: string, email: string}>>} Lean collection detailing matching user structures records.
  */
 const findUsersByName = async (query, opts = {}) => {
     const { roles, includeDeleted = false, limit = 50 } = opts;

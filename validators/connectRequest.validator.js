@@ -1,6 +1,14 @@
 // validators/connectRequest.validator.js
 const Joi = require("joi");
 
+/**
+ * Joi schematic object parsing parameters mapping time properties.
+ * @type {Joi.ObjectSchema}
+ * @property {string} day - Weekday literal label value validation rule.
+ * @property {string} date - Structured string configuration variable.
+ * @property {string} startTime - Operational timeline bounds start value.
+ * @property {string} endTime - Operational timeline bounds terminal value.
+ */
 const slotSchema = Joi.object({
     day: Joi.string().required(),
     date: Joi.string().required(),
@@ -8,6 +16,15 @@ const slotSchema = Joi.object({
     endTime: Joi.string().required(),
 });
 
+/**
+ * Joi schema checking initial presentation parameter blocks for connect request delivery.
+ * @type {Joi.ObjectSchema}
+ * @property {string} mentorId - 24-char hexadecimal string matching MongoDB ObjectId standards.
+ * @property {Joi.ArraySchema} selectedSlots - Proportional bounding map ensuring between 1 and 5 time units are selected.
+ * @property {number} sessionRate - Numeric boundary parameter indicating floor pricing context.
+ * @property {number} sessionCount - Integer tracking count iterations parameters.
+ * @property {string} [message] - Optional literal input tracking descriptive text up to 500 characters.
+ */
 const sendConnectRequestSchema = Joi.object({
     mentorId: Joi.string().hex().length(24).required().messages({
         "any.required": "mentorId is required",
@@ -23,6 +40,12 @@ const sendConnectRequestSchema = Joi.object({
     message: Joi.string().max(500).allow("").optional(),
 });
 
+/**
+ * Joi verification validator monitoring choice outcomes sent by host users.
+ * @type {Joi.ObjectSchema}
+ * @property {string} status - Constrained choice string tracking valid states ("accepted", "rejected").
+ * @property {Joi.ObjectSchema} [confirmedSlot] - Conditional structure enforced strictly if status field matches "accepted".
+ */
 const respondSchema = Joi.object({
     status: Joi.string().valid("accepted", "rejected").required(),
     confirmedSlot: Joi.object({

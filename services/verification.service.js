@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const transporter = require("../utils/mailer");
 const { makeOtp } = require("../utils/auth.utils");
 const config = require("../config/env");
+const AppError = require("../utils/appError");
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationService = (repo, { logger }) => {
 /**

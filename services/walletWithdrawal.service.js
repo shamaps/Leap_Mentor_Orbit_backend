@@ -1,12 +1,20 @@
 // services/walletWithdrawal.service.js
 const AppError = require("../utils/appError");
 const { toWithdrawalDTO } = require("../utils/mappers/wallet.mapper");
+
+/**
+ * Service initialization factory closure encapsulating dependencies for wallet operations.
+ * * @param {Object} earningsRepo - Repository instance managing wallet documents and transactions.
+ * @param {Object} configOptions - System options configuration wrapper.
+ * @param {Object} configOptions.logger - App system logger implementation context instance.
+ * @returns {Object} Encapsulated service object containing core wallet withdrawal operations.
+ */
 const createWalletWithdrawalService = (earningsRepo, { logger }) => {
     /**
      * Withdraws the mentor's full available wallet balance.
-     * @param {string} mentorId
-     * @returns {Promise<{message: string, withdrawn: number, newBalance: number}>}
-     * @throws {AppError} 404 if no wallet, 400 if balance is zero
+     * * @param {string|import('mongoose').Types.ObjectId} mentorId - Unique ID of the mentor requestor.
+     * @returns {Promise<{message: string, withdrawn: number, newBalance: number}>} Formatted DTO summary outlining the outcome.
+     * @throws {AppError} 404 if no wallet is found, 400 if the current balance is zero or less.
      */
     const withdrawEarnings = async (mentorId) => {
         const wallet = await earningsRepo.findWalletDocument(mentorId);
@@ -35,4 +43,5 @@ const createWalletWithdrawalService = (earningsRepo, { logger }) => {
 
     return { withdrawEarnings };
 };
+
 module.exports = createWalletWithdrawalService;

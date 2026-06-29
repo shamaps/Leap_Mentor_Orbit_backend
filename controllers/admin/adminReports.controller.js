@@ -1,10 +1,23 @@
 // backend/controllers/admin/adminReports.controller.js
 const { ok, fail, noContent, unprocessable } = require("../../utils/response");
 const { handleError } = require("../../utils/appError");
+
+/**
+ * Creates the admin reports controller.
+ * @param {Object} adminReportsService - The admin reports service instance.
+ * @param {Object} options - Controller options.
+ * @param {Object} options.logger - Logger instance.
+ * @returns {Object} Express controller middleware functions.
+ */
 const createAdminReportsController = (adminReportsService, { logger }) => {
 
   // GET /api/admin/reports/stats
 
+  /**
+   * Retrieves summary statistics of all user reports.
+   * @param {Object} _req - Express request object.
+   * @param {Object} res - Express response object.
+   */
   const getReportStats = async (_req, res) => {
     try {
       const data = await adminReportsService.fetchReportStats();
@@ -18,6 +31,11 @@ const createAdminReportsController = (adminReportsService, { logger }) => {
 
   // GET /api/admin/reports
 
+  /**
+   * Retrieves a paginated and optionally filtered list of reports.
+   * @param {Object} req - Express request object (includes query parameters).
+   * @param {Object} res - Express response object.
+   */
   const getReports = async (req, res) => {
     try {
       const page = Math.max(1, Number.parseInt(req.query.page) || 1);
@@ -36,6 +54,11 @@ const createAdminReportsController = (adminReportsService, { logger }) => {
 
   // PATCH /api/admin/reports/:id
 
+  /**
+   * Updates the status of a specific report (e.g., resolving or dismissing it).
+   * @param {Object} req - Express request object.
+   * @param {Object} res - Express response object.
+   */
   const handleReport = async (req, res) => {
     try {
       const { status, adminNote } = req.body;
@@ -61,6 +84,11 @@ const createAdminReportsController = (adminReportsService, { logger }) => {
 
   // POST /api/admin/reports/:id/refund
 
+  /**
+   * Processes a refund back to a mentee's wallet for a reported session.
+   * @param {Object} req - Express request object.
+   * @param {Object} res - Express response object.
+   */
   const processRefund = async (req, res) => {
     try {
       const { refundAmount } = await adminReportsService.processRefund({
@@ -82,6 +110,11 @@ const createAdminReportsController = (adminReportsService, { logger }) => {
 
   // DELETE /api/admin/reports/:id/session
 
+  /**
+   * Permanently deletes a session (connect request) associated with a report.
+   * @param {Object} req - Express request object.
+   * @param {Object} res - Express response object.
+   */
   const deleteSession = async (req, res) => {
     try {
       await adminReportsService.deleteSession({

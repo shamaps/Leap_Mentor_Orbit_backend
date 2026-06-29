@@ -5,9 +5,38 @@ const { withRetry } = require("../utils/withRetry");
 const { clerkClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { provisionWallet } = require("../utils/wallet");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
-const createClerkSSOService = (repo, { logger }) => {
-    // Pure helpers
 
+/**
+ * @typedef {Object} ClerkSSORepository
+ * @property {(email: string) => Promise<Object|null>} findUserByEmail - Looks up a user record by email.
+ * @property {(data: Object) => Promise<Object>} createUser - Inserts a fresh User document.
+ * @property {(user: Object) => Promise<Object>} saveUser - Persists mutations on an existing User document.
+ * @property {(provider: string, providerId: string) => Promise<Object|null>} findOAuthAccount - Looks up linked third-party account combinations.
+ * @property {(data: Object) => Promise<Object>} createOAuthAccount - Records a new third-party profile linkage mapping.
+ * @property {(userId: any, role: string) => Promise<Object|null>} findWalletByUserAndRole - Evaluates if a specialized ledger account exists.
+ */
+
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string, meta?: Object) => void} info
+ * @property {(message: string, meta?: Object) => void} debug
+ * @property {(message: string, meta?: Object) => void} error
+ */
+
+/**
+ * Factory function creating the Clerk Single Sign-On (SSO) Service instance.
+ * * @param {ClerkSSORepository} repo - Data layer persistence abstraction instance.
+ * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
+ * @returns {Object} Operational map holding SSO transaction methodology handler.
+ */
+const createClerkSSOService = (repo, { logger }) => {
+
+    /**
+     * Extracts identity information and third-party account telemetry from a raw Clerk payload.
+     * * @function extractClerkMeta
+     * @param {Object} clerkUser - Raw user schema block emitted by the Clerk integration library.
+     * @returns {{ email: string|undefined, name: string, provider: string|undefined, providerId: string|undefined }} Cleaned semantic data identity object.
+     */
     const extractClerkMeta = (clerkUser) => {
         const email = clerkUser.emailAddresses?.[0]?.emailAddress?.toLowerCase().trim();
         const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
@@ -18,12 +47,14 @@ const createClerkSSOService = (repo, { logger }) => {
         return { email, name, provider, providerId };
     };
 
-
-    // Step helpers — extracted to reduce cognitive complexity
-
     /**
-     * Decodes the Clerk token and fetches the full user from Clerk API.
-     * Extracted so the main function doesn't nest a try/catch inside its own try/catch.
+     * Extracts token identities, validating sub claims prior to pinging external user registries via Clerk API.
+     * * @async
+     * @function resolveClerkUser
+     * @param {string} clerkToken - Unverified raw JSON Web Token string emitted by frontends.
+     * @throws {AppError} 400 - If token argument string parameters evaluate empty.
+     * @throws {AppError} 401 - If token parsing lacks a subject indicator or retrieval pings fail completely.
+     * @returns {Promise<Object>} Complete user management information context model output from upstream integration pools.
      */
     const resolveClerkUser = async (clerkToken) => {
         if (!clerkToken) throw new AppError(400, "Missing Clerk token");
@@ -46,10 +77,17 @@ const createClerkSSOService = (repo, { logger }) => {
         }
     };
 
-
     /**
-     * Validates terms + roles, creates user + wallet.
-     * Extracted to eliminate deep nesting that drove cognitive complexity > 15.
+     * Executes initial account construction workflow incorporating terms tracking and ledger initialization.
+     * * @async
+     * @function createNewUser
+     * @param {Object} parameters - Core initial registration options container.
+     * @param {string} parameters.name - Derived human identity string context.
+     * @param {string} parameters.email - Validated, lowercased unique target user email address.
+     * @param {string[]} [parameters.roles] - Initial system roles requested during onboarding.
+     * @param {boolean} parameters.termsAccepted - Compliance verification status flag state.
+     * @throws {AppError} 400 - If explicit terms criteria are unaccepted or role schemas fail validity checks.
+     * @returns {Promise<Object>} Fully hydrated, persisted platform internal User document model instance.
      */
     const createNewUser = async ({ name, email, roles, termsAccepted }) => {
         if (termsAccepted !== true)
@@ -82,8 +120,13 @@ const createClerkSSOService = (repo, { logger }) => {
     };
 
     /**
-     * Links an OAuthAccount record if one doesn't already exist.
-     * FIX: flipped negated condition `if (!existingOAuth)` → early-return on positive case.
+     * Establishes external federation structural linkage references inside internal index sets.
+     * * @async
+     * @function linkOAuthAccount
+     * @param {any} userId - Destination object identifier primary key tracking platform users.
+     * @param {string} provider - Federation channel system string tag.
+     * @param {string} providerId - Remote identification signature unique to upstream source provider.
+     * @returns {Promise<void>} Processing resolves on skipped duplicates or completed mappings.
      */
     const linkOAuthAccount = async (userId, provider, providerId) => {
         if (!provider || !providerId) return;
@@ -99,14 +142,18 @@ const createClerkSSOService = (repo, { logger }) => {
         logger.info("OAuthAccount linked", { provider });
     };
 
-
-    // Main service function
-    // Cognitive complexity reduced from 31 → well under 15 by
-    // extracting resolveClerkUser / createNewUser / mergeRolesIfNeeded / linkOAuthAccount
-
-
+    /**
+     * Main handler processing inbound Clerk assertions, matching email criteria, merging capabilities dynamically, and tracking registration states.
+     * * @async
+     * @function clerkSSO
+     * @param {Object} input - Network input parameters payload package context.
+     * @param {string} input.clerkToken - Base authorization exchange ticket string.
+     * @param {string[]} [input.roles] - Incoming capability profiles array configurations.
+     * @param {boolean} [input.termsAccepted] - Policy confirmation flag status tracker.
+     * @throws {AppError} 400 - If resolved assertion payloads provide no usable destination email contexts.
+     * @returns {Promise<{ user: Object, isNewUser: boolean }>} Sanitized profile DTO mapping combined with boolean flag tracking onboarding status.
+     */
     const clerkSSO = async ({ clerkToken, roles, termsAccepted }) => {
-        // 1) Validate token + fetch Clerk user
         const clerkUser = await resolveClerkUser(clerkToken);
         const { email, name, provider, providerId } = extractClerkMeta(clerkUser);
 
@@ -114,8 +161,6 @@ const createClerkSSOService = (repo, { logger }) => {
 
         if (!email) throw new AppError(400, "No email returned from provider");
 
-        // 2) Find or create user
-        // FIX: flipped negated condition `if (!user)` → positive branch first
         let user = await repo.findUserByEmail(email);
         let isNewUser = false;
 
@@ -142,13 +187,12 @@ const createClerkSSOService = (repo, { logger }) => {
             isNewUser = true;
         }
 
-        // 3) Link OAuth account
         await linkOAuthAccount(user._id, provider, providerId);
 
-        // 4) Issue JWT
         return { user: toUserDTO(user), isNewUser };
     };
 
     return { clerkSSO };
 };
+
 module.exports = createClerkSSOService;

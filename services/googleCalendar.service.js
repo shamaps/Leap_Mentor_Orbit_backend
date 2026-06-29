@@ -5,33 +5,55 @@ const { withTimeout } = require("../utils/withTimeout");
 const { withRetry } = require("../utils/withRetry");
 const { getTraceId } = require("../utils/requestContext");
 const config = require("../config/env");
+
+/**
+ * @typedef {Object} GoogleCalendarRepository
+ * @property {(mentorId: any) => Promise<Object|null>} findAvailabilityWithToken - Resolves dynamic configuration mapping along with unencrypted credentials data records.
+ * @property {(mentorId: any, tokenJson: string) => Promise<Object>} saveCalendarToken - Upserts credentials parameters enabling active channel tracking.
+ * @property {(mentorId: any, tokenJson: string) => Promise<Object>} updateCalendarToken - Direct overwrite update used during auto-rotation cycles.
+ * @property {(mentorId: any) => Promise<Object>} disconnectCalendar - Drops integration visibility flags and erases authorization string criteria.
+ */
+
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string, meta?: Object) => void} info
+ * @property {(message: string) => void} warn
+ * @property {(message: string, error: any) => void} error
+ */
+
+/**
+ * Factory function implementing the core business logic orchestration layer for Google Calendar integration.
+ * * @param {GoogleCalendarRepository} repo - Data persistence wrapper adapter instance.
+ * @param {{ logger: Logger }} dependencies - Application performance tracing monitoring facility parameters.
+ * @returns {Object} Grouped business validation functionalities map layout.
+ */
 const createGoogleCalendarService = (repo, { logger }) => {
 
     /**
-     * Create a base OAuth2 client using env credentials.
-     * @returns {google.auth.OAuth2}
+     * Instantiates an unconfigured base OAuth2 credential exchange client wrapper using core system configurations.
+     * * @private
+     * @function createOAuthClient
+     * @returns {import('google-auth-library').OAuth2Client} Fresh un-credentialed auth client wrapper instance context.
      */
     const createOAuthClient = () =>
         new google.auth.OAuth2(
             config.googleClientId,
             config.googleClientSecret,
             config.googleRedirectUri
-
         );
 
     /**
-     * Build an authenticated OAuth2 client from stored tokens.
-     * Registers a token refresh listener that persists new tokens automatically.
-     *
-     * @param {Object}   tokens   - parsed token object from DB
-     * @param {ObjectId} mentorId - used to persist refreshed tokens
-     * @returns {google.auth.OAuth2}
+     * Mounts stored token variables onto a fresh transport client, attaching lifecycle event rotation listeners.
+     * * @private
+     * @function buildAuthenticatedClient
+     * @param {Object} tokens - Deserialized authorization criteria key token properties container.
+     * @param {any} mentorId - System indicator identifier mapping target profile rows.
+     * @returns {import('google-auth-library').OAuth2Client} Authenticated client instance wrapper ready for API interaction.
      */
     const buildAuthenticatedClient = (tokens, mentorId) => {
         const client = createOAuthClient();
         client.setCredentials(tokens);
 
-        // Auto-refresh: persist new tokens when Google rotates them
         client.on("tokens", async (newTokens) => {
             const merged = { ...tokens, ...newTokens };
             await repo.updateCalendarToken(mentorId, JSON.stringify(merged));
@@ -41,9 +63,12 @@ const createGoogleCalendarService = (repo, { logger }) => {
     };
 
     /**
-     * Parse stored token JSON safely.
-     * @param {string} tokenJson
-     * @returns {Object|null}
+     * Decodes and validates stored string payloads tracking active authentication tokens.
+     * * @private
+     * @function parseTokens
+     * @param {string} tokenJson - Crypto-decrypted raw string payload.
+     * @throws {AppError} 500 - If structural parsing evaluations catch corruption faults.
+     * @returns {Object} Deserialized authorization parameters layout object map.
      */
     const parseTokens = (tokenJson) => {
         try {
@@ -53,17 +78,24 @@ const createGoogleCalendarService = (repo, { logger }) => {
         }
     };
 
+    /**
+     * Resolves connection status booleans tracking whether user configurations retain valid link targets.
+     * * @async
+     * @function getStatus
+     * @param {any} userId - Target account validation lookup parameter index key string.
+     * @returns {Promise<boolean>} True if channels are verified and properties are initialized.
+     */
     const getStatus = async (userId) => {
         const avail = await repo.findAvailabilityWithToken(userId);
         return !!(avail?.googleCalendarConnected && avail?.googleCalendarToken);
     };
-    // getAuthUrl
-
 
     /**
-     * Generate Google OAuth URL with userId encoded in state param.
-     * @param {ObjectId} userId
-     * @returns {Promise<string>} url
+     * Assembles a base64 state parameter to generate secure authentication redirect URLs.
+     * * @async
+     * @function getAuthUrl
+     * @param {any} userId - Destination profile originator identifier tracking records.
+     * @returns {Promise<string>} Fully prepared external destination authorization route link string.
      */
     const getAuthUrl = async (userId) => {
         const client = createOAuthClient();
@@ -77,15 +109,13 @@ const createGoogleCalendarService = (repo, { logger }) => {
         });
     };
 
-
-    // handleCallback
-
-
     /**
-     * Exchange Google OAuth code for tokens and persist them.
-     * @param {string} code  - from Google callback query
-     * @param {string} state - base64 encoded { userId }
-     * @returns {Promise<void>}
+     * Decodes base64 redirection payloads, routing authorization codes to settle persistent access maps.
+     * * @async
+     * @function handleCallback
+     * @param {string} code - Redirection exchange verification ticket token emitted by origin sources.
+     * @param {string} state - Base64 encoded JSON parameter context containing user validation signatures.
+     * @returns {Promise<void>} Processing resolves on completed token exchanges and successful updates.
      */
     const handleCallback = async (code, state) => {
         const { userId } = JSON.parse(Buffer.from(state, "base64").toString());
@@ -100,29 +130,25 @@ const createGoogleCalendarService = (repo, { logger }) => {
         await repo.saveCalendarToken(userId, tokenJson);
     };
 
-
-    // disconnect
-
-
     /**
-     * Disconnect Google Calendar for a mentor.
-     * @param {ObjectId} mentorId
-     * @returns {Promise<void>}
+     * Drops connection permissions flags, severing synchronization visibility loops.
+     * * @async
+     * @function disconnect
+     * @param {any} mentorId - Targets active session user token context identifier string.
+     * @returns {Promise<void>} Resolves tracking steps on completed record wipes.
      */
     const disconnect = async (mentorId) => {
         await repo.disconnectCalendar(mentorId);
     };
 
-
-    // getBusySlots
-
-
     /**
-     * Fetch busy time slots from Google Calendar freebusy API.
-     * @param {ObjectId} mentorId
-     * @param {string}   startDate - YYYY-MM-DD
-     * @param {string}   endDate   - YYYY-MM-DD
-     * @returns {Promise<Array>} busy slots
+     * Contacts upstream freebusy endpoint vectors to map absolute timeline collisions across primary calendars.
+     * * @async
+     * @function getBusySlots
+     * @param {any} mentorId - Host target primary profile lookup index key parameter.
+     * @param {string} startDate - Range restriction lower bound formatted as "YYYY-MM-DD".
+     * @param {string} endDate - Range restriction upper bound formatted as "YYYY-MM-DD".
+     * @returns {Promise<Array<{start: string, end: string}>>} Collection array tracking blocked timeline parameters.
      */
     const getBusySlots = async (mentorId, startDate, endDate) => {
         const avail = await repo.findAvailabilityWithToken(mentorId);
@@ -152,14 +178,12 @@ const createGoogleCalendarService = (repo, { logger }) => {
         return freeBusy.data.calendars.primary.busy;
     };
 
-
-    // getEvents
-
-
     /**
-     * Normalize a raw Google Calendar event into a simplified shape.
-     * @param {Object} e - raw event from Google API
-     * @returns {Object}
+     * Restructures raw, deep Google payload blocks into simplified application timeline schemas.
+     * * @private
+     * @function normalizeEvent
+     * @param {Object} e - Unfiltered event dictionary chunk emitted by Google API components.
+     * @returns {{id: string, summary: string, start: string, end: string, allDay: boolean}} Standardized metric mapping object.
      */
     const normalizeEvent = (e) => ({
         id: e.id,
@@ -170,15 +194,17 @@ const createGoogleCalendarService = (repo, { logger }) => {
     });
 
     /**
-     * Fetch events from a single calendar. Returns empty array if the
-     * calendar is unreadable (e.g. insufficient permissions).
-     * Sonar fix: empty catch blocks replaced with explicit error logging.
-     *
-     * @param {Object} calendar  - Google Calendar API client
-     * @param {string} calId     - calendar ID
-     * @param {string} timeMin
-     * @param {string} timeMax
-     * @returns {Promise<Array>}
+     * Interrogates list endpoints matching a single calendar identifier context.
+     * Logs unreadable components safely, substituting fallback collections.
+     * * @private
+     * @async
+     * @function fetchEventsFromCalendar
+     * @param {Object} context - Extraction options configuration package.
+     * @param {Object} context.calendar - Initialized version-locked API worker instance client.
+     * @param {string} context.calId - Dynamic channel specific selector string.
+     * @param {string} context.timeMin - Calendar minimum range boundary timestamp.
+     * @param {string} context.timeMax - Calendar maximum range boundary timestamp.
+     * @returns {Promise<Object[]>} Normalised sub-event array structures collection.
      */
     const fetchEventsFromCalendar = async ({ calendar, calId, timeMin, timeMax }) => {
         try {
@@ -197,16 +223,17 @@ const createGoogleCalendarService = (repo, { logger }) => {
             }), 10000, `Google events.list for calendar ${calId}`);
             return (response.data.items || []).map(normalizeEvent);
         } catch (err) {
-            // log the skipped calendar instead of silently swallowing
             logger.warn(`⚠️ Could not read calendar ${calId} — skipping. Reason: ${err.message}`);
             return [];
         }
     };
 
     /**
-     * Deduplicate events by id.
-     * @param {Array} events
-     * @returns {Array}
+     * Filters out duplicate timeline rows sharing identical key indicators.
+     * * @private
+     * @function deduplicateEvents
+     * @param {Array} events - Combined raw event structures array tracking collections.
+     * @returns {Array} Filtered list clear of overlapping identity items.
      */
     const deduplicateEvents = (events) => {
         const seen = new Set();
@@ -218,11 +245,13 @@ const createGoogleCalendarService = (repo, { logger }) => {
     };
 
     /**
-     * Fetch events from all accessible calendars and return deduplicated list.
-     * @param {ObjectId} mentorId
-     * @param {string}   startDate - YYYY-MM-DD
-     * @param {string}   endDate   - YYYY-MM-DD
-     * @returns {Promise<Array>}
+     * Aggregates complete schedules parallel-compiled from all user-selected calendar directories.
+     * * @async
+     * @function getEvents
+     * @param {any} mentorId - System target identifier reference tracking owners.
+     * @param {string} startDate - Bounding restriction starting floor formatted as "YYYY-MM-DD".
+     * @param {string} endDate - Bounding restriction terminating ceiling formatted as "YYYY-MM-DD".
+     * @returns {Promise<Object[]>} Aggregated, deduplicated item listings explaining timeline configurations.
      */
     const getEvents = async (mentorId, startDate, endDate) => {
         const avail = await repo.findAvailabilityWithToken(mentorId);
@@ -237,13 +266,11 @@ const createGoogleCalendarService = (repo, { logger }) => {
         const timeMin = new Date(`${startDate}T00:00:00Z`).toISOString();
         const timeMax = new Date(`${endDate}T23:59:59Z`).toISOString();
 
-        // Get all calendar IDs the user has access to
         const calList = await calendar.calendarList.list();
         const calendarIds = calList.data.items
             .filter((c) => c.selected !== false)
             .map((c) => c.id);
 
-        // Fetch from all calendars in parallel
         const eventArrays = await Promise.all(
             calendarIds.map((calId) => withTimeout(fetchEventsFromCalendar({ calendar, calId, timeMin, timeMax }), 10000, `Google events.list for calendar ${calId}`))
         );
@@ -253,4 +280,5 @@ const createGoogleCalendarService = (repo, { logger }) => {
 
     return { getAuthUrl, handleCallback, disconnect, getBusySlots, getEvents, getStatus };
 };
+
 module.exports = createGoogleCalendarService;

@@ -5,17 +5,59 @@ const transporter = require("../utils/mailer");
 const AppError = require("../utils/appError");
 const { makeOtp } = require("../utils/auth.utils");
 const config = require("../config/env");
+
+/**
+ * @typedef {Object} VerificationTokenDocument
+ * @property {any} user - Object identifier linking the target user.
+ * @property {string} otp - The bcrypt-hashed One-Time Password string.
+ * @property {Date} expiresAt - Timestamp marking token validation boundary constraints.
+ * @property {Function} save - Persists mutations back to database storage.
+ */
+
+/**
+ * @typedef {Object} ForgotPasswordRepository
+ * @property {(normalizedEmail: string) => Promise<Object|null>} findUserByEmail - Resolves full user profile rows.
+ * @property {(user: Object) => Promise<Object>} saveUser - Persists user schema updates.
+ * @property {(userId: any) => Promise<VerificationTokenDocument|null>} findTokenByUser - Locates an active validation model.
+ * @property {(userId: any) => Promise<Object>} deleteTokensByUser - Purges active OTP structures.
+ * @property {(data: {userId: any, otpHash: string, expiresAt: Date}) => Promise<Object>} createToken - Creates a fresh recovery token.
+ * @property {(record: VerificationTokenDocument) => Promise<Object>} saveToken - Saves token expiry updates.
+ */
+
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string) => void} info
+ * @property {(message: string, error: any) => void} error
+ */
+
+/**
+ * Factory function constructing the core password recovery service infrastructure.
+ * * @param {ForgotPasswordRepository} repo - Database abstraction data layer instance.
+ * @param {{ logger: Logger }} dependencies - Application telemetry and analytics logging wrapper.
+ * @returns {Object} Grouped business validation methodologies map configuration.
+ */
 const createForgotPasswordService = (repo, { logger }) => {
 
     /**
-     * Normalize an email address — lowercase + trim.
-     * @param {string} email
+     * Standardizes dynamic text inputs removing variant discrepancies.
+     * * @private
+     * @function normalizeEmail
+     * @param {string} email - Raw text candidate address.
+     * @returns {string} Lowercased, whitespace-trimmed string configuration.
      */
     const normalizeEmail = (email) => String(email).toLowerCase().trim();
+
     /**
-     * Shared lookup: find user + valid (non-expired, OTP-bearing) reset token.
-     * Throws AppError with the given messages if not found/expired.
-     * Extracted to remove duplication between verifyResetOTP and resetPassword.
+     * Unified validation evaluator assessing account existence and token lifecycle timelines.
+     * * @private
+     * @async
+     * @function getUserWithValidToken
+     * @param {string} normalizedEmail - Clean case-insensitive address identifier string.
+     * @param {Object} dynamicMessages - Contextual error label configuration variables.
+     * @param {string} dynamicMessages.notFoundMsg - String thrown if entity data rows return empty.
+     * @param {string} dynamicMessages.expiredMsg - String thrown if date bounds indicate lifecycle completion.
+     * @throws {AppError} 400 - If records are absent, token otp mappings are missing, or expirations have passed.
+     * @returns {Promise<{user: Object, record: VerificationTokenDocument}>} Active document matching pair records.
      */
     const getUserWithValidToken = async (normalizedEmail, { notFoundMsg, expiredMsg }) => {
         const user = await repo.findUserByEmail(normalizedEmail);
@@ -31,9 +73,13 @@ const createForgotPasswordService = (repo, { logger }) => {
 
         return { user, record };
     };
+
     /**
-     * Build the OTP email HTML.
-     * @param {string} otpPlain
+     * Assembles literal recovery presentation HTML structures containing authentication tokens.
+     * * @private
+     * @function buildOtpEmailHtml
+     * @param {string} otpPlain - Raw plaintext numeric characters sequence.
+     * @returns {string} Fully prepared inline styles layout markup document.
      */
     const buildOtpEmailHtml = (otpPlain) => `
   <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
@@ -55,16 +101,14 @@ const createForgotPasswordService = (repo, { logger }) => {
   </div>
 `;
 
-
-    // sendForgotPasswordOTP
-
-
     /**
-     * Step 1 — Generate and email a 6-digit OTP to the user.
-     * Does NOT reveal whether the email exists (security best practice).
-     *
-     * @param {string} email - raw email from req.body
-     * @returns {Promise<void>}
+     * Step 1 — Initiates recovery workflow by generating a transient verification record and emailing it to the user.
+     * Implements security isolation bounds to prevent database enumeration vectors.
+     * * @async
+     * @function sendForgotPasswordOTP
+     * @param {string} email - Inbound un-normalized address literal.
+     * @throws {AppError} 400 - If dynamic input argument evaluation resolves as completely empty.
+     * @returns {Promise<void>} Resolves tracking steps on skipped paths or completed mailing updates.
      */
     const sendForgotPasswordOTP = async (email) => {
         if (!email)
@@ -73,15 +117,13 @@ const createForgotPasswordService = (repo, { logger }) => {
         const normalizedEmail = normalizeEmail(email);
         const user = await repo.findUserByEmail(normalizedEmail);
 
-        // ✅ Security — don't reveal whether email exists
         if (!user) return;
 
-        // Delete any existing OTP, create a fresh one
         await repo.deleteTokensByUser(user._id);
 
         const otpPlain = makeOtp();
         const otpHash = await bcrypt.hash(otpPlain, 10);
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
         await repo.createToken({ userId: user._id, otpHash, expiresAt });
 
@@ -93,17 +135,16 @@ const createForgotPasswordService = (repo, { logger }) => {
         });
     };
 
-
-    // verifyResetOTP
-
-
     /**
-     * Step 2 — Verify the OTP submitted by the user.
-     * If valid, extends the token expiry by 5 minutes for the reset step.
-     *
-     * @param {string} email
-     * @param {string} otp   - plain OTP entered by user
-     * @returns {Promise<string>} normalizedEmail - passed to frontend for step 3
+     * Step 2 — Assesses plaintext numeric assertions, validating matching integrity signatures.
+     * Extends expiration dates to enable secure password mutation windows.
+     * * @async
+     * @function verifyResetOTP
+     * @param {Object} verificationData - Input parameters checking token strings.
+     * @param {string} verificationData.email - Un-normalized context address criteria string.
+     * @param {string} verificationData.otp - Raw numeric characters payload parameter.
+     * @throws {AppError} 400 - If data inputs are missing or crypto match verifications fail.
+     * @returns {Promise<string>} Normalized identity string returned to presentation clients.
      */
     const verifyResetOTP = async ({ email, otp }) => {
         if (!email || !otp)
@@ -123,18 +164,17 @@ const createForgotPasswordService = (repo, { logger }) => {
         return normalizedEmail;
     };
 
-
-    // resetPassword
-
-
     /**
-     * Step 3 — Reset the user's password after re-verifying the OTP.
-     * Prevents skipping step 2 by re-checking OTP on this step too.
-     *
-     * @param {string} email
-     * @param {string} otp
-     * @param {string} newPassword
-     * @returns {Promise<void>}
+     * Step 3 — Finalizes workflow execution, crypto-hashing and overwriting old persistent password variables.
+     * Re-verifies structural security tokens to prevent bypass vulnerabilities.
+     * * @async
+     * @function resetPassword
+     * @param {Object} data - Mutator parameters package context container.
+     * @param {string} data.email - Un-normalized user reference criteria.
+     * @param {string} data.otp - Validation structural confirmation code.
+     * @param {string} data.newPassword - Raw replacement string target credential.
+     * @throws {AppError} 400 - If fields are empty, password complexity lengths fail floor checks, or token validations drop.
+     * @returns {Promise<void>} Processing resolves on successful updates and token cleanups.
      */
     const resetPassword = async ({ email, otp, newPassword }) => {
         if (!email || !otp || !newPassword)
@@ -158,4 +198,5 @@ const createForgotPasswordService = (repo, { logger }) => {
 
     return { sendForgotPasswordOTP, verifyResetOTP, resetPassword };
 };
+
 module.exports = createForgotPasswordService;

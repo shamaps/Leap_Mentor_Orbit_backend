@@ -1,10 +1,50 @@
-// backend/services/feedback.service.js
+// backend/services/feedback.services.js
 const AppError = require("../utils/appError");
 const { toFeedbackDTO } = require("../utils/mappers/feedback.mapper");
+
+/**
+ * @typedef {Object} SelectedTimeSlot
+ * @property {boolean} [menteeMarked] - Completion status assigned by the mentee.
+ * @property {boolean} [mentorMarked] - Completion status assigned by the mentor.
+ */
+
+/**
+ * @typedef {Object} ConnectRequestDocument
+ * @property {any} mentor - Unique identifier tracking the mentor.
+ * @property {any} mentee - Unique identifier tracking the mentee.
+ * @property {string} status - Platform operational status label.
+ * @property {SelectedTimeSlot[]} [selectedSlots] - Optional matrix of distinct meeting schedule blocks.
+ */
+
+/**
+ * @typedef {Object} FeedbackRepository
+ * @property {(id: string) => Promise<ConnectRequestDocument|null>} findSessionById - Resolves full interactive session rows.
+ * @property {(id: string) => Promise<ConnectRequestDocument|null>} findSessionForRead - High-performance read-only session snapshot.
+ * @property {(query: Object) => Promise<Object|null>} findExistingFeedback - Evaluates duplicate feedback profiles.
+ * @property {(data: Object) => Promise<Object>} createFeedback - Records a new feedback log schema.
+ * @property {(id: any) => Promise<Object|null>} findFeedbackById - Resolves fully populated user descriptor rows.
+ * @property {(connectRequestId: string) => Promise<Object[]>} findFeedbackBySession - Pulls feedback structures mapped to a session.
+ * @property {(mentorUserId: any) => Promise<Object[]>} findAllFeedbackForMentor - Aggregates raw score profiles.
+ * @property {(mentorUserId: any) => Promise<Object[]>} computeMentorAvgRating - Computes math averages via aggregation.
+ * @property {(mentorUserId: any, avgRating: number) => Promise<Object|null>} updateMentorAvgRating - Alters historical average scores.
+ */
+
+/**
+ * Factory function creating the core operational logic for the Feedback Service.
+ * * @param {FeedbackRepository} repo - Data layer persistence abstraction instance.
+ * @param {{ logger: Object }} dependencies - Metric tracking and application logging telemetry context.
+ * @returns {Object} Operational service interface exposing feedback workflows.
+ */
 const createFeedbackService = (repo, { logger }) => {
 
-    // Pure helpers
-
+    /**
+     * Deduces system participation role based on session descriptors and credentials.
+     * * @private
+     * @function getParticipantRole
+     * @param {ConnectRequestDocument} connectRequest - The target mentorship agreement model details.
+     * @param {any} userId - Inbound user token primary check index key.
+     * @returns {"mentor"|"mentee"|null} Role context string classification matching records.
+     */
     const getParticipantRole = (connectRequest, userId) => {
         const uid = userId.toString();
         if (connectRequest.mentor.toString() === uid) return "mentor";
@@ -13,24 +53,33 @@ const createFeedbackService = (repo, { logger }) => {
     };
 
     /**
-     * FIX: "Unexpected negated condition" on `slotIndex !== undefined`
-     * Replaced with a positive check: returns the parsed index when present,
-     * or undefined when absent — no negation needed.
+     * Normalizes loose frontend values into strict numbers or undefined.
+     * * @private
+     * @function parseSlotIndex
+     * @param {any} raw - Unparsed raw parameter argument context.
+     * @returns {number|undefined} Standardized numeric format layout output.
      */
     const parseSlotIndex = (raw) =>
         raw === undefined ? undefined : Number(raw);
+
     /**
-     * Returns true when slotIndex is a meaningful value (not undefined/null).
-     * Centralises the repeated `slotIndex !== undefined && slotIndex !== null`
-     * spread pattern into a single readable predicate.
+     * Asserts if a parameter value represents a valid slot indicator entry.
+     * * @private
+     * @function hasSlotIndex
+     * @param {number|undefined|null} slotIndex - The numeric slot tracking index code.
+     * @returns {boolean} True if argument conforms to structural value rules.
      */
     const hasSlotIndex = (slotIndex) =>
         slotIndex !== undefined && slotIndex !== null;
 
     /**
-     * Validates whether the caller is allowed to leave feedback for a specific slot.
-     * FIX: extracted the nested `if (slotIndex ...) { if (!slot || !myMark) }` block
-     * out of submitFeedback() to reduce cognitive complexity.
+     * Enforces matching rules verifying completion metrics across custom sub-slots or top-level session limits.
+     * * @private
+     * @function assertCompletionEligible
+     * @param {ConnectRequestDocument} connectRequest - The active interactive session document.
+     * @param {"mentor"|"mentee"} fromRole - Originator role label context identifier.
+     * @param {number|undefined} slotIndex - Sub-item array mapping index configuration variable.
+     * @throws {AppError} 400 - If the targeted session block lacks valid internal completion markers.
      */
     const assertCompletionEligible = (connectRequest, fromRole, slotIndex) => {
         if (hasSlotIndex(slotIndex)) {
@@ -47,9 +96,11 @@ const createFeedbackService = (repo, { logger }) => {
     };
 
     /**
-     * Recalculates and persists the mentor's average rating.
-     * FIX: extracted the `if (fromRole === "mentee")` block out of submitFeedback()
-     * to reduce cognitive complexity.
+     * Recalculates aggregation profiles, shifting public score vectors.
+     * * @private
+     * @async
+     * @function refreshMentorAvgRating
+     * @param {any} mentorUserId - Target profile modifier index key string.
      */
     const refreshMentorAvgRating = async (mentorUserId) => {
         const [result] = await repo.computeMentorAvgRating(mentorUserId);
@@ -60,17 +111,28 @@ const createFeedbackService = (repo, { logger }) => {
         logger.info(`Updated avgRating for mentor ${mentorUserId}: ${newAvgRating} (from ${result?.count ?? 0} ratings)`);
     };
 
-    // SUBMIT FEEDBACK
-    // parseSlotIndex / hasSlotIndex / assertCompletionEligible / refreshMentorAvgRating
-
-
+    /**
+     * Validates and registers custom participant feedback log schemas, triggering average score recalculations.
+     * * @async
+     * @function submitFeedback
+     * @param {Object} payload - Combined payload processing criteria parameters container.
+     * @param {string} payload.connectRequestId - Unique system connection tracker index string.
+     * @param {number} payload.rating - Quality value bounded between 1 and 5 inclusive.
+     * @param {string} [payload.comment] - Literal description text explaining evaluation reasons.
+     * @param {number|string} [payload.slotIndex] - Optional identifier indexing specific sub-slot elements.
+     * @param {any} payload.userId - Session tracking indicator verifying originator token data.
+     * @throws {AppError} 400 - If required indices are absent or score values violate scale constraints.
+     * @throws {AppError} 403 - If originator indices fail relationship authorization validations.
+     * @throws {AppError} 404 - If target session document search yields no valid data rows.
+     * @throws {AppError} 409 - If duplicate matching items already populate tracking databases.
+     * @returns {Promise<Object>} Formatted mapping DTO layout detailing transaction outputs.
+     */
     const submitFeedback = async ({ connectRequestId, rating, comment, slotIndex: rawSlotIndex, userId }) => {
         if (!connectRequestId)
             throw new AppError(400, "connectRequestId is required");
         if (!rating || rating < 1 || rating > 5)
             throw new AppError(400, "rating must be between 1 and 5");
 
-        // FIX: parseSlotIndex() eliminates the negated-condition warning
         const slotIndex = parseSlotIndex(rawSlotIndex);
 
         const connectRequest = await repo.findSessionById(connectRequestId);
@@ -81,7 +143,6 @@ const createFeedbackService = (repo, { logger }) => {
         if (!fromRole)
             throw new AppError(403, "Not authorized to submit feedback for this session");
 
-        // FIX: assertCompletionEligible() removes nested if-inside-if from this function
         assertCompletionEligible(connectRequest, fromRole, slotIndex);
 
         const toUserId = fromRole === "mentor"
@@ -107,7 +168,6 @@ const createFeedbackService = (repo, { logger }) => {
             ...(hasSlotIndex(slotIndex) ? { slotIndex } : {}),
         });
 
-        // FIX: refreshMentorAvgRating() removes if-block from this function
         if (fromRole === "mentee") {
             await refreshMentorAvgRating(toUserId);
         }
@@ -116,10 +176,17 @@ const createFeedbackService = (repo, { logger }) => {
         return toFeedbackDTO(populated);
     };
 
-
-    // GET FEEDBACK
-
-
+    /**
+     * Resolves localized context matrices grouping internal feedback arrays against counterpart visibility rules.
+     * * @async
+     * @function getFeedback
+     * @param {Object} input - Query definition boundaries container payload.
+     * @param {string} input.connectRequestId - Unique primary lookup search index string.
+     * @param {any} input.userId - Secure identity token verification signature.
+     * @throws {AppError} 403 - If identity checks reveal user context fails basic partnership constraints.
+     * @throws {AppError} 404 - If structural database queries return empty results.
+     * @returns {Promise<{myFeedback: Object|null, mySlotFeedback: Object[], theirFeedback: Object|null, sessionStatus: string}>} Grouped visibility properties container layout details.
+     */
     const getFeedback = async ({ connectRequestId, userId }) => {
         const connectRequest = await repo.findSessionForRead(connectRequestId);
 
@@ -131,7 +198,6 @@ const createFeedbackService = (repo, { logger }) => {
             throw new AppError(403, "Not authorized to view this session's feedback");
 
         const allFeedback = await repo.findFeedbackBySession(connectRequestId);
-
 
         const myFeedback = allFeedback.find(
             (f) => f.from._id.toString() === userId.toString() && f.slotIndex == null
@@ -153,4 +219,5 @@ const createFeedbackService = (repo, { logger }) => {
 
     return { submitFeedback, getFeedback };
 };
+
 module.exports = createFeedbackService;

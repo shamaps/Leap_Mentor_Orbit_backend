@@ -1,4 +1,7 @@
-// backend/services/admin.service.js
+/**
+ * @fileoverview Admin service layer handling business logic for admin operations.
+ */
+
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/appError");
 const cache = require("../utils/cache");
@@ -8,15 +11,30 @@ const { escapeRegex } = require("../utils/escapeRegex");
 const { toAdminDTO } = require("../utils/mappers/adminUser.mapper");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
+
+/**
+ * Creates the admin service.
+ * @param {Object} repo - The admin repository.
+ * @param {Object} options - Options object.
+ * @param {Object} options.logger - Logger instance.
+ * @returns {Object} Admin service methods.
+ */
 const createAdminService = (repo, { logger }) => {
-    //Token helper 
+    /**
+     * Generates a JWT for the admin.
+     * @param {string} id - The admin user ID.
+     * @returns {string} The signed JWT token.
+     */
     const signToken = (id) =>
         jwt.sign({ id, role: "admin" }, config.jwtSecret, {
-        expiresIn: config.jwtAdminExpiresIn,
+            expiresIn: config.jwtAdminExpiresIn,
         });
 
-    // Set admin token as httpOnly cookie 
-    // Same pattern as regular user auth — token never goes in response body
+    /**
+     * Sets the admin access token as an httpOnly cookie.
+     * @param {Object} res - Express response object.
+     * @param {string} token - The JWT token to set.
+     */
     const setAdminCookie = (res, token) => {
         res.cookie("adminAccessToken", token, {
             httpOnly: true,
@@ -27,11 +45,17 @@ const createAdminService = (repo, { logger }) => {
         });
     };
 
-
     // AUTH
 
-
-    const loginAdmin = async (res, email, password) => {   // ← res added to set cookie
+    /**
+     * Authenticates an admin and sets the auth cookie.
+     * @param {Object} res - Express response object.
+     * @param {string} email - Admin email.
+     * @param {string} password - Admin password.
+     * @returns {Promise<{admin: Object}>} The authenticated admin DTO.
+     * @throws {AppError} 401 or 403 on invalid credentials or inactive account.
+     */
+    const loginAdmin = async (res, email, password) => {
         const admin = await repo.findAdminByEmail(email);
         if (!admin) throw new AppError(401, "Invalid credentials.");
         if (!admin.isActive) throw new AppError(403, "Admin account is deactivated");
@@ -43,17 +67,19 @@ const createAdminService = (repo, { logger }) => {
         await repo.saveAdmin(admin);
 
         const accessToken = signToken(admin._id);
-        setAdminCookie(res, accessToken);   // ← set as httpOnly cookie, not in response body
+        setAdminCookie(res, accessToken);
 
         return {
             admin: toAdminDTO(admin),
         };
     };
 
-
     // STATS
 
-
+    /**
+     * Fetches top-level aggregate statistics for the dashboard.
+     * @returns {Promise<Object>} Aggregate statistics.
+     */
     const fetchStats = async () => {
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
@@ -85,6 +111,10 @@ const createAdminService = (repo, { logger }) => {
         };
     };
 
+    /**
+     * Fetches user growth statistics over the past 90 days.
+     * @returns {Promise<Array<{label: string, count: number}>>} Growth data.
+     */
     const fetchUserGrowth = async () => {
         const since = new Date();
         since.setDate(since.getDate() - 90);
@@ -97,15 +127,27 @@ const createAdminService = (repo, { logger }) => {
         }));
     };
 
+    /**
+     * Fetches the top 12 mentor industries by count.
+     * @returns {Promise<Array<{industry: string, count: number}>>} Industry stats.
+     */
     const fetchMentorIndustryStats = async () => {
         const industries = await repo.aggregateMentorIndustries();
         return industries.map((i) => ({ industry: i._id, count: i.count }));
     };
 
-
     // USER MANAGEMENT
 
-
+    /**
+     * Fetches a paginated and optionally filtered list of users.
+     * @param {Object} query - Filter parameters.
+     * @param {string} [query.search] - Search term for name/email.
+     * @param {string} [query.role] - User role ("mentor" or "mentee").
+     * @param {number} [query.page=1] - Page number.
+     * @param {number} [query.limit=20] - Number of items per page.
+     * @param {string} [query.deleted] - Include deleted users if "true".
+     * @returns {Promise<Object>} Paginated list of enriched users.
+     */
     const fetchUsers = async ({ search, role, page = 1, limit = 20, deleted }) => {
         const filter = {};
 
@@ -152,6 +194,12 @@ const createAdminService = (repo, { logger }) => {
         };
     };
 
+    /**
+     * Fetches detailed information for a specific user.
+     * @param {string} userId - The ID of the user.
+     * @returns {Promise<Object>} Detailed user DTO and session count.
+     * @throws {AppError} 404 if the user is not found.
+     */
     const fetchUserDetail = async (userId) => {
         const user = await repo.findUserById(userId);
         if (!user) throw new AppError(404, "User not found.");
@@ -167,6 +215,12 @@ const createAdminService = (repo, { logger }) => {
         return { user: toUserDTO(user), profile: toMentorProfileDTO(profile), sessionCount };
     };
 
+    /**
+     * Hard deletes a user from the database permanently.
+     * @param {string} userId - The ID of the user to remove.
+     * @returns {Promise<{message: string}>} Success message.
+     * @throws {AppError} 404 if the user is not found.
+     */
     const removeUser = async (userId) => {
         const user = await repo.findUserByIdRaw(userId);
         if (!user) throw new AppError(404, "User not found.");
@@ -178,6 +232,12 @@ const createAdminService = (repo, { logger }) => {
         return { message: `User ${user.name} (${user.email}) has been permanently deleted.` };
     };
 
+    /**
+     * Soft deletes/blocks a user.
+     * @param {string} userId - The ID of the user to block.
+     * @returns {Promise<{message: string}>} Success message.
+     * @throws {AppError} 404 if the user is not found.
+     */
     const blockUser = async (userId) => {
         const user = await repo.blockUserById(userId);
         if (!user) throw new AppError(404, "User not found.");
@@ -186,6 +246,12 @@ const createAdminService = (repo, { logger }) => {
         return { message: `User ${user.name} has been blocked.` };
     };
 
+    /**
+     * Unblocks a previously blocked user.
+     * @param {string} userId - The ID of the user to unblock.
+     * @returns {Promise<{message: string}>} Success message.
+     * @throws {AppError} 404 if the user is not found.
+     */
     const unblockUser = async (userId) => {
         const user = await repo.unblockUserById(userId);
         if (!user) throw new AppError(404, "User not found.");
@@ -193,7 +259,13 @@ const createAdminService = (repo, { logger }) => {
         logger.info("Admin unblocked user", { email: user.email, userId });
         return { message: `User ${user.name} has been restored.` };
     };
-    //  deleteUser function
+
+    /**
+     * Soft-deletes a user and cancels their pending engagements via cascade.
+     * @param {string} userId - The ID of the user to delete.
+     * @returns {Promise<{message: string}>} Success message.
+     * @throws {AppError} 404 if the user is not found.
+     */
     const deleteUser = async (userId) => {
         const user = await repo.findUserByIdRaw(userId);
         if (!user) throw new AppError(404, "User not found");
@@ -204,7 +276,10 @@ const createAdminService = (repo, { logger }) => {
 
     // ENGAGEMENTS
 
-
+    /**
+     * Fetches statistics related to engagements (connect requests).
+     * @returns {Promise<Object>} Engagement counts by status and total.
+     */
     const fetchEngagementStats = async () => {
         const statuses = ["pending", "accepted", "rejected", "referred", "ongoing", "completed"];
 
@@ -216,6 +291,17 @@ const createAdminService = (repo, { logger }) => {
         return stats;
     };
 
+    /**
+     * Fetches a paginated and optionally filtered list of engagements.
+     * @param {Object} query - Filter parameters.
+     * @param {string} [query.status] - Engagement status.
+     * @param {string} [query.search] - Search term for mentor/mentee name or email.
+     * @param {string|Date} [query.dateFrom] - Start date filter.
+     * @param {string|Date} [query.dateTo] - End date filter.
+     * @param {number} [query.page=1] - Page number.
+     * @param {number} [query.limit=15] - Number of items per page.
+     * @returns {Promise<Object>} Paginated list of engagements.
+     */
     const fetchEngagements = async ({ status, search, dateFrom, dateTo, page = 1, limit = 15 }) => {
         const filter = {};
 

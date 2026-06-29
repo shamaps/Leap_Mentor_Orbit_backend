@@ -4,15 +4,60 @@
 // Index definitions: config/atlasSearchIndexes.json
 const { escapeRegex } = require("../utils/escapeRegex");
 const cache = require("../utils/cache");
+
+/**
+ * @typedef {Object} SearchPagination
+ * @property {number} totalCount - Total matching documents available.
+ * @property {number} totalPages - Total computed pagination pages.
+ * @property {number} currentPage - Current active page number.
+ * @property {boolean} hasMore - Operational flag indicating whether additional records follow.
+ */
+
+/**
+ * @typedef {Object} MentorSearchRepository
+ * @property {(name: string) => Promise<Object[]>} findMentorUsersByName - Runs Atlas autocomplete or regex backup on user collection names.
+ * @property {() => Promise<number>} countPublishedMentors - Obtains count of active published profiles.
+ * @property {(skip: number, limit: number) => Promise<Object[]>} findPublishedMentors - Returns plain profiles sorted by score.
+ * @property {(pipeline: Object[]) => Promise<Object[]>} runAtlasPipeline - Executes raw aggregation arrays inside the DB engine.
+ * @property {(userIds: string[], expMatch: Object) => Promise<Object[]>} findProfilesByUserIds - Resolves missing named matches.
+ * @property {(filter: Object) => Promise<number>} countByFilter - Counts documents using traditional Mongo filters.
+ * @property {(filter: Object, skip: number, limit: number) => Promise<Object[]>} findByFilter - Pulls records using backup regex filters.
+ */
+
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string, meta?: Object) => void} info - Monitors execution routes.
+ * @property {(message: string, meta?: Object) => void} warn - Captures index failure degradations.
+ */
+
+/**
+ * Factory constructing the Atlas Search and fallback orchestration layer.
+ * * @param {MentorSearchRepository} repo - Abstraction data registry layer instance.
+ * @param {{ logger: Logger }} dependencies - Telemetry log instrumentation utilities block.
+ * @returns {Object} Configured object map containing search execution methods.
+ */
 const createMentorSearchService = (repo, { logger }) => {
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
+    /**
+     * Instantiates an empty page layout model envelope fallback.
+     * * @private
+     * @function emptyPage
+     * @param {number} pageNum - The page number context mapping index.
+     * @returns {{mentors: Array, pagination: SearchPagination}} Empty search results data block structural template.
+     */
     const emptyPage = (pageNum) => ({
         mentors: [],
         pagination: { totalCount: 0, totalPages: 0, currentPage: pageNum, hasMore: false },
     });
 
+    /**
+     * Evaluates parameters evaluating if floor parameters drop criteria below logical bounds.
+     * * @private
+     * @function isPriceRangeInvalid
+     * @param {number|string|undefined} minPrice - Minimum rate parameter bound.
+     * @param {number|string|undefined} maxPrice - Maximum rate parameter bound.
+     * @returns {boolean} True if price thresholds evaluate as conflicting.
+     */
     const isPriceRangeInvalid = (minPrice, maxPrice) => {
         if (minPrice === undefined || maxPrice === undefined) return false;
         const min = Number(minPrice);
@@ -20,12 +65,17 @@ const createMentorSearchService = (repo, { logger }) => {
         return !Number.isNaN(min) && !Number.isNaN(max) && min > max;
     };
 
-    // ── Atlas pipeline builders ───────────────────────────────────────────────
-
     /**
-     * skill/name/industry/price/rating → Atlas compound clause
-     * KEY FIX: when no skill/industry typed, we still need a `must` clause
-     * so Atlas returns results. We use a wildcard match-all for that case.
+     * Formulates complex multi-clause compound query parameters targeted at Atlas cluster search indices.
+     * * @private
+     * @function buildAtlasCompound
+     * @param {Object} criteria - Filters criteria configuration container mapping search tokens.
+     * @param {string} criteria.skill - Wildcard skill token targeted across multiple paths.
+     * @param {string} criteria.industry - Mandatory industry domain value filter text.
+     * @param {number|string} [criteria.minPrice] - Minimum cost rate option limit selector.
+     * @param {number|string} [criteria.maxPrice] - Maximum cost rate option limit selector.
+     * @param {number|string} [criteria.minRating] - Floor score filter limit constraint checking option.
+     * @returns {Object} Atlas search query schema compound filter block context.
      */
     const buildAtlasCompound = ({ skill, industry, minPrice, maxPrice, minRating }) => {
         const filterClauses = [
@@ -36,7 +86,6 @@ const createMentorSearchService = (repo, { logger }) => {
         const shouldClauses = [];
 
         if (skill.trim()) {
-            // autocomplete: handles prefix typing ("reac" → "react")
             shouldClauses.push(
                 {
                     autocomplete: {
@@ -54,7 +103,6 @@ const createMentorSearchService = (repo, { logger }) => {
                         score: { boost: { value: 5 } },
                     },
                 },
-                // text: handles full-word typos ("reactee" → "react")
                 {
                     text: {
                         query: skill.trim(),
@@ -100,11 +148,9 @@ const createMentorSearchService = (repo, { logger }) => {
         if (mustClauses.length > 0) compound.must = mustClauses;
         if (shouldClauses.length > 0) {
             compound.should = shouldClauses;
-            compound.minimumShouldMatch = 1; // ← KEY: at least 1 should must match
+            compound.minimumShouldMatch = 1;
         }
 
-        // KEY FIX: if no must AND no should, Atlas returns nothing with only filter.
-        // Add a wildcard exists clause so filter-only queries still return results.
         if (mustClauses.length === 0 && shouldClauses.length === 0) {
             compound.must = [{ exists: { path: "isProfilePublished" } }];
         }
@@ -112,6 +158,14 @@ const createMentorSearchService = (repo, { logger }) => {
         return compound;
     };
 
+    /**
+     * Builds relational experience range parameters queries.
+     * * @private
+     * @function buildExpMatch
+     * @param {number|string} minExperience - Floor experience parameter.
+     * @param {number|string} maxExperience - Ceiling experience parameter.
+     * @returns {Object} Mongoose traditional query match payload criteria configuration.
+     */
     const buildExpMatch = (minExperience, maxExperience) => {
         if (minExperience === undefined && maxExperience === undefined) return {};
         const match = { yearsOfExperience: {} };
@@ -121,9 +175,14 @@ const createMentorSearchService = (repo, { logger }) => {
     };
 
     /**
-     * Full Atlas aggregation pipeline.
-     * Pagination ($skip/$limit) happens INSIDE MongoDB — not in Node.js.
-     * totalCount also computed in DB via $facet second bucket.
+     * Compiles entire native DB pipeline operations aggregating text score parameters alongside deep user projections.
+     * * @private
+     * @function buildAtlasPipeline
+     * @param {Object} compound - Prepared filter schemas mapped context payload envelope.
+     * @param {Object} expMatch - Post-filter relational checks matching metrics criteria.
+     * @param {number} skip - Offset density index allocation parameters.
+     * @param {number} limitNum - Sizing ceiling tracking output page sizes.
+     * @returns {Object[]} Sequential operational DB pipeline query blocks configuration data array.
      */
     const buildAtlasPipeline = (compound, expMatch, skip, limitNum) => [
         { $search: { index: "mentor_search", compound } },
@@ -153,20 +212,28 @@ const createMentorSearchService = (repo, { logger }) => {
         },
         {
             $facet: {
-                // Pagination inside DB — NOT sliced in Node.js
                 results: [
                     { $sort: { searchScore: -1 } },
                     { $skip: skip },
                     { $limit: limitNum },
                 ],
-                // Count inside DB
                 totalCount: [{ $count: "count" }],
             },
         },
     ];
 
-    // ── Name-match union ──────────────────────────────────────────────────────
-
+    /**
+     * Re-injects candidate profiles that native indices skipped because human names live in parent collections.
+     * * @private
+     * @async
+     * @function mergeNameMatches
+     * @param {Object} payloadData - Input parameters checking matching matrices configurations.
+     * @param {Object[]} payloadData.results - Output rows extracted via Atlas pipeline runs.
+     * @param {Set<string>|null} payloadData.nameMatchedProfileUserIds - Set arrays tracking user primary indices located via name queries.
+     * @param {string} payloadData.skill - Core validation check parameters verifying if context focuses exclusively on name tokens.
+     * @param {Object} payloadData.expMatch - Traditional experience parameters query matching definitions.
+     * @returns {Promise<Object[]>} Overlapping union of merged profile data arrays rows.
+     */
     const mergeNameMatches = async ({ results, nameMatchedProfileUserIds, skill, expMatch }) => {
         if (!nameMatchedProfileUserIds?.size) return results;
 
@@ -183,7 +250,6 @@ const createMentorSearchService = (repo, { logger }) => {
             results = [...withScore, ...results];
         }
 
-        // Name-only search (no skill) → only show name-matched profiles
         if (!skill.trim()) {
             results = results.filter((r) =>
                 nameMatchedProfileUserIds.has(r.user._id.toString())
@@ -193,8 +259,16 @@ const createMentorSearchService = (repo, { logger }) => {
         return results;
     };
 
-    // ── Plain list ────────────────────────────────────────────────────────────
-
+    /**
+     * Resolves plain, rating-ordered summary metrics cards backed by high-performance cache frameworks.
+     * * @private
+     * @async
+     * @function plainList
+     * @param {number} pageNum - Target tracking dynamic page selector indicator.
+     * @param {number} limitNum - Capacity sizing limit threshold configuration data parameters.
+     * @param {number} skip - Offset elements allocation counts.
+     * @returns {Promise<Object>} Cached or newly compiled query page layout details containing mentors and indicators.
+     */
     const plainList = async (pageNum, limitNum, skip) => {
         const key = `${cache.NS.MENTOR_LIST}:page${pageNum}:limit${limitNum}`;
         const cached = await cache.get(key);
@@ -213,8 +287,14 @@ const createMentorSearchService = (repo, { logger }) => {
         return result;
     };
 
-    // ── Fallback (regex — when Atlas index doesn't exist) ─────────────────────
-
+    /**
+     * Formulates traditional evaluation expression blocks for handling search matching queries via regex fallback structures.
+     * * @private
+     * @async
+     * @function buildFallbackFilter
+     * @param {Object} parameters - Dynamic parameters container tracking input fields.
+     * @returns {Promise<Object>} Traditional Mongoose evaluation match filter block parameters statement.
+     */
     const buildFallbackFilter = async ({ skill, name, industry, minPrice, maxPrice, minRating, minExperience, maxExperience }) => {
         const query = skill.trim() || name.trim();
         const filter = { isProfilePublished: true, isProfileComplete: true };
@@ -249,6 +329,13 @@ const createMentorSearchService = (repo, { logger }) => {
         return filter;
     };
 
+    /**
+     * Executes backup queries relying on regular expression parsing hooks when core indices are non-existent.
+     * * @async
+     * @function fallbackSearch
+     * @param {Object} params - Intake filters parameter data context packages.
+     * @returns {Promise<{mentors: Object[], pagination: SearchPagination}>} Traditional pagination data envelope containing mentors.
+     */
     const fallbackSearch = async (params) => {
         const { page = 1, limit = 6 } = params;
         const pageNum = Math.max(1, Number.parseInt(page));
@@ -266,8 +353,23 @@ const createMentorSearchService = (repo, { logger }) => {
         };
     };
 
-    // ── MAIN SEARCH ───────────────────────────────────────────────────────────
-
+    /**
+     * Core orchestrator balancing multi-stage verification steps, combining name token checks, executing pipelines, and merging union profiles.
+     * * @async
+     * @function searchMentors
+     * @param {Object} params - Context package holding parameters criteria options.
+     * @param {string} [params.skill=""] - Input skill label matching token.
+     * @param {string} [params.name=""] - Input name literal matching expression metrics.
+     * @param {string} [params.industry=""] - Industry field filter selection tag.
+     * @param {number|string} [params.minPrice] - Minimum pricing limit constraint indicator.
+     * @param {number|string} [params.maxPrice] - Maximum pricing limit constraint indicator.
+     * @param {number|string} [params.minRating] - Floor score value boundary configuration parameters.
+     * @param {number|string} [params.minExperience] - Floor experience range boundary parameter.
+     * @param {number|string} [params.maxExperience] - Ceiling experience range boundary parameter.
+     * @param {number|string} [params.page=1] - Dynamic page selector index value.
+     * @param {number|string} [params.limit=6] - Sizing layout elements total counts limit indicator.
+     * @returns {Promise<{mentors: Object[], pagination: SearchPagination}>} Fully parsed structural pagination metrics container data.
+     */
     const searchMentors = async (params) => {
         const {
             skill = "", name = "", industry = "",
@@ -288,26 +390,21 @@ const createMentorSearchService = (repo, { logger }) => {
             || minRating !== undefined || minExperience !== undefined
             || maxExperience !== undefined;
 
-        // No query, no filters → plain list sorted by rating
         if (!hasQuery && !hasFilters) return plainList(pageNum, limitNum, skip);
 
-        // Step 1 — name search via Atlas (user_name_search index)
         let nameMatchedProfileUserIds = null;
         if (name.trim()) {
             const matchingUsers = await repo.findMentorUsersByName(name.trim());
             nameMatchedProfileUserIds = new Set(matchingUsers.map((u) => u._id.toString()));
-            // If name given but zero matches → nothing to show
             if (!skill.trim() && !hasFilters && nameMatchedProfileUserIds.size === 0) {
                 return emptyPage(pageNum);
             }
         }
 
-        // Step 2 — build Atlas compound + experience post-filter
         const compound = buildAtlasCompound({ skill, industry, minPrice, maxPrice, minRating });
         const expMatch = buildExpMatch(minExperience, maxExperience);
         const pipeline = buildAtlasPipeline(compound, expMatch, skip, limitNum);
 
-        // Step 3 — run Atlas pipeline
         const [facetResult] = await repo.runAtlasPipeline(pipeline);
         let results = facetResult?.results || [];
         const dbTotal = facetResult?.totalCount?.[0]?.count ?? 0;
@@ -318,7 +415,6 @@ const createMentorSearchService = (repo, { logger }) => {
             dbTotal,
         });
 
-        // Step 4 — merge name-matched profiles Atlas missed
         results = await mergeNameMatches({ results, nameMatchedProfileUserIds, skill, expMatch });
 
         if (results.length === 0) return emptyPage(pageNum);
@@ -332,8 +428,14 @@ const createMentorSearchService = (repo, { logger }) => {
         };
     };
 
-    // ── AUTOCOMPLETE ──────────────────────────────────────────────────────────
-
+    /**
+     * Drives highly contextual auto-completion algorithms querying prefix characters to guess technical competencies.
+     * * @async
+     * @function autocompleteMentors
+     * @param {Object} queryParams - Input text frame parameter parameters payload.
+     * @param {string} queryParams.q - Prefix characters sequence entry tracking input value.
+     * @returns {Promise<Object[]>} Dynamic recommendation items collection limited to 5 elements, or an empty fallback array.
+     */
     const autocompleteMentors = async ({ q }) => {
         if (!q?.trim()) return [];
 

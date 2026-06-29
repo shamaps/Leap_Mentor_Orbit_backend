@@ -1,12 +1,22 @@
 // backend/services/adminReports.service.js
 const { sendReportResolvedEmail } = require("../utils/emails");
 const AppError = require("../utils/appError");
-// Pure helpers — fix nested ternaries + nested template literals
+
+/**
+ * Creates the admin reports service.
+ * @param {Object} repo - The admin reports repository.
+ * @param {Object} options - Service options.
+ * @param {Object} options.logger - Logger instance.
+ * @param {Function} options.createNotification - Function to create an in-app notification.
+ * @returns {Object} Service methods.
+ */
 const createAdminReportsService = (repo, { logger, createNotification }) => {
 
     /**
      * Appends an admin note suffix if one exists.
      * Extracted to avoid nested template literals.
+     * @param {string} [adminNote] - Optional note from the admin.
+     * @returns {string} Formatted note string or empty string.
      */
     const notesSuffix = (adminNote) =>
         adminNote ? ` Note: ${adminNote}` : "";
@@ -14,6 +24,10 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
     /**
      * Builds the in-app notification title and message for handleReport.
      * Extracted to fix: "Extract nested ternary" and "nested template literals".
+     * @param {string} status - The new report status ('resolved' or 'dismissed').
+     * @param {string} otherPerson - Name of the reported user.
+     * @param {string} [adminNote] - Optional note from the admin.
+     * @returns {{title: string, message: string}} The notification payload.
      */
     const buildReportNotification = (status, otherPerson, adminNote) => {
         const suffix = notesSuffix(adminNote);
@@ -31,10 +45,12 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
         };
     };
 
-
     // STATS
 
-
+    /**
+     * Fetches aggregate statistics for reports (total, pending, resolved today).
+     * @returns {Promise<{totalReports: number, pendingResolution: number, resolvedToday: number}>}
+     */
     const fetchReportStats = async () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -48,10 +64,17 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
         return { totalReports, pendingResolution, resolvedToday };
     };
 
-
     // LIST
 
-
+    /**
+     * Fetches a paginated list of reports, optionally filtered by status and search terms.
+     * @param {Object} params - Query parameters.
+     * @param {number} params.page - Current page.
+     * @param {number} params.limit - Number of items per page.
+     * @param {string} [params.search] - Search term for user names.
+     * @param {string} [params.status] - Report status filter.
+     * @returns {Promise<{reports: Array<Object>, pagination: Object}>}
+     */
     const fetchReports = async ({ page, limit, search, status }) => {
         const skip = (page - 1) * limit;
         const filter = {};
@@ -107,10 +130,18 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
         };
     };
 
-
     // HANDLE (resolve / dismiss)
 
-
+    /**
+     * Resolves or dismisses a report and sends appropriate notifications.
+     * @param {Object} params - Action parameters.
+     * @param {string} params.reportId - The ID of the report.
+     * @param {string} params.status - 'resolved' or 'dismissed'.
+     * @param {string} [params.adminNote] - Optional admin context.
+     * @param {string} params.adminId - ID of the admin making the change.
+     * @returns {Promise<Object>} Updated report data.
+     * @throws {AppError} If report is not found.
+     */
     const handleReport = async ({ reportId, status, adminNote, adminId }) => {
         const report = await repo.findReportById(reportId);
         if (!report) throw new AppError(404, "Report not found");
@@ -159,10 +190,17 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
         };
     };
 
-
     // PROCESS REFUND
 
-
+    /**
+     * Processes a refund for a mentee if a valid refund report is approved.
+     * @param {Object} params - Refund parameters.
+     * @param {string} params.reportId - The ID of the report.
+     * @param {string} [params.adminNote] - Optional admin note.
+     * @param {string} params.adminId - ID of the resolving admin.
+     * @returns {Promise<{refundAmount: number}>} Details of the refunded amount.
+     * @throws {AppError} 400/403/404 for invalid states.
+     */
     const processRefund = async ({ reportId, adminNote, adminId }) => {
         const report = await repo.findReportByIdWithSession(reportId);
         if (!report) throw new AppError(404, "Report not found.");
@@ -242,10 +280,17 @@ const createAdminReportsService = (repo, { logger, createNotification }) => {
         return { refundAmount };
     };
 
-
     // DELETE SESSION
 
-
+    /**
+     * Forcibly deletes a session connected to a report and notifies participants.
+     * @param {Object} params - Delete parameters.
+     * @param {string} params.reportId - The report ID associated with the session.
+     * @param {string} [params.adminNote] - Optional admin explanation.
+     * @param {string} params.adminId - ID of the resolving admin.
+     * @returns {Promise<void>}
+     * @throws {AppError} If report or session is not found.
+     */
     const deleteSession = async ({ reportId, adminNote, adminId }) => {
         const report = await repo.findReportByIdWithSessionAndParticipants(reportId);
         if (!report) throw new AppError(404, "Report not found");

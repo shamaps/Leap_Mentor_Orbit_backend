@@ -1,6 +1,4 @@
 // swagger.js
-//
-// Replaces both the old swagger-autogen setup AND the separate swagger/*.paths.js
 // mirror approach. Uses swagger-jsdoc to scan JSDoc @openapi comment blocks written
 // directly above each route in routes/*.routes.js (and routes/admin/*.routes.js).
 //
@@ -13,8 +11,8 @@
 // Run with: npm run swagger
 // Output:   ./swagger-output.json  (loaded by app.js at /api-docs)
 
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const swaggerJsdoc = require("swagger-jsdoc");
 
 const sharedSchemas = require("./swagger/_shared");

@@ -3,8 +3,24 @@ const { sendMentorVerifiedEmail } = require("../utils/emails");
 const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
 const { signCloudinaryUrl } = require("../utils/cloudinarySign");
 const AppError = require("../utils/appError");
+
+/**
+ * Factory function to create the Admin Verification Domain Service.
+ * @param {Object} adminVerificationRepo - Repository responsible for accessing DB collections.
+ * @param {Object} dependencies - System utility options.
+ * @param {Object} dependencies.logger - Logger wrapper instance.
+ * @returns {Object} Service endpoints dealing with mentor verification logic.
+ */
 const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
 
+    /**
+     * Retrieves all requested mentor profiles, sanitized and paginated.
+     * @param {Object} [params] - Configuration options.
+     * @param {number|string} [params.page=1] - Active query page.
+     * @param {number|string} [params.limit=20] - Size limit per page.
+     * @param {string} [params.search] - Target profile query text.
+     * @returns {Promise<Object>} Combined pagination metadata and payload list.
+     */
     const getAllMentorVerifications = async ({ page = 1, limit = 20, search } = {}) => {
         const safePage = Math.max(1, Number.parseInt(page) || 1);
         const safeLimit = Math.min(50, Number.parseInt(limit) || 20);
@@ -27,6 +43,12 @@ const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
         };
     };
 
+    /**
+     * Fetches details and temporary Cloudinary viewing signatures for sensitive documents.
+     * @param {string} mentorProfileId - Target unique profile parameter string.
+     * @returns {Promise<Object>} Extracted configuration elements with signed document strings.
+     * @throws {AppError} 404 error if profile object cannot be found.
+     */
     const getMentorVerificationById = async (mentorProfileId) => {
         const profile = await adminVerificationRepo.findMentorProfileById(mentorProfileId);
 
@@ -50,6 +72,12 @@ const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
         };
     };
 
+    /**
+     * Approves verification status for a targeted profile and alerts via electronic message.
+     * @param {string} mentorProfileId - Target unique profile sequence string.
+     * @returns {Promise<Object>} Operation report map object.
+     * @throws {AppError} 404 if profile not found, 400 if already verified.
+     */
     const verifyMentor = async (mentorProfileId) => {
         const profile = await adminVerificationRepo.findMentorProfileDocumentById(mentorProfileId);
 
@@ -79,6 +107,12 @@ const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
         };
     };
 
+    /**
+     * Resets verified parameter status targets to standard unverified flags.
+     * @param {string} mentorProfileId - Unique document database entry identity string.
+     * @returns {Promise<Object>} Success text message details.
+     * @throws {AppError} 404 if profile not found, 400 if already unverified.
+     */
     const revokeMentorVerification = async (mentorProfileId) => {
         const profile = await adminVerificationRepo.findMentorProfileDocumentById(mentorProfileId);
 
@@ -102,4 +136,5 @@ const createAdminVerificationService = (adminVerificationRepo, { logger }) => {
 
     return { getAllMentorVerifications, getMentorVerificationById, verifyMentor, revokeMentorVerification };
 };
+
 module.exports = createAdminVerificationService;

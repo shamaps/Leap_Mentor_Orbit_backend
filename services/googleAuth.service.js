@@ -7,13 +7,39 @@ const { withTimeout } = require("../utils/withTimeout");
 const { toUserDTO } = require("../utils/mappers/user.mapper");
 const config = require("../config/env");
 
+/**
+ * @typedef {Object} GoogleAuthRepository
+ * @property {(email: string) => Promise<Object|null>} findUserByEmail - Resolves a user record by their normalized email address.
+ * @property {(data: Object) => Promise<Object>} createUser - Inserts a new user document into the database.
+ * @property {(user: Object) => Promise<Object>} saveUser - Persists updates or role changes on an existing user document.
+ * @property {(provider: string, providerId: string) => Promise<Object|null>} findOAuthAccount - Searches for an existing third-party federation record.
+ * @property {(userId: any, provider: string, providerId: string) => Promise<Object>} createOAuthAccount - Records a new federation link for a user.
+ */
+
+/**
+ * @typedef {Object} Logger
+ * @property {(message: string) => void} info
+ * @property {(message: string) => void} warn
+ * @property {(message: string, error: any) => void} error
+ */
+
+/**
+ * Factory function creating the Google OAuth Authentication Service instance.
+ * * @param {GoogleAuthRepository} repo - Data layer persistence abstraction interface.
+ * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
+ * @returns {Object} Configured object map containing the Google authentication service method.
+ */
 const createGoogleAuthService = (repo, { logger }) => {
     /**
-     * Verify the Google credential and return the token payload.
-     * Throws typed errors on failure.
+     * Decode, safely verify with timeout boundaries, and extract the Google ID token payload.
+     * Throws typed errors on configuration absence or verification timeouts.
      *
-     * @param {string} credential - raw Google credential from req.body
-     * @returns {Promise<Object>} payload - verified Google token payload
+     * @private
+     * @async
+     * @function verifyGoogleCredential
+     * @param {string} credential - Raw Google credential token string from inbound request.
+     * @throws {AppError} 500 - If GOOGLE_CLIENT_ID is undefined inside environment configurations.
+     * @returns {Promise<Object>} The verified Google token payload containing claim profiles.
      */
     const verifyGoogleCredential = async (credential) => {
         const decodedToken = jwt.decode(credential);
@@ -30,7 +56,6 @@ const createGoogleAuthService = (repo, { logger }) => {
 
         const payload = ticket.getPayload();
 
-        // Log mismatch as a warning — not a hard failure (Google allows multiple client IDs)
         if (payload.aud !== envAudience) {
             logger.warn("⚠️ WARNING: Token was issued for a different Client ID. Check your .env!");
         }
@@ -39,19 +64,22 @@ const createGoogleAuthService = (repo, { logger }) => {
     };
 
     /**
-     * Create a brand-new user, wallet, and welcome transaction.
-     * Called only when no existing user is found for this email.
+     * Provisions a brand-new user record and executes initial resource allocation.
+     * Called only when no existing user is found matching the verified email.
      *
-     * @param {Object} params
-     * @param {string} params.name
-     * @param {string} params.email          - already normalized
-     * @param {Array}  params.roles
-     * @param {boolean} params.termsAccepted
-     * @param {boolean} params.emailVerified - from Google payload
-     * @returns {Promise<Document>} newly created user
+     * @private
+     * @async
+     * @function registerNewUser
+     * @param {Object} params - Initial user parameters package context.
+     * @param {string} params.name - User human name string derived from identity claims.
+     * @param {string} params.email - Lowercased, stripped, unique user target email address.
+     * @param {string[]} params.roles - Requested system access level capabilities.
+     * @param {boolean} params.termsAccepted - Compliance flag state for policies acceptance.
+     * @param {boolean} params.emailVerified - Verification state flag provided directly by Google assertions.
+     * @throws {AppError} 400 - If terms are unaccepted or requested role shapes fail validation rules.
+     * @returns {Promise<Object>} The newly created, saved platform internal User document model.
      */
     const registerNewUser = async ({ name, email, roles, termsAccepted, emailVerified }) => {
-        // guard moved here — eliminates negated condition on `!user` in main fn
         if (termsAccepted !== true)
             throw new AppError(400, "You must accept terms to continue");
 
@@ -69,20 +97,19 @@ const createGoogleAuthService = (repo, { logger }) => {
             termsAcceptedAt: new Date(),
         });
 
-
         await provisionWallet(user._id, uniqueRoles);
         return user;
     };
 
-
-
     /**
-     * Ensure an OAuthAccount link exists for this Google sub.
-     * Creates one if it doesn't already exist.
+     * Verifies presence or generates structural provider linkages tracking federated accounts.
      *
-     * @param {ObjectId} userId
-     * @param {string}   googleSub
-     * @returns {Promise<void>}
+     * @private
+     * @async
+     * @function ensureOAuthAccount
+     * @param {any} userId - Target primary key tracking internal account user models.
+     * @param {string} googleSub - Upstream provider identifier index pointer.
+     * @returns {Promise<void>} Resolves upon confirmed presence or completed mapping record insertions.
      */
     const ensureOAuthAccount = async (userId, googleSub) => {
         const existing = await repo.findOAuthAccount("google", googleSub);
@@ -91,25 +118,23 @@ const createGoogleAuthService = (repo, { logger }) => {
         }
     };
 
-
-    // MAIN — googleAuth
-
-
     /**
-     * Handle Google OAuth login/registration.
-     * Complexity reduced from 25 → under 15 by extracting helpers above.
+     * Main handler orchestrating Google OAuth login, registration fallback, and role expansion paths.
+     * Reduced complexity wrapper segregating operational orchestration.
      *
-     * @param {Object} params
-     * @param {string} params.credential    - Google credential token
-     * @param {Array}  params.roles         - requested roles
-     * @param {boolean} params.termsAccepted
-     * @returns {Promise<{ token: string, user: Object, isNewUser: boolean }>}
+     * @async
+     * @function googleAuth
+     * @param {Object} params - Context parameter tracking structural state payload envelopes.
+     * @param {string} params.credential - Unverified raw Google identification token assertion string.
+     * @param {string[]} params.roles - Array map collection tracking requested capabilities.
+     * @param {boolean} params.termsAccepted - Policy validation confirmation status tracker flag.
+     * @throws {AppError} 400 - If credential parameters are absent or identity claims miss essential attributes.
+     * @returns {Promise<{ user: Object, isNewUser: boolean }>} Sanitized user model mapping DTO and registration status flag.
      */
     const googleAuth = async ({ credential, roles, termsAccepted }) => {
         if (!credential)
             throw new AppError(400, "Missing Google credential");
 
-        // 1 — verify Google token
         const payload = await verifyGoogleCredential(credential);
 
         const email = payload?.email?.toLowerCase()?.trim();
@@ -120,27 +145,22 @@ const createGoogleAuthService = (repo, { logger }) => {
         if (!email || !googleSub)
             throw new AppError(400, "Invalid Google payload (missing email/sub)");
 
-        //  2-find or create user
-        // flipped to positive condition (user exists) — eliminates negated condition
         let user = await repo.findUserByEmail(email);
         let isNewUser = false;
 
         if (user) {
-            // existing user — merge roles if needed
             await mergeRoles(user, roles, repo.saveUser);
         } else {
-            // new user — register, create wallet
             user = await registerNewUser({ name, email, roles, termsAccepted, emailVerified });
             isNewUser = true;
         }
 
-        // 3 — ensure OAuth account link
         await ensureOAuthAccount(user._id, googleSub);
 
-        // 4 — sign and return token
         return { user: toUserDTO(user), isNewUser };
     };
 
     return { googleAuth };
 };
+
 module.exports = createGoogleAuthService;

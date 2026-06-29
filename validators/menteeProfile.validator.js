@@ -1,7 +1,15 @@
 const Joi = require("joi");
 
+/**
+ * Valid standard connection interaction choices.
+ * @type {Array<string>}
+ */
 const COMM_PREFS = ["Chat", "Email", "Video Call", "Phone Call", "In-Person"];
 
+/**
+ * Joi validator configuration payload parsing optional metadata profile modifications for client types.
+ * @type {import('joi').ObjectSchema}
+ */
 const profileSchema = Joi.object({
     currentRole: Joi.string().trim().max(100).allow("").optional(),
     industry: Joi.string().trim().max(100).allow("").optional(),

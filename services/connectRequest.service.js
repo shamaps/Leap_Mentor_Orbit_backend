@@ -1,4 +1,14 @@
 // services/connectRequest.service.js
+
+/**
+ * @fileoverview Business logic layer for ConnectRequest.
+ * Orchestrates repository calls, notifications, socket events,
+ * and email side-effects. Keeps all persistence concerns in the
+ * repository and all HTTP concerns in the controller.
+ *
+ * @module services/connectRequest
+ */
+
 const mongoose = require("mongoose");
 const {
   sendConnectRequestEmail,
@@ -11,6 +21,26 @@ const { toConnectRequestList, toConnectRequestSummary, toConnectRequestDetail } 
 
 // Lazily require the socket handler to avoid circular-require issues at module load time
 const getEmitToUser = () => require("../socket/socketHandler").emitToUser;
+
+/**
+ * Factory that creates the ConnectRequest service.
+ * Receives its dependencies via injection so they can be mocked in tests.
+ *
+ * @param {Object} repo - ConnectRequest repository (data-access layer)
+ * @param {Object} deps - Injected dependencies
+ * @param {import('../utils/logger')} deps.logger             - Winston logger
+ * @param {Function}                  deps.createNotification - Persists an in-app notification
+ * @returns {{
+ *   sendRequest:         Function,
+ *   getMyRequests:       Function,
+ *   getIncomingRequests: Function,
+ *   respondToRequest:    Function,
+ *   cancelRequest:       Function,
+ *   referRequest:        Function,
+ *   getOngoingConnects:  Function,
+ *   getConnectDetail:    Function,
+ * }}
+ */
 const createConnectRequestService = (repo, { logger, createNotification }) => {
   /**
    * Validates the payload for sending a new connect request.
@@ -108,7 +138,7 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
    * @param {Array<{day:string, date:string, startTime:string, endTime:string}>} payload.selectedSlots
    * @param {number} [payload.sessionRate]
    * @param {number} [payload.sessionCount]
-   * @returns {Promise<Object>} The newly created ConnectRequest document (mentor populated)
+   * @returns {Promise<Object>} The newly created ConnectRequest summary (mentor populated)
    * @throws {AppError} 400 - Invalid payload
    * @throws {AppError} 409 - Duplicate request or slot conflict
    */
@@ -216,8 +246,9 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
    * now conflict with the confirmed slot, and sends a confirmation email.
    *
    * @param {Object} request - The ConnectRequest document (with populated mentor/mentee)
-   * @param {{date:string, startTime:string, endTime:string}} confirmedSlot
+   * @param {{ date: string, startTime: string, endTime: string }} confirmedSlot
    * @param {Function|null} emitToUser - Socket emit function, or null if unavailable
+   * @returns {Promise<void>}
    */
   const handleAccepted = async (request, confirmedSlot, emitToUser) => {
     await createNotification({
@@ -254,6 +285,7 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
    *
    * @param {Object} request - The ConnectRequest document (with populated mentor/mentee)
    * @param {Function|null} emitToUser - Socket emit function, or null if unavailable
+   * @returns {Promise<void>}
    */
   const handleRejected = async (request, emitToUser) => {
     await createNotification({
@@ -283,8 +315,9 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
    * @param {string} payload.requestId
    * @param {mongoose.Types.ObjectId|string} payload.mentorUserId - Must match request.mentor._id
    * @param {string} payload.status - One of VALID_RESPOND_STATUSES ("accepted" | "rejected")
-   * @param {{date:string, startTime:string, endTime:string}} [payload.confirmedSlot] - Required when status is "accepted"
-   * @returns {Promise<Object>} The updated ConnectRequest document
+   * @param {{ date: string, startTime: string, endTime: string }} [payload.confirmedSlot]
+   *   Required when status is "accepted"
+   * @returns {Promise<Object>} The updated ConnectRequest summary
    * @throws {AppError} 400 - Invalid status, missing confirmedSlot, or request not pending
    * @throws {AppError} 403 - Caller is not the mentor on this request
    * @throws {AppError} 404 - Request not found
@@ -327,7 +360,7 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
   };
 
   /**
-   * Mentee cancels (deletes) their own pending/accepted/rejected/referred request.
+   * Mentee cancels (hard-deletes) their own pending/accepted/rejected/referred request.
    * Ongoing sessions cannot be cancelled this way.
    *
    * @param {string} requestId
@@ -362,7 +395,7 @@ const createConnectRequestService = (repo, { logger, createNotification }) => {
    * @param {string} requestId - The original request being referred
    * @param {mongoose.Types.ObjectId|string} mentorUserId - Must match request.mentor._id (the referring mentor)
    * @param {string} referToMentorId - The mentor to refer the mentee to
-   * @returns {Promise<{originalRequest: Object, newRequest: Object}>}
+   * @returns {Promise<{ originalRequest: Object, newRequest: Object }>}
    * @throws {AppError} 400 - Missing referToMentorId, request not pending, or self-referral
    * @throws {AppError} 403 - Caller is not the mentor on this request
    * @throws {AppError} 404 - Request not found

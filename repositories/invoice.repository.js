@@ -4,8 +4,10 @@ const AdminUser = require("../models/AdminUser");
 
 /**
  * Find a connect request by ID with mentee + mentor populated.
- * @param {string} connectRequestId
- * @returns {Promise<Object|null>}
+ * * @async
+ * @function findConnectRequestById
+ * @param {string} connectRequestId - Target selection locator primary index key string.
+ * @returns {Promise<Object|null>} Populated plain JavaScript document snapshot representation data, or null.
  */
 const findConnectRequestById = async (connectRequestId) => {
     return await ConnectRequest.findById(connectRequestId)
@@ -16,7 +18,9 @@ const findConnectRequestById = async (connectRequestId) => {
 
 /**
  * Find the active admin user and return only commissionRate.
- * @returns {Promise<Object|null>}
+ * * @async
+ * @function findActiveAdminCommissionRate
+ * @returns {Promise<Object|null>} Dehydrated un-instanced admin document mapping parameters or null.
  */
 const findActiveAdminCommissionRate = async () => {
     return await AdminUser.findOne({ isActive: true })
