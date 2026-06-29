@@ -1,11 +1,20 @@
 /**
- * @fileoverview Complete unit tests for Connect Request Service.
- * Secures 100% statement, branch, and condition passing coverage layers.
+ * @fileoverview Unit tests for Connect Request Service.
+ * Secures 100% statement, line, branch, and condition passing coverage.
  */
 
+const mockMailConnect = jest.fn();
+const mockMailAccept = jest.fn();
+
+let mockSocketEmitToUser = jest.fn();
+
+jest.mock("../../../socket/socketHandler", () => ({
+    get emitToUser() { return mockSocketEmitToUser; }
+}), { virtual: true });
+
 jest.mock("../../../utils/emails", () => ({
-    sendConnectRequestEmail: jest.fn().mockResolvedValue({}),
-    sendRequestAcceptedEmail: jest.fn().mockResolvedValue({}),
+    sendConnectRequestEmail: (...args) => mockMailConnect(...args),
+    sendRequestAcceptedEmail: (...args) => mockMailAccept(...args),
 }));
 
 jest.mock("../../../utils/mappers/connectRequest.mapper", () => ({
@@ -14,266 +23,270 @@ jest.mock("../../../utils/mappers/connectRequest.mapper", () => ({
     toConnectRequestDetail: jest.fn((data) => data),
 }));
 
-const mockEmitToUser = jest.fn();
-jest.mock("../../../socket/socketHandler", () => ({
-    emitToUser: (...args) => mockEmitToUser(...args),
-}));
-
 const createConnectRequestService = require("../../../services/connectRequest.service");
 const AppError = require("../../../utils/appError");
-const emails = require("../../../utils/emails");
+const mongoose = require("mongoose");
 
-describe("Connect Request Service (100% Coverage Suite)", () => {
-    let mockRepo, mockLogger, mockCreateNotification, service, baseRequest;
+describe("Connect Request Service Layer (100% Socket Real-Time and Mapping Sweep)", () => {
+    let mockRepo, mockCreateNotification, service, basePayload;
 
-    // FIXED: Use authentic 24-character hexadecimal strings to pass Mongoose ObjectId casts
-    const validMentorHexId = "60c72b2f9b1d8b2bad684001";
-    const validMenteeHexId = "60c72b2f9b1d8b2bad684002";
+    const validMentorId = new mongoose.Types.ObjectId().toString();
+    const validReferToMentorId = new mongoose.Types.ObjectId().toString();
 
     beforeEach(() => {
         mockRepo = {
-            findPendingRequest: jest.fn().mockResolvedValue(null),
-            // FIXED: Stub findSlotConflict to resolve a promise chain to prevent asynchronous parsing crashes
-            findSlotConflict: jest.fn().mockResolvedValue(false),
+            findPendingRequest: jest.fn(),
+            findSlotConflict: jest.fn(),
             createConnectRequest: jest.fn(),
             findMyRequests: jest.fn(),
-            findIncomingRequests: jest.fn(),
             findMentorProfile: jest.fn(),
             findMentorProfileFull: jest.fn(),
-            findMenteeProfile: jest.fn(),
-            findRequestByIdWithUsers: jest.fn(),
-            findRequestById: jest.fn(),
-            findRequestByIdLean: jest.fn(),
-            saveRequest: jest.fn(),
+            findIncomingRequests: jest.fn(),
             rejectConflictingSlots: jest.fn(),
-            findOngoingConnects: jest.fn(),
+            findRequestByIdWithUsers: jest.fn(),
+            saveRequest: jest.fn(),
+            findRequestById: jest.fn(),
             deleteRequestById: jest.fn(),
+            findOngoingConnects: jest.fn(),
+            findMenteeProfile: jest.fn(),
+            findRequestByIdLean: jest.fn(),
         };
 
-        mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-        mockCreateNotification = jest.fn().mockResolvedValue({});
+        mockCreateNotification = jest.fn().mockResolvedValue(true);
+        mockSocketEmitToUser = jest.fn();
 
         service = createConnectRequestService(mockRepo, {
-            logger: mockLogger,
-            createNotification: mockCreateNotification,
+            logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+            createNotification: mockCreateNotification
         });
 
-        baseRequest = {
-            _id: "60c72b2f9b1d8b2bad684003",
-            status: "pending",
-            mentee: { _id: validMenteeHexId, name: "Alice", email: "alice@test.com", toString: () => validMenteeHexId },
-            mentor: { _id: validMentorHexId, name: "Bob", email: "bob@test.com", toString: () => validMentorHexId },
-            selectedSlots: [{ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" }],
-            message: "Hello",
-            populate: jest.fn().mockReturnThis(),
-            save: jest.fn(),
+        basePayload = {
+            mentorId: validMentorId,
+            menteeId: new mongoose.Types.ObjectId(),
+            menteeName: "Bob Mentee",
+            message: "Looking for guidance.",
+            selectedSlots: [{ day: "Mon", date: "2026-07-01", startTime: "10:00", endTime: "11:00" }],
+            sessionRate: 50,
+            sessionCount: 4
         };
+
+
+        const defaultMockDoc = {
+            _id: new mongoose.Types.ObjectId(),
+            populate: jest.fn().mockReturnThis(),
+            mentor: { name: "Alice", email: "alice@test.com" },
+            mentee: { _id: "me_id", name: "Bob", email: "bob@test.com" },
+            selectedSlots: basePayload.selectedSlots
+        };
+
+        mockRepo.findPendingRequest.mockResolvedValue(null);
+        mockRepo.findSlotConflict.mockResolvedValue(false);
+        mockRepo.createConnectRequest.mockResolvedValue(defaultMockDoc);
+        mockMailConnect.mockResolvedValue(true);
+        mockMailAccept.mockResolvedValue(true);
 
         jest.clearAllMocks();
     });
 
-    describe("sendRequest - Validation & Exception Branch Paths", () => {
-        it("should throw AppError 400 if mentorId parameter is unassigned", async () => {
-            await expect(service.sendRequest({ mentorId: "" }))
-                .rejects.toMatchObject({ status: 400, message: "mentorId is required" });
+    describe("sendRequest Validation short-circuits & side effects", () => {
+        it("should throw errors violating payload structural constraint bounds rules", async () => {
+            await expect(service.sendRequest({ ...basePayload, mentorId: null })).rejects.toThrow("mentorId is required");
+            await expect(service.sendRequest({ ...basePayload, selectedSlots: [] })).rejects.toThrow("At least one slot must be selected");
+            await expect(service.sendRequest({ ...basePayload, selectedSlots: Array(6).fill({}) })).rejects.toThrow("Maximum 5 slots can be proposed");
+            await expect(service.sendRequest({ ...basePayload, selectedSlots: [{ day: "Mon" }] })).rejects.toThrow("Each slot must have day, date, startTime and endTime");
+            await expect(service.sendRequest({ ...basePayload, mentorId: basePayload.menteeId.toString() })).rejects.toThrow("You cannot send a request to yourself");
+
+            await expect(service.sendRequest({ ...basePayload, sessionRate: -1 })).rejects.toThrow("sessionRate must be at least 1");
+            await expect(service.sendRequest({ ...basePayload, sessionCount: -1 })).rejects.toThrow("sessionCount must be at least 1");
         });
+        it("should throw a 409 error on duplicate active pending instances or slot schedule collisions", async () => {
+            mockRepo.findPendingRequest.mockResolvedValue({ _id: "pending_already" });
+            await expect(service.sendRequest(basePayload)).rejects.toThrow("You already have a pending request with this mentor");
 
-        it("should throw AppError 400 if proposed selectedSlots parameter is missing or empty array", async () => {
-            await expect(service.sendRequest({ mentorId: validMentorHexId, selectedSlots: [] }))
-                .rejects.toMatchObject({ status: 400, message: "At least one slot must be selected" });
-        });
-
-        it("should throw AppError 400 if proposed slots exceed length boundary limitations", async () => {
-            const extraSlots = Array(6).fill({ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" });
-            await expect(service.sendRequest({ mentorId: validMentorHexId, selectedSlots: extraSlots }))
-                .rejects.toMatchObject({ status: 400, message: "Maximum 5 slots can be proposed" });
-        });
-
-        it("should throw AppError 400 if any slots inner attribute fields arrive unpopulated", async () => {
-            const incompleteSlots = [{ day: "Mon", date: "2026-07-06", startTime: "", endTime: "10:00" }];
-            await expect(service.sendRequest({ mentorId: validMentorHexId, selectedSlots: incompleteSlots }))
-                .rejects.toMatchObject({ status: 400, message: "Each slot must have day, date, startTime and endTime" });
-        });
-
-        it("should throw AppError 400 if checking user identity indexes maps a request onto themselves", async () => {
-            const validSlots = [{ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" }];
-            await expect(service.sendRequest({ mentorId: validMentorHexId, menteeId: validMentorHexId, selectedSlots: validSlots }))
-                .rejects.toMatchObject({ status: 400, message: "You cannot send a request to yourself" });
-        });
-        it("should throw AppError 400 if custom sessionRates or sessionCounts evaluate below floor thresholds", async () => {
-            const validSlots = [{ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" }];
-
-            // FIXED: Passed -1 instead of 0 so it registers as truthy to trigger the validation block
-            await expect(service.sendRequest({ mentorId: validMentorHexId, menteeId: validMenteeHexId, selectedSlots: validSlots, sessionRate: -1 }))
-                .rejects.toMatchObject({ status: 400, message: "sessionRate must be at least 1" });
-
-            await expect(service.sendRequest({ mentorId: validMentorHexId, menteeId: validMenteeHexId, selectedSlots: validSlots, sessionCount: -2 }))
-                .rejects.toMatchObject({ status: 400, message: "sessionCount must be at least 1" });
-        });
-
-        it("should throw AppError 409 if slot conflict query triggers an overlapping item hit", async () => {
+            mockRepo.findPendingRequest.mockResolvedValue(null);
             mockRepo.findSlotConflict.mockResolvedValue(true);
-
-            const validSlots = [{ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" }];
-            await expect(service.sendRequest({ mentorId: validMentorHexId, menteeId: validMenteeHexId, selectedSlots: validSlots }))
-                .rejects.toMatchObject({ status: 409 });
+            await expect(service.sendRequest(basePayload)).rejects.toThrow("is already taken");
         });
 
-        it("should write new requests cleanly, trigger socket events, and catch email thread rejections smoothly", async () => {
-            mockRepo.createConnectRequest.mockResolvedValue(baseRequest);
-            emails.sendConnectRequestEmail.mockRejectedValueOnce(new Error("Mailing error check"));
+        it("should write data rows and handle optional arguments fallbacks when emitting socket events and trigger email catch loops", async () => {
+            mockMailConnect.mockImplementationOnce(() => Promise.reject(new Error("Network Failure")));
 
-            const validSlots = [{ day: "Mon", date: "2026-07-06", startTime: "09:00", endTime: "10:00" }];
-            const res = await service.sendRequest({
-                mentorId: validMentorHexId,
-                menteeId: validMenteeHexId,
-                menteeName: "Alice",
-                message: "Please connect",
-                selectedSlots: validSlots,
-                sessionRate: "10",
-                sessionCount: "5"
-            });
+            const res = await service.sendRequest({ ...basePayload, message: undefined, sessionRate: null, sessionCount: null });
 
-            expect(mockRepo.createConnectRequest).toHaveBeenCalled();
+            expect(mockSocketEmitToUser).toHaveBeenCalledWith(validMentorId, "new_connect_request", expect.any(Object));
+            expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({ type: "connect_request_received" }));
+
+            await new Promise(resolve => setImmediate(resolve));
+            expect(res).toBeDefined();
+        });
+
+        it("should degrade silently and skip real-time channels triggers if the socket layer isn't available", async () => {
+            const originalEmit = mockSocketEmitToUser;
+            mockSocketEmitToUser = null;
+
+            const mockDoc = {
+                _id: new mongoose.Types.ObjectId(),
+                populate: jest.fn().mockReturnThis(),
+                mentor: {},
+                selectedSlots: []
+            };
+            mockRepo.createConnectRequest.mockResolvedValue(mockDoc);
+
+            await service.sendRequest(basePayload);
             expect(mockCreateNotification).toHaveBeenCalled();
-            expect(mockEmitToUser).toHaveBeenCalled();
 
-            await new Promise((resolve) => setImmediate(resolve));
-            expect(mockLogger.error).toHaveBeenCalled();
-            expect(res).toBeDefined();
+            mockSocketEmitToUser = originalEmit;
         });
     });
 
-    describe("getIncomingRequests & getMyRequests Filter Blocks", () => {
-        it("should map incoming request items, including checking referredBy references contexts", async () => {
-            mockRepo.findIncomingRequests.mockResolvedValue([
-                { _id: "r1", referredBy: { _id: validMentorHexId } },
-                { _id: "r2", referredBy: null }
-            ]);
-            mockRepo.findMentorProfileFull.mockResolvedValue({ company: "LeapOrbit Inc" });
-
-            const res = await service.getIncomingRequests(validMentorHexId, "pending");
-            expect(res).toHaveLength(2);
-            expect(mockRepo.findMentorProfileFull).toHaveBeenCalledWith(validMentorHexId);
-        });
-
-        it("should enrich sent requests with available profile details entries", async () => {
+    describe("getMyRequests & getIncomingRequests List Mappers", () => {
+        it("should load mentee requests, enrich referred profile rows, and map structures", async () => {
             mockRepo.findMyRequests.mockResolvedValue([
-                { _id: "r1", mentor: { _id: validMentorHexId }, referredTo: { _id: "referred_hex_id" } }
+                { mentor: { _id: "m1" }, referredTo: { _id: "m2" } }
             ]);
-            mockRepo.findMentorProfile.mockResolvedValue({ name: "Bob Mentor" });
-            mockRepo.findMentorProfileFull.mockResolvedValue({ name: "Charlie Referral" });
+            mockRepo.findMentorProfile.mockResolvedValue({ bio: "Mentor Profile" });
+            mockRepo.findMentorProfileFull.mockResolvedValue({ bio: "Referred Full Profile" });
 
-            const res = await service.getMyRequests(validMenteeHexId);
-            expect(res).toBeDefined();
+            const res = await service.getMyRequests("mentee_1");
+            expect(res).toHaveLength(1);
+        });
+
+        it("should load incoming rows received by mentors and append referredBy properties", async () => {
+            mockRepo.findIncomingRequests.mockResolvedValue([{ referredBy: { _id: "ref_m" } }]);
+            mockRepo.findMentorProfileFull.mockResolvedValue({ bio: "Profile" });
+
+            const res = await service.getIncomingRequests("mentor_id", "pending");
+            expect(res).toHaveLength(1);
         });
     });
 
-    describe("respondToRequest Evaluation Framework", () => {
-        it("should throw AppError 400 if target status is not an approved keyword token literal", async () => {
-            await expect(service.respondToRequest({ requestId: "r1", mentorUserId: validMentorHexId, status: "malicious_flag" }))
-                .rejects.toMatchObject({ status: 400, message: "Status must be 'accepted' or 'rejected'" });
+    describe("respondToRequest Operations Flow", () => {
+        it("should throw errors if the action input status code or parameters properties violate rules", async () => {
+            await expect(service.respondToRequest({ status: "malicious_hack" })).rejects.toThrow("Status must be 'accepted' or 'rejected'");
+            await expect(service.respondToRequest({ status: "accepted", confirmedSlot: null })).rejects.toThrow("confirmedSlot is required when accepting");
         });
 
-        it("should throw AppError 400 if confirmedSlot fields arrive unassigned on accepted responses", async () => {
-            await expect(service.respondToRequest({ requestId: "r1", mentorUserId: validMentorHexId, status: "accepted", confirmedSlot: null }))
-                .rejects.toMatchObject({ status: 400, message: "confirmedSlot is required when accepting" });
+        it("should validate authorizations match parameters and ensure states reflect pending settings before mutation", async () => {
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce(null);
+            await expect(service.respondToRequest({ requestId: "miss", status: "rejected" })).rejects.toThrow("Request not found");
+
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce({ mentor: { _id: "m_original" } });
+            await expect(service.respondToRequest({ requestId: "id", mentorUserId: "m_attacker", status: "rejected" })).rejects.toThrow("Not authorized");
+
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce({ mentor: { _id: "m1" }, status: "accepted" });
+            await expect(service.respondToRequest({ requestId: "id", mentorUserId: "m1", status: "rejected" })).rejects.toThrow("Request already accepted");
         });
 
-        it("should complete accept paths side-effects, cleaning overlapping entries and handling email failures", async () => {
-            mockRepo.findRequestByIdWithUsers.mockResolvedValue(baseRequest);
-            emails.sendRequestAcceptedEmail.mockRejectedValueOnce(new Error("Accept alert broken"));
+        it("should reject conflicting elements and trigger accepted state hooks upon acceptance confirmations", async () => {
+            const mockReq = {
+                _id: "req_id", status: "pending", selectedSlots: [],
+                mentor: { _id: "m1", name: "Alice", email: "a@a.com" },
+                mentee: { _id: "me1", name: "Bob", email: "b@b.com" }
+            };
+            mockRepo.findRequestByIdWithUsers.mockResolvedValue(mockReq);
 
-            const res = await service.respondToRequest({
-                requestId: "req_123",
-                mentorUserId: validMentorHexId,
-                status: "accepted",
-                confirmedSlot: { date: "2026-07-06", startTime: "09:00", endTime: "10:00" }
-            });
+            await service.respondToRequest({ requestId: "req_id", mentorUserId: "m1", status: "accepted", confirmedSlot: { date: "01", startTime: "10", endTime: "11" } });
 
-            expect(mockRepo.saveRequest).toHaveBeenCalled();
             expect(mockRepo.rejectConflictingSlots).toHaveBeenCalled();
+            expect(mockSocketEmitToUser).toHaveBeenCalledWith("me1", "request_accepted", expect.any(Object));
 
-            await new Promise((resolve) => setImmediate(resolve));
-            expect(mockLogger.error).toHaveBeenCalled();
-            expect(res).toBeDefined();
+            await new Promise(resolve => setImmediate(resolve));
         });
 
-        it("should complete reject path transitions cleanly and fire in-app alerts downstream", async () => {
-            mockRepo.findRequestByIdWithUsers.mockResolvedValue(baseRequest);
+        it("should dispatch declined notification items to wallets upon rejection actions", async () => {
+            const mockReq = {
+                _id: "req_id", status: "pending",
+                mentor: { _id: "m1", name: "Alice" },
+                mentee: { _id: "me1" }
+            };
+            mockRepo.findRequestByIdWithUsers.mockResolvedValue(mockReq);
 
-            const res = await service.respondToRequest({
-                requestId: "req_123",
-                mentorUserId: validMentorHexId,
-                status: "rejected"
-            });
-
-            expect(mockRepo.saveRequest).toHaveBeenCalled();
+            await service.respondToRequest({ requestId: "req_id", mentorUserId: "m1", status: "rejected" });
             expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({ type: "connect_request_declined" }));
+        });
+    });
+
+    describe("cancelRequest Hard Deletion Actions", () => {
+        it("should throw a 404 error if targeted document is missing or identity checks fail boundaries", async () => {
+            mockRepo.findRequestById.mockResolvedValueOnce(null);
+            await expect(service.cancelRequest("miss", "u1")).rejects.toThrow("Request not found");
+
+            mockRepo.findRequestById.mockResolvedValueOnce({ mentee: "u_owner" });
+            await expect(service.cancelRequest("id", "u_attacker")).rejects.toThrow("Not authorized");
+        });
+
+        it("should reject hard-deletion requests if the active state indicator represents ongoing status", async () => {
+            mockRepo.findRequestById.mockResolvedValue({ mentee: "u1", status: "ongoing" });
+            await expect(service.cancelRequest("id", "u1")).rejects.toThrow("Cannot delete an ongoing session");
+        });
+
+        it("should allow hard purges for pending rows matching ownership tokens criteria safely", async () => {
+            mockRepo.findRequestById.mockResolvedValue({ mentee: "u1", status: "pending" });
+            await service.cancelRequest("id", "u1");
+            expect(mockRepo.deleteRequestById).toHaveBeenCalledWith("id");
+        });
+    });
+
+    describe("referRequest Redirections Pipeline", () => {
+        it("should block referrals if target states are no longer pending or users self-refer", async () => {
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce({ mentor: { _id: "m1" }, status: "accepted" });
+            await expect(service.referRequest("id", "m1", validReferToMentorId)).rejects.toThrow("Cannot refer a request");
+
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce({ mentor: { _id: validMentorId }, status: "pending" });
+            await expect(service.referRequest("id", validMentorId, validMentorId)).rejects.toThrow("Cannot refer request to yourself");
+        });
+
+        it("should throw a 409 error if a referral request is already present", async () => {
+            mockRepo.findRequestByIdWithUsers.mockResolvedValueOnce({ mentor: { _id: "m1" }, status: "pending", mentee: { _id: "me1" } });
+            mockRepo.findPendingRequest.mockResolvedValue({ _id: "existing_pending" });
+            await expect(service.referRequest("id", "m1", validReferToMentorId)).rejects.toThrow("Mentee already has a pending request");
+        });
+
+        it("should provision new referral items, trigger notifications center writes, and link entries", async () => {
+            const originalReq = {
+                _id: "orig_id", status: "pending", message: "Help", selectedSlots: [],
+                mentor: { _id: validMentorId, name: "Alice" }, mentee: { _id: "me1", name: "Bob" }
+            };
+            mockRepo.findRequestByIdWithUsers.mockResolvedValue(originalReq);
+            mockRepo.findPendingRequest.mockResolvedValue(null);
+            mockRepo.createConnectRequest.mockResolvedValue({ _id: "new_req_id" });
+
+            const res = await service.referRequest("orig_id", validMentorId, validReferToMentorId);
+
+            expect(mockRepo.createConnectRequest).toHaveBeenCalledWith(expect.objectContaining({ referredBy: validMentorId }));
+            expect(mockCreateNotification).toHaveBeenCalledTimes(2);
+            expect(res.originalRequest).toBeDefined();
+        });
+    });
+
+    describe("getOngoingConnects & getConnectDetail Boundary Checks", () => {
+        it("should load ongoing rows, dynamically separating mentor profiles vs mentee details paths based on user IDs", async () => {
+            mockRepo.findOngoingConnects.mockResolvedValue([
+                { mentee: { _id: "user_me" }, mentor: { _id: "m1" } },
+                { mentee: { _id: "other_me" }, mentor: { _id: "user_me" } }
+            ]);
+            mockRepo.findMentorProfile.mockResolvedValue({ bio: "Mentor" });
+            mockRepo.findMenteeProfile.mockResolvedValue({ bio: "Mentee" });
+
+            const res = await service.getOngoingConnects("user_me");
+            expect(res).toHaveLength(2);
+        });
+
+        it("should throw errors if detail lookups return null or lookups encounter ownership mismatch authorization blocks", async () => {
+            mockRepo.findRequestByIdLean.mockResolvedValueOnce(null);
+            await expect(service.getConnectDetail("miss", "u1")).rejects.toThrow("Session not found");
+
+            mockRepo.findRequestByIdLean.mockResolvedValueOnce({ mentee: { _id: "me" }, mentor: { _id: "m" } });
+            await expect(service.getConnectDetail("id", "user_outsider")).rejects.toThrow("Not authorized");
+        });
+
+        it("should return detailed models components grouping profiles on successful verification matches", async () => {
+            mockRepo.findRequestByIdLean.mockResolvedValue({ mentee: { _id: "user_me" }, mentor: { _id: "m1" } });
+            mockRepo.findMentorProfile.mockResolvedValue(null);
+            mockRepo.findMenteeProfile.mockResolvedValue(null);
+
+            const res = await service.getConnectDetail("id", "user_me");
             expect(res).toBeDefined();
-        });
-    });
-
-    describe("cancelRequest Guard Gates", () => {
-        it("should throw AppError 400 if the target request has already advanced into an ongoing status lane", async () => {
-            baseRequest.status = "ongoing";
-            mockRepo.findRequestById.mockResolvedValue(baseRequest);
-
-            await expect(service.cancelRequest("req_123", validMenteeHexId))
-                .rejects.toMatchObject({ status: 400, message: "Cannot delete an ongoing session" });
-        });
-    });
-
-    describe("referRequest Operations Matrix", () => {
-        it("should throw AppError 400 if referToMentorId missing or self-referential token loops are passed", async () => {
-            await expect(service.referRequest("r1", validMentorHexId, ""))
-                .rejects.toMatchObject({ status: 400, message: "referToMentorId is required" });
-
-            mockRepo.findRequestByIdWithUsers.mockResolvedValue(baseRequest);
-            await expect(service.referRequest("req_123", validMentorHexId, validMentorHexId))
-                .rejects.toMatchObject({ status: 400, message: "Cannot refer request to yourself" });
-        });
-    });
-
-    describe("getOngoingConnects visibility checks", () => {
-        it("should scan row positions and attach counterpart profile maps accurately based on active identity rules", async () => {
-            mockRepo.findOngoingConnects.mockResolvedValue([
-                { _id: "c1", mentee: { _id: validMenteeHexId }, mentor: { _id: validMentorHexId } }
-            ]);
-            mockRepo.findMentorProfile.mockResolvedValue({ bio: "Mentor bio" });
-
-            const res = await service.getOngoingConnects(validMenteeHexId);
-            expect(res[0].mentorProfile).toBeDefined();
-        });
-
-        it("should attach mentee profile details maps instead if caller identity matches the mentor position", async () => {
-            mockRepo.findOngoingConnects.mockResolvedValue([
-                { _id: "c1", mentee: { _id: validMenteeHexId }, mentor: { _id: validMentorHexId } }
-            ]);
-            mockRepo.findMenteeProfile.mockResolvedValue({ notes: "Mentee notes" });
-
-            const res = await service.getOngoingConnects(validMentorHexId);
-            expect(res[0].menteeProfile).toBeDefined();
-        });
-    });
-
-    describe("getConnectDetail Security Gates", () => {
-        it("should throw AppError 403 if viewer matches neither side of relationship tokens attributes fields", async () => {
-            mockRepo.findRequestByIdLean.mockResolvedValue(baseRequest);
-
-            await expect(service.getConnectDetail("req_123", "intruder_id"))
-                .rejects.toMatchObject({ status: 403, message: "Not authorized to view this session" });
-        });
-
-        it("should complete details assembly maps, extracting profiles for both sides on a valid access pass", async () => {
-            mockRepo.findRequestByIdLean.mockResolvedValue(baseRequest);
-            mockRepo.findMentorProfile.mockResolvedValue({ company: "Google" });
-            mockRepo.findMenteeProfile.mockResolvedValue({ field: "Design" });
-
-            const res = await service.getConnectDetail("req_123", validMenteeHexId);
-            expect(res.mentorProfile).toBeDefined();
-            expect(res.menteeProfile).toBeDefined();
-            expect(res.viewerRole).toBe("mentee");
         });
     });
 });

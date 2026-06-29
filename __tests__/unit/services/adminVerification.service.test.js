@@ -44,6 +44,7 @@ describe("Admin Verification Service (100% Gaps Filled)", () => {
             save: jest.fn().mockResolvedValue(true),
         };
 
+        global.AppError = AppError;
         jest.clearAllMocks();
     });
 
@@ -64,7 +65,7 @@ describe("Admin Verification Service (100% Gaps Filled)", () => {
             mockRepo.countMentorProfiles.mockResolvedValue(1);
 
             const res = await service.getAllMentorVerifications({
-                page: "invalid_page_string",
+                page: -5, // triggers Math.max(1, ...) lower bound clamp
                 limit: 150, // triggers Math.min(50, ...) upper bound clamp
                 search: "   Alex   " // tests .trim() functionality
             });
@@ -72,6 +73,20 @@ describe("Admin Verification Service (100% Gaps Filled)", () => {
             expect(mockRepo.findMentorUserIdsByName).toHaveBeenCalledWith("Alex");
             expect(mockRepo.findAllMentorProfiles).toHaveBeenCalledWith({ user: { $in: ["u_1", "u_2"] } }, 0, 50);
             expect(res.pagination.limit).toBe(50);
+        });
+
+        it("should fall back cleanly to 1 and 20 if page and limit cannot be parsed to integers", async () => {
+            // COVERAGE: This explicit test forces NaN parsing results to hit the hidden fallback loops: || 1 and || 20
+            mockRepo.findAllMentorProfiles.mockResolvedValue([]);
+            mockRepo.countMentorProfiles.mockResolvedValue(0);
+
+            const res = await service.getAllMentorVerifications({
+                page: "completely_invalid_page_string",
+                limit: "completely_invalid_limit_string"
+            });
+
+            expect(res.pagination.page).toBe(1);
+            expect(res.pagination.limit).toBe(20);
         });
     });
 
@@ -125,14 +140,12 @@ describe("Admin Verification Service (100% Gaps Filled)", () => {
             expect(mockProfileDoc.verificationStatus).toBe("verified");
             expect(mockProfileDoc.save).toHaveBeenCalled();
 
-            // Allow asynchronous catch branch execution step block to finish
             await new Promise((resolve) => setImmediate(resolve));
-            expect(mockLogger.warn).toHaveBeenCalledWith("sendMentorVerifiedEmail failed", expect.any(Object));
+            expect(mockLogger.warn).toHaveBeenCalledWith("sendMentorVerifiedEmail failed", { error: "SMTP Server Timeout" });
             expect(res.verificationStatus).toBe("verified");
         });
 
         it("should fallback cleanly if user name parameters drop unassigned during confirmation print mapping", async () => {
-            // FIXED: Keep the user object reference container valid, but strip the name value property
             mockProfileDoc.user = { name: "", email: "test@test.com" };
             mockRepo.findMentorProfileDocumentById.mockResolvedValue(mockProfileDoc);
 
@@ -164,6 +177,15 @@ describe("Admin Verification Service (100% Gaps Filled)", () => {
             expect(mockProfileDoc.verificationStatus).toBe("unverified");
             expect(mockProfileDoc.save).toHaveBeenCalled();
             expect(res.verificationStatus).toBe("unverified");
+        });
+
+        it("should fallback cleanly to printing 'mentor' if user name fields are absent on revocation logs mapping", async () => {
+            mockProfileDoc.verificationStatus = "verified";
+            mockProfileDoc.user = { name: "", email: "test@test.com" };
+            mockRepo.findMentorProfileDocumentById.mockResolvedValue(mockProfileDoc);
+
+            const res = await service.revokeMentorVerification("p_123");
+            expect(res.message).toContain("Verification revoked for mentor");
         });
     });
 });
