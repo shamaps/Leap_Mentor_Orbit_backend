@@ -6,7 +6,7 @@ require("dotenv").config();
 const migrate = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ Connected to MongoDB");
+    console.log("Connected to MongoDB");
 
     const result = await MentorProfile.updateMany(
       {
@@ -22,7 +22,7 @@ const migrate = async () => {
       }
     );
 
-    console.log(`✅ Migration complete — ${result.modifiedCount} mentor profiles marked as verified`);
+    console.log(`Migration complete — ${result.modifiedCount} mentor profiles marked as verified`);
 
   } catch (err) {
     console.error("❌ Migration failed:", err.message);

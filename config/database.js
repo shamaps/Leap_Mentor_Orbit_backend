@@ -33,9 +33,9 @@ const connectDB = async () => {
     for (let attempt = 1; attempt <= CONNECT_RETRIES; attempt++) {
         try {
             await mongoose.connect(process.env.MONGO_URI, {
-                maxPoolSize: 10,                 // free tier — don't over-provision sockets
-                minPoolSize: 2,                  // keep a couple warm to avoid cold-start latency
-                serverSelectionTimeoutMS: 5000,   // fail faster, let our own retry loop take over
+                maxPoolSize: 10,                 
+                minPoolSize: 2,                  
+                serverSelectionTimeoutMS: 5000,   
                 socketTimeoutMS: 45000,
             });
             logger.info("MongoDB connected");

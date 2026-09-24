@@ -31,11 +31,9 @@ jest.mock("../../../services/sessionHelpers", () => ({
 }));
 
 const createSessionCompletionService = require("../../../services/sessionCompletion.service");
-const mongoose = require("mongoose");
 const releaseEscrow = require("../../../utils/releaseEscrow");
 const cache = require("../../../utils/cache");
 const helpers = require("../../../services/sessionHelpers");
-const AppError = require("../../../utils/appError");
 
 describe("SessionCompletion Service (100% Condition Coverage Setup)", () => {
     let mockSessionRepo, mockEscrowRepo, mockSlotMutationService, mockLogger, service, mockConnectRequest;

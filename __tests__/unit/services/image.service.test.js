@@ -4,7 +4,7 @@
  */
 
 // Mock the Cloudinary configuration module completely
-const mockCloudinaryUrl = jest.fn((publicId, options) => `https://res.cloudinary.com/mock/${publicId}`);
+const mockCloudinaryUrl = jest.fn((publicId) => `https://res.cloudinary.com/mock/${publicId}`);
 jest.mock("../../../config/cloudinary", () => ({
     cloudinary: {
         url: mockCloudinaryUrl

@@ -24,7 +24,7 @@ const cache = require("../utils/cache");
  * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
  * @returns {Object} Configured service interface container exposing profile handlers.
  */
-const createMentorProfileService = (mentorProfileRepo, { logger }) => {
+const createMentorProfileService = (mentorProfileRepo, { _logger }) => {
     /**
      * POST /api/mentor-profile
      * Validates, provisions, and caches a brand-new internal mentor profile document.

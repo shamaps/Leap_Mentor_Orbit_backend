@@ -9,8 +9,10 @@ const Joi = require("joi");
  */
 const createGoalSchema = Joi.object({
     connectRequestId: Joi.string().hex().length(24).required(),
-    title: Joi.string().min(2).max(200).required(),
+    title: Joi.string().min(3).max(200).required(),
     description: Joi.string().max(1000).allow("").optional(),
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null).optional(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null).optional(),
 });
 
 /**
@@ -21,9 +23,11 @@ const createGoalSchema = Joi.object({
  * @property {string} [status] - Optional condition choice selection limited exactly to enum values ("active", "completed", "abandoned").
  */
 const updateGoalSchema = Joi.object({
-    title: Joi.string().min(2).max(200).optional(),
+    title: Joi.string().min(3).max(200).optional(),
     description: Joi.string().max(1000).allow("").optional(),
     status: Joi.string().valid("active", "completed", "abandoned").optional(),
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null).optional(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null).optional(),
 });
 
 /**
@@ -34,6 +38,7 @@ const updateGoalSchema = Joi.object({
  */
 const milestoneSchema = Joi.object({
     title: Joi.string().min(2).max(200).required(),
+    completed: Joi.boolean().optional(), 
     dueDate: Joi.string().isoDate().optional(),
 });
 
@@ -46,7 +51,7 @@ const milestoneSchema = Joi.object({
  */
 const updateMilestoneSchema = Joi.object({
     title: Joi.string().min(2).max(200).optional(),
-    completed: Joi.boolean().optional(),
+    isCompleted: Joi.boolean().optional(),  
     dueDate: Joi.string().isoDate().optional(),
 });
 

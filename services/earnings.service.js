@@ -1,6 +1,6 @@
 // services/earnings.service.js
 const { buildMonthlyBuckets, buildWeeklyBuckets } = require("../utils/earningsChart");
-const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO, toPayoutRowDTO } = require("../utils/mappers/earnings.mapper");
+const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO } = require("../utils/mappers/earnings.mapper");
 
 /**
  * @typedef {Object} EarningsRepository
@@ -26,7 +26,7 @@ const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO, toPayoutRo
  * @param {{ logger: Logger }} dependencies - Application telemetry tracing infrastructure.
  * @returns {Object} Configured object map exposing financial reporting methods.
  */
-const createEarningsService = (earningsRepo, { logger }) => {
+const createEarningsService = (earningsRepo, { _logger }) => {
 
     /**
      * Aggregates completed earnings, current active month velocity, feedback ratings, locked escrow pipelines, and active liquidity balances.

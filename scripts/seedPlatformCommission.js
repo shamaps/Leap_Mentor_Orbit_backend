@@ -9,7 +9,7 @@ const AdminUser = require("../models/AdminUser");
 (async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
+    console.log("MongoDB connected");
 
     const admin = await AdminUser.findOne({ isActive: true });
     if (!admin) {
@@ -35,7 +35,7 @@ const AdminUser = require("../models/AdminUser");
         { _id: admin._id },
         { $set: { commissionRate: 20, walletBalance: 0 } }
       );
-      console.log(`✅ Admin "${admin.email}" updated — commissionRate: 20%, walletBalance: 0`);
+      console.log(`Admin "${admin.email}" updated — commissionRate: 20%, walletBalance: 0`);
     } else {
       console.log(`ℹ️  Admin "${admin.email}" already has commissionRate: ${admin.commissionRate}% — no changes made.`);
     }

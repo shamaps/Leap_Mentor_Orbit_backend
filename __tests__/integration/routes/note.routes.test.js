@@ -37,7 +37,7 @@ describe("Note Routing Pipeline (Integration)", () => {
 
     beforeAll(async () => {
         await dbHandler.connect();
-        app = PatternApp = express();
+        app =  express();
         app.use(express.json());
 
         const noteRoutes = require("../../../routes/note.routes");

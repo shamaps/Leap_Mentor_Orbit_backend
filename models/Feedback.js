@@ -53,13 +53,13 @@ const feedbackSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS
 );
 
-// ✅ One feedback per user per session
+// One feedback per user per session
 feedbackSchema.index({ connectRequest: 1, from: 1, slotIndex: 1 }, { unique: true, sparse: true });
 
-// ✅ Fast lookup for all feedback on a session
+// Fast lookup for all feedback on a session
 feedbackSchema.index({ connectRequest: 1 });
 
-// ✅ Fast lookup for all feedback received by a user (for avg rating)
+// Fast lookup for all feedback received by a user (for avg rating)
 feedbackSchema.index({ to: 1 });
 applySoftDelete(feedbackSchema);
 module.exports = mongoose.model("Feedback", feedbackSchema);

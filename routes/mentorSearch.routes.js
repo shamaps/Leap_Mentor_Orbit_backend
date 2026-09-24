@@ -2,8 +2,9 @@
 const express = require("express");
 const router = express.Router();
 const { mentorSearchController } = require("../config/container");
-const { searchMentors, autocompleteMentors } = mentorSearchController;
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { searchMentors } = mentorSearchController;
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { searchQuerySchema } = require("../validators/mentorSearch.validator");
 const validate = require("../middleware/validate");
 
@@ -88,5 +89,5 @@ const validate = require("../middleware/validate");
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET /api/mentors/search — only mentees search for mentors
-router.get("/search", authenticate, requireRole("mentee"), validate(searchQuerySchema, "query"), searchMentors);
+router.get("/search", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), validate(searchQuerySchema, "query"), searchMentors);
 module.exports = router;

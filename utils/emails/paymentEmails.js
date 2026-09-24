@@ -1,11 +1,11 @@
 const transporter = require("../mailer");
-const { wrapEmail, buildHeader, FOOTER, LOGO_URL,BRAND_GRADIENT, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
+const { wrapEmail, buildHeader, FOOTER,BRAND_GRADIENT, buildSlotRows } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
 const config = require("../../config/env");
+const logger = require("../logger.js");
 // Email 3: Mentor notified when mentee completes payment
 
 const sendPaymentReceivedEmail = async ({
-    mentorName,
     mentorEmail,
     menteeName,
     slots = [],

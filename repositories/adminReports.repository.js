@@ -1,6 +1,7 @@
 // backend/repositories/adminReports.repository.js
 const Report = require("../models/Report");
 const Wallet = require("../models/Wallet");
+const MentorProfile = require("../models/MentorProfile");
 const Transaction = require("../models/Transaction");
 const ConnectRequest = require("../models/ConnectRequest");
 const { findUsersByName } = require("./userSearch.repository");

@@ -19,7 +19,6 @@ jest.mock("../../../utils/mappers/earnings.mapper", () => ({
 }));
 
 const createEarningsService = require("../../../services/earnings.service");
-const AppError = require("../../../utils/appError");
 
 describe("Earnings Service Layer (100% Condition Coverage Blueprint)", () => {
     let mockRepo, mockLogger, service, baseSessions;

@@ -8,6 +8,7 @@ const {
     forgotPasswordSchema,
     verifyOtpSchema,
     resetPasswordSchema,
+    changePasswordSchema,
 } = require("../validators/auth.validator");
 const {
     loginLimiter,
@@ -147,8 +148,7 @@ router.post("/clerk-sso", oauthLimiter, clerkSSO);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/password", authenticate, changePassword);
-
+router.patch("/password", authenticate, validate(changePasswordSchema), changePassword);
 /**
  * @openapi
  * /auth/refresh:

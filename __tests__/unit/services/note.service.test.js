@@ -32,7 +32,6 @@ jest.mock("../../../config/cloudinary", () => ({
 }));
 
 const createNoteService = require("../../../services/note.service");
-const { getFileType } = require("../../../middleware/upload.middleware");
 const { validateSessionAccess } = require("../../../utils/sessionAccess");
 const { uploadToCloudinary } = require("../../../utils/cloudinaryUpload");
 const { signCloudinaryUrl } = require("../../../utils/cloudinarySign");

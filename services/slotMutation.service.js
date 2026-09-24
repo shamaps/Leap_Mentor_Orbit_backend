@@ -292,7 +292,8 @@ const createSlotMutationService = (sessionRepo, escrowRepo, { logger }) => {
      * @returns {Promise<Object>} Added slot node layout variables metrics combined with broad update definitions envelopes.
      */
     const addSlot = async (connectRequestId, body, userId) => {
-        let { day, date, startTime, endTime } = body;
+        const { date, startTime, endTime } = body;
+        let { day } = body;
 
         if (!date || !startTime || !endTime) {
             throw new AppError(400, "date, startTime and endTime are required");

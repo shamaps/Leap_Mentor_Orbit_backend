@@ -25,7 +25,14 @@ const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
 });
-
+/**
+ * Joi validation schema for password change requests, ensuring current and new passwords are provided and meet length requirements.
+ * @type {import('joi').ObjectSchema}
+ */
+const changePasswordSchema = Joi.object({
+    currentPassword: Joi.string().required(),
+    newPassword: Joi.string().min(8).max(128).required(),
+}).unknown(false);
 /**
  * Joi schema verifying payload properties during password loss triggers.
  * @type {import('joi').ObjectSchema}
@@ -60,4 +67,5 @@ module.exports = {
     forgotPasswordSchema,
     verifyOtpSchema,
     resetPasswordSchema,
+    changePasswordSchema,
 };

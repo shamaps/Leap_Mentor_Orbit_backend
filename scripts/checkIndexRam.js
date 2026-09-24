@@ -32,7 +32,7 @@ async function run() {
     console.log(
         ratio > WARN_AT
             ? "⚠️  OVER 80% — drop unused indexes"
-            : "✅ Within safe range"
+            : "Within safe range"
     );
 
     console.log("\nPer collection:");

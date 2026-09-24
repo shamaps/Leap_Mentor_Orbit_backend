@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const validate = require("../middleware/validate");
 const { createGoalSchema, updateGoalSchema, milestoneSchema, updateMilestoneSchema } = require("../validators/goal.validator");
 const { goalController } = require("../config/container");
@@ -62,7 +63,7 @@ const {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Goal routes — goals belong to a connect request, both parties manage them
-router.post("/", authenticate, requireRole("mentor", "mentee"), validate(createGoalSchema), createGoal);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(createGoalSchema), createGoal);
 
 /**
  * @openapi
@@ -98,7 +99,7 @@ router.post("/", authenticate, requireRole("mentor", "mentee"), validate(createG
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId", authenticate, requireRole("mentor", "mentee"), getGoal);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), getGoal);
 
 /**
  * @openapi
@@ -150,7 +151,7 @@ router.get("/:connectRequestId", authenticate, requireRole("mentor", "mentee"), 
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:goalId", authenticate, requireRole("mentor", "mentee"), updateGoal);
+router.patch("/:goalId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateGoalSchema), updateGoal);
 
 /**
  * @openapi
@@ -209,7 +210,7 @@ router.patch("/:goalId", authenticate, requireRole("mentor", "mentee"), updateGo
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Milestone routes
-router.post("/:goalId/milestones", authenticate, requireRole("mentor", "mentee"), validate(milestoneSchema), addMilestone);
+router.post("/:goalId/milestones", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(milestoneSchema), addMilestone);
 
 /**
  * @openapi
@@ -264,7 +265,7 @@ router.post("/:goalId/milestones", authenticate, requireRole("mentor", "mentee")
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/milestones/:milestoneId", authenticate, requireRole("mentor", "mentee"), validate(updateMilestoneSchema), updateMilestone);
+router.patch("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateMilestoneSchema), updateMilestone);
 
 /**
  * @openapi
@@ -300,6 +301,6 @@ router.patch("/milestones/:milestoneId", authenticate, requireRole("mentor", "me
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/milestones/:milestoneId", authenticate, requireRole("mentor", "mentee"), deleteMilestone);
+router.delete("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), deleteMilestone);
 
 module.exports = router;

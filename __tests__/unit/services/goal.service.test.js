@@ -24,7 +24,7 @@ jest.mock("../../../utils/mappers/goal.mapper", () => ({
 const createGoalService = require("../../../services/goal.service");
 const AppError = require("../../../utils/appError");
 
-describe("Goal and Milestone Service Layer (100% Full Parallel Clean Safe Suite)", () => {
+describe("Goal and Milestone Service Layer", () => {
     let mockRepo, mockLogger, service, mockSession;
 
     beforeEach(() => {

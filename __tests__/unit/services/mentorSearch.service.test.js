@@ -4,7 +4,7 @@
  */
 
 jest.mock("../../../utils/escapeRegex", () => ({
-    escapeRegex: jest.fn((str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")),
+    escapeRegex: jest.fn((str) => str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")),
 }));
 
 jest.mock("../../../utils/cache", () => ({
@@ -16,7 +16,6 @@ jest.mock("../../../utils/cache", () => ({
 
 const createMentorSearchService = require("../../../services/mentorSearch.service");
 const cache = require("../../../utils/cache");
-const AppError = require("../../../utils/appError");
 
 describe("Mentor Search Service Layer (100% Total Condition Matrix Blueprint)", () => {
     let mockRepo, mockLogger, service, defaultCriteria;

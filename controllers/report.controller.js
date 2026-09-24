@@ -22,7 +22,7 @@ const { handleError } = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core telemetry logging infrastructure tools.
  * @returns {Object} Grouped controller endpoints route callback actions map configuration.
  */
-const createReportController = (reportService, { logger }) => {
+const createReportController = (reportService, { _logger }) => {
 
   /**
    * Express Route Handler receiving text properties and file buffers to log a user complaint.

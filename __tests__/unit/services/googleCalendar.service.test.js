@@ -110,7 +110,6 @@ describe("Google Calendar Integration Service Layer (100% Full Branch Coverage B
 
             expect(mockRepo.saveCalendarToken).toHaveBeenCalledWith("user_7", JSON.stringify({ access_token: "rotated_token" }));
 
-            const oldTokens = { access_token: "old" };
             service = createGoogleCalendarService(mockRepo, { logger: mockLogger });
 
             mockRepo.findAvailabilityWithToken.mockResolvedValue({ googleCalendarConnected: true, googleCalendarToken: '{"access_token":"old"}' });

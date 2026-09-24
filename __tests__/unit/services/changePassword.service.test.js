@@ -10,8 +10,6 @@ jest.mock("bcryptjs", () => ({
 
 const createChangePasswordService = require("../../../services/changePassword.service");
 const bcrypt = require("bcryptjs");
-const AppError = require("../../../utils/appError");
-
 describe("ChangePassword Service (100% Complete Condition Mapping)", () => {
     let mockRepo, mockLogger, service, mockUserDoc;
 

@@ -23,7 +23,7 @@ const createInvoiceController = (service, { logger }) => {
    * @param {import('express').Response} res - Standard outbound streaming response socket connector pipeline.
    * @param {import('express').NextFunction} next - Gateway forward loop path descriptor runner link.
    */
-  const downloadInvoice = async (req, res, next) => {
+  const downloadInvoice = async (req, res) => {
     try {
       const { connectRequestId } = req.params;
 

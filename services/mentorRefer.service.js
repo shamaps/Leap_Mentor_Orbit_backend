@@ -35,7 +35,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core monitoring and tracking dependencies parameters.
  * @returns {Object} Configured object map exposing peer mentor referral strategies.
  */
-const createMentorReferService = (mentorReferRepo, { logger }) => {
+const createMentorReferService = (mentorReferRepo, { _logger }) => {
     /**
      * Scans public directories to extract alternatives, scoring candidates based on structural skill matches.
      * Only accessible by the mentor who originally received the connection request.

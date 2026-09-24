@@ -20,6 +20,7 @@ jest.mock("../../../middleware/authenticate", () => ({
         next();
     }),
     requireRole: jest.fn(() => (req, res, next) => next()),
+    requirePermission: () => (req, res, next) => next(),
 }));
 
 describe("Slot Locking Routing Ecosystem (Integration)", () => {

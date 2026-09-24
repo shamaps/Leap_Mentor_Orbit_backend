@@ -4,9 +4,7 @@
 
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/appError");
-const cache = require("../utils/cache");
 const config = require("../config/env");
-const { withTransaction } = require("../utils/withTransaction");
 const { escapeRegex } = require("../utils/escapeRegex");
 const { toAdminDTO } = require("../utils/mappers/adminUser.mapper");
 const { toUserDTO } = require("../utils/mappers/user.mapper");

@@ -39,7 +39,7 @@ const selectedSlotSchema = new mongoose.Schema(
     mentorMarked: { type: Boolean, default: false },
     completedAt:  { type: Date,    default: null  },
 
-    // ✅ NEW — cancel fields
+    // NEW — cancel fields
     // "booked" is the default active state; "cancelled" hides from progress
     status: {
       type:    String,

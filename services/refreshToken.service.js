@@ -33,7 +33,7 @@ const { toUserDTO } = require("../utils/mappers/user.mapper");
  * @param {{ logger: Logger }} dependencies - Application core telemetry tracing tools.
  * @returns {Object} Configured service interface containing token rotation and logout methods.
  */
-const createRefreshTokenService = (repo, { logger }) => {
+const createRefreshTokenService = (repo, { _logger }) => {
 
     /**
      * Re-authenticates a session via token rotation, invalidating the old hash and dispatching fresh cookie payloads.

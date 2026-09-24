@@ -3,7 +3,8 @@ const express = require("express");
 const router = express.Router();
 const validate = require("../middleware/validate");
 const { lockSlotSchema, unlockSlotSchema } = require("../validators/slotLock.validator");
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { slotLockController } = require("../config/container");
 const {
   lockSlot, unlockSlot, unlockAllByMentee, getActiveLocks,
@@ -74,7 +75,7 @@ const {
  *               $ref: '#/components/schemas/ConflictResponse'
  */
 // Lock a slot (mentee selects a slot during booking)
-router.post("/lock", authenticate, requireRole("mentee"), validate(lockSlotSchema), lockSlot);
+router.post("/lock", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), validate(lockSlotSchema), lockSlot);
 
 /**
  * @openapi
@@ -131,7 +132,7 @@ router.post("/lock", authenticate, requireRole("mentee"), validate(lockSlotSchem
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Unlock a specific slot (mentee deselects a slot)
-router.delete("/lock", authenticate, requireRole("mentee"), validate(unlockSlotSchema), unlockSlot);
+router.delete("/lock", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), validate(unlockSlotSchema), unlockSlot);
 
 /**
  * @openapi
@@ -163,7 +164,7 @@ router.delete("/lock", authenticate, requireRole("mentee"), validate(unlockSlotS
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Unlock all locks by mentee (mentee closes booking modal)
-router.delete("/locks", authenticate, requireRole("mentee"), unlockAllByMentee);
+router.delete("/locks", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), unlockAllByMentee);
 
 /**
  * @openapi
@@ -201,6 +202,6 @@ router.delete("/locks", authenticate, requireRole("mentee"), unlockAllByMentee);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Get active locks for a mentor (used internally by mentor's availability view)
-router.get("/:mentorId", authenticate, requireRole("mentor", "mentee"), getActiveLocks);
+router.get("/:mentorId", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getActiveLocks);
 
 module.exports = router;

@@ -27,7 +27,6 @@ jest.mock("../../../utils/mappers/escrow.mapper", () => ({
 
 const createEscrowService = require("../../../services/escrow.service");
 const sendInvoiceEmail = require("../../../utils/sendInvoiceEmail");
-const { sendCalendarInvite } = require("../../../utils/sendCalendarInvite");
 const { sendPaymentReceivedEmail } = require("../../../utils/emails");
 const AppError = require("../../../utils/appError");
 

@@ -4,7 +4,7 @@ const ACTIVE_SESSION_STATUSES = ["ongoing", "completed"];
 const VALID_REQUEST_STATUSES = ["pending", "accepted", "rejected", "referred"];
 const VALID_RESPOND_STATUSES = ["accepted", "rejected"];
 const VALID_GOAL_STATUSES = ["active", "completed", "abandoned"];
-
+const VALID_REPORT_STATUSES = ["open", "under_review", "resolved", "dismissed"];
 // Wallet / LP constants
 const WELCOME_BONUS_LP = 500;  // LP credited to new mentees on signup
 const LEAP_REFILL_THRESHOLD = 500;  // max balance to qualify for a leap refill
@@ -19,6 +19,7 @@ module.exports = {
     VALID_REQUEST_STATUSES,
     VALID_RESPOND_STATUSES,
     VALID_GOAL_STATUSES,
+    VALID_REPORT_STATUSES,
     WELCOME_BONUS_LP,
     LEAP_REFILL_THRESHOLD,
     LEAP_REFILL_AMOUNT,

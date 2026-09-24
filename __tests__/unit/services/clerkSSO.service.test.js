@@ -31,7 +31,6 @@ jest.mock("../../../utils/mappers/user.mapper", () => ({
 
 const createClerkSSOService = require("../../../services/clerkSSO.service");
 const jwt = require("jsonwebtoken");
-const { withRetry } = require("../../../utils/withRetry");
 const { clerkClient, validateRoles, mergeRoles } = require("../../../utils/auth.utils");
 const { provisionWallet } = require("../../../utils/wallet");
 const AppError = require("../../../utils/appError");

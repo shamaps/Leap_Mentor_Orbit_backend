@@ -14,7 +14,7 @@ const { handleError } = require("../utils/appError");
  * @param {{ logger: Object }} dependencies - Metric tracking and application performance logging telemetry tool.
  * @returns {Object} Grouped controller endpoints route callback actions map container.
  */
-const createUploadController = (uploadService, { logger }) => {
+const createUploadController = (uploadService, { _logger }) => {
   /**
    * Express Route Handler receiving dynamic image payloads to rewrite user avatar profiles rows.
    * * @async

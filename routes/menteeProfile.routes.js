@@ -1,6 +1,7 @@
 // routes/menteeProfile.routes.js
 const express = require("express");
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { menteeProfileController } = require("../config/container");
 const {
   createProfile, getMyProfile, updateProfile, getPublicProfile,
@@ -96,7 +97,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/", authenticate, requireRole("mentee"), validate(profileSchema), createProfile);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTEE_PROFILE), validate(profileSchema), createProfile);
 
 /**
  * @openapi
@@ -135,7 +136,7 @@ router.post("/", authenticate, requireRole("mentee"), validate(profileSchema), c
 router.get(
   "/me",
   authenticate,
-  requireRole("mentee"),
+  requirePermission(PERMISSIONS.MANAGE_MENTEE_PROFILE),
   getMyProfile
 );
 
@@ -184,7 +185,7 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/me", authenticate, requireRole("mentee"), validate(profileSchema), updateProfile);
+router.patch("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTEE_PROFILE), validate(profileSchema), updateProfile);
 
 /**
  * @openapi

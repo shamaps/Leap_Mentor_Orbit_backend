@@ -19,7 +19,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application logging tools.
  * @returns {Object} An object containing the password updates execution method.
  */
-const createChangePasswordService = (changePasswordRepo, { logger }) => {
+const createChangePasswordService = (changePasswordRepo, { _logger }) => {
 
     /**
      * Validates credentials, verifies the current password, and persists a newly encrypted password.

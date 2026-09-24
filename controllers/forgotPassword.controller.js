@@ -26,7 +26,7 @@ const createForgotPasswordController = (service, { logger }) => {
    * @param {import('express').Response} res - Standard outbound data response transport connector pipeline.
    * @param {import('express').NextFunction} next - Gateway forward loop execution link.
    */
-  const sendForgotPasswordOTP = async (req, res, next) => {
+  const sendForgotPasswordOTP = async (req, res) => {
     try {
       await service.sendForgotPasswordOTP(req.body.email);
 
@@ -45,7 +45,7 @@ const createForgotPasswordController = (service, { logger }) => {
    * @param {import('express').Response} res - Execution transport return link interface socket.
    * @param {import('express').NextFunction} next - Control stack flow forward navigation hook.
    */
-  const verifyResetOTP = async (req, res, next) => {
+  const verifyResetOTP = async (req, res ) => {
     try {
       const { email, otp } = req.body;
       const normalizedEmail = await service.verifyResetOTP({ email, otp });
@@ -65,7 +65,7 @@ const createForgotPasswordController = (service, { logger }) => {
    * @param {import('express').Response} res - Structural payload interface output transport channel.
    * @param {import('express').NextFunction} next - Middleware stack continuation callback router index link.
    */
-  const resetPassword = async (req, res, next) => {
+  const resetPassword = async (req, res ) => {
     try {
       const { email, otp, newPassword } = req.body;
       await service.resetPassword({ email, otp, newPassword });

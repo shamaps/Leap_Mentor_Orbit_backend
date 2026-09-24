@@ -31,7 +31,6 @@ jest.mock("../../../utils/mappers/mentorProfile.mapper", () => ({
 }));
 
 const createAdminService = require("../../../services/admin.service");
-const jwt = require("jsonwebtoken");
 const config = require("../../../config/env");
 const AppError = require("../../../utils/appError");
 

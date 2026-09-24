@@ -39,7 +39,7 @@ const createConnectRequestController = (service, { logger }) => {
    * @returns {201} Created — `{ message, request }`
    * @returns {409} Conflict — duplicate request already exists
    */
-  const sendConnectRequest = async (req, res, next) => {
+  const sendConnectRequest = async (req, res) => {
     try {
       const { mentorId, message, selectedSlots, sessionRate, sessionCount } = req.body;
 
@@ -85,7 +85,7 @@ const createConnectRequestController = (service, { logger }) => {
    *
    * @returns {200} OK — `{ requests: ConnectRequestSummary[] }`
    */
-  const getMyRequests = async (req, res, next) => {
+  const getMyRequests = async (req, res) => {
     try {
       const requests = await service.getMyRequests(req.user._id);
       logger.info("getMyRequests completed successfully");
@@ -109,7 +109,7 @@ const createConnectRequestController = (service, { logger }) => {
    *
    * @returns {200} OK — `{ requests: ConnectRequestSummary[] }`
    */
-  const getIncomingRequests = async (req, res, next) => {
+  const getIncomingRequests = async (req, res) => {
     try {
       const requests = await service.getIncomingRequests(req.user._id, req.query.status);
       logger.info("getIncomingRequests completed successfully");
@@ -141,7 +141,7 @@ const createConnectRequestController = (service, { logger }) => {
    * @returns {403} Forbidden — caller is not the mentor on this request
    * @returns {404} Not Found — request does not exist
    */
-  const respondToRequest = async (req, res, next) => {
+  const respondToRequest = async (req, res) => {
     try {
       const { status, confirmedSlot } = req.body;
 
@@ -183,7 +183,7 @@ const createConnectRequestController = (service, { logger }) => {
    * @returns {403} Forbidden — caller is not the mentee on this request
    * @returns {404} Not Found — request does not exist
    */
-  const cancelRequest = async (req, res, next) => {
+  const cancelRequest = async (req, res) => {
     try {
       await service.cancelRequest(req.params.id, req.user._id);
 
@@ -218,7 +218,7 @@ const createConnectRequestController = (service, { logger }) => {
    * @returns {404} Not Found — request does not exist
    * @returns {409} Conflict — mentee already has a pending request with the target mentor
    */
-  const referRequest = async (req, res, next) => {
+  const referRequest = async (req, res) => {
     try {
       const { originalRequest, newRequest } = await service.referRequest(
         req.params.id,
@@ -252,7 +252,7 @@ const createConnectRequestController = (service, { logger }) => {
    *
    * @returns {200} OK — `{ connects: ConnectRequestSummary[] }`
    */
-  const getOngoingConnects = async (req, res, next) => {
+  const getOngoingConnects = async (req, res) => {
     try {
       const connects = await service.getOngoingConnects(req.user._id);
       logger.info("getOngoingConnects completed successfully");
@@ -278,7 +278,7 @@ const createConnectRequestController = (service, { logger }) => {
    * @returns {403} Forbidden — caller is neither mentor nor mentee on this request
    * @returns {404} Not Found — request does not exist
    */
-  const getConnectDetail = async (req, res, next) => {
+  const getConnectDetail = async (req, res) => {
     try {
       const connect = await service.getConnectDetail(req.params.id, req.user._id);
       logger.info("getConnectDetail completed successfully");

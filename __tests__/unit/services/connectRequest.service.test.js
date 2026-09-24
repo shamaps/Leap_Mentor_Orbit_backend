@@ -24,7 +24,6 @@ jest.mock("../../../utils/mappers/connectRequest.mapper", () => ({
 }));
 
 const createConnectRequestService = require("../../../services/connectRequest.service");
-const AppError = require("../../../utils/appError");
 const mongoose = require("mongoose");
 
 describe("Connect Request Service Layer (100% Socket Real-Time and Mapping Sweep)", () => {

@@ -8,7 +8,7 @@ const { DEFAULT_COMMISSION_RATE } = require("../config/constants");
  * @param {Object} options.logger - Logger instance.
  * @returns {Object} Service methods.
  */
-const createAdminPaymentsService = (repo, { logger }) => {
+const createAdminPaymentsService = (repo, { _logger }) => {
 
     /**
      * Resolves the string status for a transaction based on its type.

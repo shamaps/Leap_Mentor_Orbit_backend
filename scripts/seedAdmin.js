@@ -23,7 +23,7 @@ const ADMIN = {
 (async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
+    console.log("MongoDB connected");
 
     const exists = await AdminUser.findOne({ email: ADMIN.email });
     if (exists) {
@@ -32,7 +32,7 @@ const ADMIN = {
     }
 
     await AdminUser.create(ADMIN);
-    console.log("✅ Admin created:", ADMIN.email);
+    console.log("Admin created:", ADMIN.email);
     process.exit(0);
   } catch (err) {
     console.error("❌ Seed error:", err.message);

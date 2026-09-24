@@ -2,6 +2,7 @@
 const PDFDocument = require("pdfkit");
 const path = require("node:path");
 const fs = require("node:fs");
+const logger = require("./logger");
 const { formatDateShort } = require("./emailHelpers");
 /**
  * Generates a LeapMentor invoice PDF buffer.

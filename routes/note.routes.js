@@ -91,7 +91,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-// ✅ /private MUST come before /:connectRequestId
+// /private MUST come before /:connectRequestId
 // GET /api/notes/:connectRequestId/private — own private notes
 router.get(
   "/:connectRequestId/private",
