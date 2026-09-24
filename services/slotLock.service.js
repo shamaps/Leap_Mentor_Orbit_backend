@@ -12,7 +12,6 @@ const LOCK_DURATION_MINUTES = 10;
  * @typedef {Object} SlotLockRepository
  * @property {(mentorId: string) => Promise<Object[]>} findConfirmedBookings - Resolves active or pending connection requests blocking dynamic timelines.
  * @property {(mentorId: string, date: string) => Promise<Object[]>} findActiveLocks - Pulls active transient holdings matching target dates.
- * @property {(data: Object) => Promise<Object>} upsertLock - Registers or extends individual user scheduling holds.
  * @property {(data: Object) => Promise<Object|null>} deleteLock - Discards an individual explicit hold matching parameters.
  * @property {(filter: Object) => Promise<Object>} deleteManyLocks - Performs mass purges of lock documents from clusters.
  * @property {(mentorId: string, userId: any) => Promise<Object[]>} findActiveLocksExcludingUser - Selects concurrent holds owned by separate callers.
@@ -98,12 +97,11 @@ const createSlotLockService = (repo, { logger }) => {
         if (isConfirmedBooked) {
             return { status: 409, body: { message: "This slot is already booked", code: "SLOT_BOOKED" } };
         }
-
-        // ── 2. Check active locks for overlap ──
+        
+        // ── 2. Check active locks held by OTHERS for overlap ──
         const activeLocks = await repo.findActiveLocks(mentorId, date);
 
         const isLocked = activeLocks.some((lock) => {
-            // Allow mentee to re-lock their own slot (refresh timer)
             if (lock.lockedBy.toString() === menteeId.toString()) return false;
             return hasOverlap(sStart, sEnd, timeToMinutes(lock.startTime), timeToMinutes(lock.endTime));
         });
@@ -114,16 +112,34 @@ const createSlotLockService = (repo, { logger }) => {
                 body: { message: "This slot is temporarily held by another user", code: "SLOT_LOCKED" },
             };
         }
-
         // ── 3. Upsert lock — refreshes timer if same mentee re-selects ──
         const expiresAt = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
-        await repo.upsertLock({ mentorId, date, startTime, endTime, menteeId, expiresAt });
+
+        const existingOwnLock = await repo.refreshOwnLock({ mentorId, date, startTime, endTime, menteeId, expiresAt });
+
+        if (!existingOwnLock) {
+            try {
+                await repo.createLock({ mentorId, date, startTime, endTime, menteeId, expiresAt });
+            } catch (err) {
+                if (err.code === 11000) {
+                    logger.info("Slot lock collision — another mentee claimed it first", {
+                        mentorId, date, startTime, endTime, menteeId: menteeId.toString(),
+                    });
+                    return {
+                        status: 409,
+                        body: { message: "This slot is temporarily held by another user", code: "SLOT_LOCKED" },
+                    };
+                }
+                throw err;
+            }
+        }
 
         return {
             status: 200,
             body: { message: "Slot locked successfully", expiresAt, lockedFor: LOCK_DURATION_MINUTES },
         };
     };
+
 
     /**
      * Manually evicts an individual explicit transient lock, freeing up the timeline parameters bounds.

@@ -12,7 +12,8 @@ describe("Slot Lock Service Layer (100% Timeline Overlap Sweep Blueprint)", () =
         mockRepo = {
             findConfirmedBookings: jest.fn(),
             findActiveLocks: jest.fn(),
-            upsertLock: jest.fn(),
+            refreshOwnLock: jest.fn(),
+            createLock: jest.fn(),
             deleteLock: jest.fn(),
             deleteManyLocks: jest.fn(),
             findActiveLocksExcludingUser: jest.fn()
@@ -69,10 +70,48 @@ describe("Slot Lock Service Layer (100% Timeline Overlap Sweep Blueprint)", () =
             mockRepo.findActiveLocks.mockResolvedValue([
                 { lockedBy: "mentee_user_999", startTime: "14:00", endTime: "15:00" } // Same mentee refresh timer block
             ]);
+            mockRepo.refreshOwnLock.mockResolvedValue({ _id: "lock_1", expiresAt: new Date() });
 
             const res = await service.lockSlot(basePayload);
             expect(res.status).toBe(200);
-            expect(mockRepo.upsertLock).toHaveBeenCalled();
+            expect(mockRepo.refreshOwnLock).toHaveBeenCalled();
+            expect(mockRepo.createLock).not.toHaveBeenCalled(); // already owned — no new-claim attempt needed
+        });
+
+        it("should call createLock to claim a brand-new slot when the caller doesn't already hold it", async () => {
+            mockRepo.findConfirmedBookings.mockResolvedValue([]);
+            mockRepo.findActiveLocks.mockResolvedValue([]);
+            mockRepo.refreshOwnLock.mockResolvedValue(null); // caller doesn't own a lock here yet
+            mockRepo.createLock.mockResolvedValue({ _id: "lock_new" });
+
+            const res = await service.lockSlot(basePayload);
+            expect(res.status).toBe(200);
+            expect(mockRepo.createLock).toHaveBeenCalled();
+        });
+
+        it("should return 409 SLOT_LOCKED if createLock collides with another mentee's lock created at the same instant (the atomic race fix)", async () => {
+            // Two mentees can both pass the earlier best-effort overlap check for the exact
+            // same slot if their requests land within the same tick — this is the scenario
+            // where MongoDB's unique index is the actual backstop, not the application logic.
+            mockRepo.findConfirmedBookings.mockResolvedValue([]);
+            mockRepo.findActiveLocks.mockResolvedValue([]);
+            mockRepo.refreshOwnLock.mockResolvedValue(null);
+            const duplicateKeyError = new Error("E11000 duplicate key error");
+            duplicateKeyError.code = 11000;
+            mockRepo.createLock.mockRejectedValue(duplicateKeyError);
+
+            const res = await service.lockSlot(basePayload);
+            expect(res.status).toBe(409);
+            expect(res.body.code).toBe("SLOT_LOCKED");
+        });
+
+        it("should rethrow non-duplicate-key errors from createLock instead of swallowing them as a lock conflict", async () => {
+            mockRepo.findConfirmedBookings.mockResolvedValue([]);
+            mockRepo.findActiveLocks.mockResolvedValue([]);
+            mockRepo.refreshOwnLock.mockResolvedValue(null);
+            mockRepo.createLock.mockRejectedValue(new Error("connection reset"));
+
+            await expect(service.lockSlot(basePayload)).rejects.toThrow("connection reset");
         });
     });
 
@@ -97,7 +136,7 @@ describe("Slot Lock Service Layer (100% Timeline Overlap Sweep Blueprint)", () =
         });
 
         it("should omit mentorId keys from filter maps if parameter evaluates falsy", async () => {
-            const res = await service.unlockAllByMentee({ mentorId: null, menteeId: "me1" });
+            await service.unlockAllByMentee({ mentorId: null, menteeId: "me1" });
             expect(mockRepo.deleteManyLocks).toHaveBeenCalledWith({ lockedBy: "me1" });
         });
     });

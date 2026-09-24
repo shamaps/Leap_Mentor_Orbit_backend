@@ -27,23 +27,45 @@ const findActiveLocks = (mentorId, date) =>
     SlotLock.find({ mentorId, date }).lean();
 
 /**
- * Performs atomic operationsupsert updates refreshing temporal lock durations or registering fresh elements.
- * * @function upsertLock
- * @param {Object} payloadFields - Intake data schema options container.
- * @param {string} payloadFields.mentorId - Target unique provider profile index key string.
- * @param {string} payloadFields.date - Target date string context parameters.
- * @param {string} payloadFields.startTime - Clock format opening bounding parameter.
- * @param {string} payloadFields.endTime - Clock format terminal bounding parameter.
- * @param {any} payloadFields.menteeId - Security verify criteria validating lock ownership attributes.
- * @param {Date} payloadFields.expiresAt - Transient expiration limit timestamp indicator.
- * @returns {Promise<Object>} Newly generated or extended Mongoose tracking lock document record.
+ * Refreshes the caller's own existing lock timer on this exact slot, if they already hold it.
+ * Does NOT create a new lock and does NOT touch another mentee's lock — returns null if the
+ * caller doesn't currently own a lock on this exact slot (see createLock for that case).
+ * * @function refreshOwnLock
+ * @param {Object} payloadFields
+ * @param {string} payloadFields.mentorId
+ * @param {string} payloadFields.date
+ * @param {string} payloadFields.startTime
+ * @param {string} payloadFields.endTime
+ * @param {any} payloadFields.menteeId
+ * @param {Date} payloadFields.expiresAt
+ * @returns {Promise<Object|null>} The refreshed lock, or null if the caller doesn't own one here.
  */
-const upsertLock = ({ mentorId, date, startTime, endTime, menteeId, expiresAt }) =>
+const refreshOwnLock = ({ mentorId, date, startTime, endTime, menteeId, expiresAt }) =>
     SlotLock.findOneAndUpdate(
         { mentorId, date, startTime, endTime, lockedBy: menteeId },
         { expiresAt },
-        { upsert: true, new: true }
+        { new: true }
     );
+
+/**
+ * Atomically claims a brand-new lock on this exact slot. Relies on the unique index on
+ * {mentorId, date, startTime, endTime} (no lockedBy) to make the claim a single atomic
+ * DB operation — if another mentee already holds this exact slot, MongoDB itself rejects
+ * the insert with a duplicate-key error (code 11000) rather than the app deciding via a
+ * separate read first. Callers must catch that error and treat it as "slot already held".
+ * * @function createLock
+ * @param {Object} payloadFields
+ * @param {string} payloadFields.mentorId
+ * @param {string} payloadFields.date
+ * @param {string} payloadFields.startTime
+ * @param {string} payloadFields.endTime
+ * @param {any} payloadFields.menteeId
+ * @param {Date} payloadFields.expiresAt
+ * @returns {Promise<Object>} The newly created lock document.
+ * @throws {Error} MongoServerError with code 11000 if the slot is already locked by someone else.
+ */
+const createLock = ({ mentorId, date, startTime, endTime, menteeId, expiresAt }) =>
+    SlotLock.create({ mentorId, date, startTime, endTime, lockedBy: menteeId, expiresAt });
 
 /**
  * Direct matching execution query looking up and deleting individual transient lock segments.
@@ -89,7 +111,8 @@ const findActiveLocksExcludingUser = (mentorId, userId) =>
 module.exports = {
     findConfirmedBookings,
     findActiveLocks,
-    upsertLock,
+    refreshOwnLock,
+    createLock,
     deleteLock,
     deleteManyLocks,
     findActiveLocksExcludingUser,

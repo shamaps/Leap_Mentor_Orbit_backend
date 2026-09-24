@@ -1,6 +1,7 @@
 // backend/middleware/noteAccess.js
 const ConnectRequest = require("../models/ConnectRequest");
 const Note           = require("../models/Note");
+const logger = require("../utils/logger");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 /**
  * MIDDLEWARE 1 — validateSessionMembership
@@ -48,12 +49,18 @@ const validateSessionMembership = async (req, res, next) => {
       });
     }
 
-    // ✅ Attach to request for downstream use
+    // Attach to request for downstream use
     req.connectRequest = session;
     req.sessionRole    = isMentor ? "mentor" : "mentee";
 
     next();
   } catch (err) {
+    logger.error("noteAccess.validateSessionMembership failed", {
+      error: err.message,
+      stack: err.stack,
+      connectRequestId: req.params.connectRequestId || req.body.connectRequestId,
+      userId: req.user?._id,
+    });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -75,18 +82,24 @@ const validateNoteOwnership = async (req, res, next) => {
       });
     }
     if (note.uploadedBy.toString() !== req.user._id.toString()) {
-      // ✅ Return 404 instead of 403 to conceal note existence from non-authors
+      // Return 404 instead of 403 to conceal note existence from non-authors
       return res.status(404).json({
         message: "Note not found",
         code: "NOTE_NOT_FOUND",
       });
     }
 
-    // ✅ Attach note to request to avoid double DB call in controller
+    // Attach note to request to avoid double DB call in controller
     req.note = note;
 
     next();
   } catch (err) {
+      logger.error("noteAccess.validateNoteOwnership failed", {
+        error: err.message,
+        stack: err.stack,
+        noteId: req.params.id,
+        userId: req.user?._id,
+      });
     return res.status(500).json({ message: err.message });
   }
 };
@@ -98,7 +111,7 @@ const validateNoteOwnership = async (req, res, next) => {
  * Runs after validateSessionMembership so req.connectRequest is available.
  */
 const requirePrivateOwnership = (req, res, next) => {
-  // ✅ Use req.connectRequest._id from previous middleware — always available
+  // Use req.connectRequest._id from previous middleware — always available
   const connectRequestId =
     req.params.connectRequestId ||
     req.body.connectRequestId ||

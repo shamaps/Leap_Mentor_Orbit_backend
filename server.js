@@ -4,7 +4,6 @@
 require("./instrument");
 require("dotenv").config();
 
-const express = require("express");
 const http = require("node:http");
 const { Server } = require("socket.io");
 const Sentry = require("@sentry/node");
@@ -14,7 +13,7 @@ const socketAuth = require("./socket/socketAuth");
 const socketHandler = require("./socket/socketHandler");
 const { verifyConnection } = require("./config/cloudinary");
 const { connectDB } = require("./config/database");
-const config = require("./config/env"); 
+
 /* ===========================
    🔹 PROCESS-LEVEL SAFETY NETS
    Must be registered once, before anything else can throw/reject.
@@ -59,13 +58,7 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:3000",
-      "http://localhost:4173",
-      process.env.APP_BASE_URL,
-    ],
+    origin: process.env.SOCKET_CORS_ORIGINS?.split(",").map(s => s.trim()) ?? [],
     credentials: true,
   },
   pingTimeout: 60000,

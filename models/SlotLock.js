@@ -22,16 +22,16 @@ const slotLockSchema = new mongoose.Schema({
   },
 }, BASE_SCHEMA_OPTIONS);
 
-// ✅ MongoDB auto-deletes document when expiresAt is reached
+// MongoDB auto-deletes document when expiresAt is reached
 slotLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// ✅ Prevent duplicate locks on same slot by same mentee
+// Atomically prevents two different mentees from both locking the same exact slot
 slotLockSchema.index(
-  { mentorId: 1, date: 1, startTime: 1, endTime: 1, lockedBy: 1 },
+  { mentorId: 1, date: 1, startTime: 1, endTime: 1 },
   { unique: true }
 );
 
-// ✅ Index for fast lookup by mentorId + date
+// Index for fast lookup by mentorId + date
 slotLockSchema.index({ mentorId: 1, date: 1 });
 
 module.exports = mongoose.model("SlotLock", slotLockSchema);
