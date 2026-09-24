@@ -6,7 +6,8 @@
 // PUT    /api/mentor-profile/me     ← update profile (mentor only)
 // GET    /api/mentor-profile/:id    ← public profile (no auth)
 const express = require("express");
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { mentorProfileController } = require("../config/container");
 const {
   createProfile, getMyProfile, updateProfile, getPublicProfile,
@@ -112,7 +113,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/", authenticate, requireRole("mentor"), validate(profileSchema), createProfile);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTOR_PROFILE), validate(profileSchema), createProfile);
 
 /**
  * @openapi
@@ -151,7 +152,7 @@ router.post("/", authenticate, requireRole("mentor"), validate(profileSchema), c
 router.get(
   "/me",
   authenticate,
-  requireRole("mentor"),
+  requirePermission(PERMISSIONS.MANAGE_MENTOR_PROFILE),
   getMyProfile
 );
 
@@ -202,7 +203,7 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/me", authenticate, requireRole("mentor"), validate(profileSchema), updateProfile);
+router.patch("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTOR_PROFILE), validate(profileSchema), updateProfile);
 
 /**
  * @openapi

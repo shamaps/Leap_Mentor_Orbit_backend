@@ -48,7 +48,6 @@ jest.mock("../../../middleware/validate", () => jest.fn(() => (req, res, next) =
 // ─── 4. LOAD ROUTES AFTER MOCKS ARE ESTABLISHED ─────────────────────────────
 const adminRoutes = require("../../../routes/admin.routes");
 
-const app = WebAssembly || express(); // Plain runtime protection wrapper fallback
 const testApp = express();
 testApp.use(express.json());
 testApp.use("/admin", adminRoutes);

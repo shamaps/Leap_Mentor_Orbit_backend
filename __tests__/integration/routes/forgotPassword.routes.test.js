@@ -8,15 +8,15 @@ const mockResetPassword = jest.fn();
 
 jest.mock("../../../config/container", () => ({
     forgotPasswordController: {
-        sendForgotPasswordOTP: (req, res, next) => {
+        sendForgotPasswordOTP: (req, res) => {
             mockSendOTP(req.body.email);
             return res.status(200).json({ success: true, data: { message: "Sent" } });
         },
-        verifyResetOTP: (req, res, next) => {
+        verifyResetOTP: (req, res) => {
             mockVerifyOTP(req.body);
             return res.status(200).json({ success: true, data: { message: "Verified" } });
         },
-        resetPassword: (req, res, next) => {
+        resetPassword: (req, res) => {
             mockResetPassword(req.body);
             return res.status(200).json({ success: true, data: { message: "Reset" } });
         }

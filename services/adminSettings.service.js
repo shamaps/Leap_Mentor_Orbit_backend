@@ -26,7 +26,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Global dependencies like logger.
  * @returns {Object} An object containing the admin settings service methods.
  */
-const createAdminSettingsService = (adminSettingsRepo, { logger }) => {
+const createAdminSettingsService = (adminSettingsRepo, { _logger }) => {
 
     /**
      * Retrieves system overview counts (total users and active sessions), using cache where possible.

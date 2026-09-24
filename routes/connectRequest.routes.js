@@ -12,8 +12,8 @@ const {
 } = connectRequestController;
 const { getSimilarMentors } = mentorReferController;
 
-const { authenticate, requireRole } = require("../middleware/authenticate");
-
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 /**
  * @openapi
  * /connect-requests:
@@ -214,7 +214,7 @@ router.get("/incoming", authenticate, getIncomingRequests);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // SPECIFIC routes BEFORE generic /:id  <-- THIS WAS THE BUG
-router.get("/:id/similar-mentors", authenticate, requireRole("mentor"), getSimilarMentors);
+router.get("/:id/similar-mentors", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTOR_REFERRALS), getSimilarMentors);
 
 /**
  * @openapi
@@ -251,7 +251,7 @@ router.get("/:id/similar-mentors", authenticate, requireRole("mentor"), getSimil
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:id/refer", authenticate, requireRole("mentor"), referRequest);
+router.patch("/:id/refer", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTOR_REFERRALS), referRequest);
 
 /**
  * @openapi

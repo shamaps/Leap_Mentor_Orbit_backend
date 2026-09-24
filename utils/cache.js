@@ -53,11 +53,12 @@ const TTL = {
 };
 
 const get = async (key) => {
+    let raw;
     try {
-        const raw = await redisClient.get(key);
+        raw = await redisClient.get(key);
         return raw ? JSON.parse(raw) : null;
-    } catch {
-        logger.warn("Cache parse error — returning null", { raw });
+    } catch (err) {
+        logger.warn("Cache parse error — returning null", { key, raw, error: err.message });
         return null;
     }
 };

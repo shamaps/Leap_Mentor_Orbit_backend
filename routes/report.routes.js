@@ -2,7 +2,9 @@
 const express = require("express");
 const router = express.Router();
 
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { adminAuthenticate } = require("../middleware/adminAuth");
+const { PERMISSIONS } = require("../config/permissions");
 const { upload } = require("../middleware/upload.middleware");
 const { reportController } = require("../config/container");
 const {
@@ -68,7 +70,7 @@ const { reportLimiter } = require("../middleware/rateLimiter");
 router.post(
   "/",
   authenticate,
-  requireRole("mentor", "mentee"),
+  requirePermission(PERMISSIONS.MANAGE_REPORTS),
   upload.single("screenshot"),
   reportLimiter,
   submitReport
@@ -112,7 +114,7 @@ router.post(
 router.get(
   "/my/:connectRequestId",
   authenticate,
-  requireRole("mentor", "mentee"),
+  requirePermission(PERMISSIONS.MANAGE_REPORTS),
   getMyReport
 );
 
@@ -163,8 +165,7 @@ router.get(
 // List all reports (paginated, filterable by status)
 router.get(
   "/admin",
-  authenticate,
-  requireRole("admin"),
+  adminAuthenticate,
   getAllReports
 );
 
@@ -217,8 +218,7 @@ router.get(
 // Update report status / add admin note
 router.patch(
   "/admin/:reportId",
-  authenticate,
-  requireRole("admin"),
+  adminAuthenticate,
   updateReportStatus
 );
 

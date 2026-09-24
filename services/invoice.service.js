@@ -20,7 +20,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
  * @returns {Object} Configured service interface containing invoice business logic handlers.
  */
-const createInvoiceService = (repo, { logger }) => {
+const createInvoiceService = (repo, { _logger }) => {
     /**
      * Generate and return a PDF invoice buffer for a paid session.
      * Only the mentee who paid can download the invoice.

@@ -67,7 +67,7 @@ const isParticipant = (connectRequest, userId) => {
  * @param {string} connectRequestId - Contextual request parameter ID for diagnostics.
  * @throws {AppError} 404 error if request is missing; 403 error if user is unauthenticated or unauthorized.
  */
-const assertSessionAccess = (connectRequest, userId, connectRequestId) => {
+const assertSessionAccess = (connectRequest, userId) => {
     if (!connectRequest) {
         throw new AppError(404, "Session not found");
     }

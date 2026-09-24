@@ -1,5 +1,4 @@
 // controllers/session.controller.js
-const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
 const { ok, created } = require("../utils/response");
 

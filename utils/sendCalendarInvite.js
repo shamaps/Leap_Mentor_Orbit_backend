@@ -113,7 +113,7 @@ const sendCalendarInvite = async ({
     transporter.sendMail({
       from: `"Leapmentor" <${config.smtpUser}>`,
       to: menteeEmail,
-      subject: `✅ ${slotCount} Session${slotCount > 1 ? "s" : ""} Confirmed with ${mentorName}`,
+      subject: `${slotCount} Session${slotCount > 1 ? "s" : ""} Confirmed with ${mentorName}`,
       html: menteeHtml,
       attachments: [icsAttachment],
     }),

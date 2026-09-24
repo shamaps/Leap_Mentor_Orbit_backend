@@ -15,8 +15,8 @@ jest.mock("../../../utils/mappers/user.mapper", () => ({
 }));
 
 const createRefreshTokenService = require("../../../services/refreshToken.service");
-const { signToken, setRefreshCookie, generateRefreshToken } = require("../../../utils/auth.utils");
-const AppError = require("../../../utils/appError");
+const {  setRefreshCookie } = require("../../../utils/auth.utils");
+
 
 describe("Refresh Token Service (100% Comprehensive Coverage)", () => {
     let mockRepo, mockLogger, service, mockRes;

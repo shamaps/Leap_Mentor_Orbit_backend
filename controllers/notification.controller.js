@@ -1,6 +1,5 @@
 // controllers/notification.controller.js
 const { ok, noContent } = require("../utils/response");
-const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
 
 /**

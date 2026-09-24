@@ -1,11 +1,10 @@
 const transporter = require("../mailer");
-const { wrapEmail, buildHeader, FOOTER, LOGO_URL, buildSlotRows, formatTime, formatDate,BRAND_GRADIENT } = require("../emailHelpers");
+const { wrapEmail, buildHeader, FOOTER, buildSlotRows,BRAND_GRADIENT } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
-const logger = require("../logger");
+const logger = require("../logger.js");
 const config = require("../../config/env");
 // Email 1: Mentor notified when mentee sends a connect request
 const sendConnectRequestEmail = async ({
-  mentorName,
   mentorEmail,
   menteeName,
   slots = [],
@@ -80,7 +79,6 @@ const sendConnectRequestEmail = async ({
 
 // Email 2: Mentee notified when mentor accepts the request
 const sendRequestAcceptedEmail = async ({
-  menteeName,
   menteeEmail,
   mentorName,
   confirmedSlot,

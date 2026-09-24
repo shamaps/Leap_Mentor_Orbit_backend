@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { adminAuthenticate } = require("../middleware/adminAuth");
 const { leapRequestController } = require("../config/container");
 const {
-  getMyRequest, createRequest, getAllRequests, getPendingCount, approveRequest, rejectRequest,
+  getMyRequest, createRequest, getAllRequests, approveRequest, rejectRequest,
 } = leapRequestController;
 
 /**
@@ -38,7 +39,7 @@ const {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Mentor routes — only mentors submit leap (verification) requests
-router.get("/my-request", authenticate, requireRole("mentee"), getMyRequest);
+router.get("/my-request", authenticate, requirePermission(PERMISSIONS.MANAGE_LEAP_REQUEST), getMyRequest);
 
 /**
  * @openapi
@@ -75,7 +76,7 @@ router.get("/my-request", authenticate, requireRole("mentee"), getMyRequest);
  *             schema:
  *               $ref: '#/components/schemas/UnprocessableResponse'
  */
-router.post("/", authenticate, requireRole("mentee"), createRequest);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_LEAP_REQUEST), createRequest);
 
 /**
  * @openapi

@@ -9,8 +9,6 @@ jest.mock("../../../utils/mappers/message.mapper", () => ({
 }));
 
 const createMessageService = require("../../../services/message.service");
-const AppError = require("../../../utils/appError");
-
 describe("Message Service (100% Complete Coverage Mapping)", () => {
     let mockMessageRepo, mockLogger, service, baseSession;
 

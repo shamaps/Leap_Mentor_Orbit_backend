@@ -20,6 +20,14 @@ jest.mock("../../../middleware/authenticate", () => ({
         next();
     }),
     requireRole: jest.fn(() => (req, res, next) => next()),
+    requirePermission: jest.fn(() => (req, res, next) => next()),
+}));
+
+jest.mock("../../../middleware/adminAuth", () => ({
+    adminAuthenticate: jest.fn((req, res, next) => {
+        req.admin = { _id: "sandbox_admin_id" };
+        next();
+    }),
 }));
 
 jest.mock("../../../middleware/rateLimiter", () => ({

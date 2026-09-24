@@ -5,7 +5,7 @@ const { makeOtp } = require("../utils/auth.utils");
 const config = require("../config/env");
 const AppError = require("../utils/appError");
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
-const createVerificationService = (repo, { logger }) => {
+const createVerificationService = (repo) => {
 /**
  * Generates OTP + magic link, saves BOTH to DB, sends ONE email with both options.
  */

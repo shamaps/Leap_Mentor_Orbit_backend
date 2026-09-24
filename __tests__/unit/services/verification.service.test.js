@@ -80,7 +80,7 @@ describe("Verification Service Layer (100% Complete Condition Branch Matrix)", (
         it("should execute mail relays with suffix changes cleanly during resend operations configurations", async () => {
             mockRepo.findUserByEmail.mockResolvedValue(mockUser);
 
-            const res = await service.resendVerification({ email: "verify@user.com" });
+             await service.resendVerification({ email: "verify@user.com" });
 
             expect(mockRepo.deleteTokensByUser).toHaveBeenCalledWith("u_id_888");
             expect(mockRepo.createVerificationToken).toHaveBeenCalled();

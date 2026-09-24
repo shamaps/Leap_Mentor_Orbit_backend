@@ -1,6 +1,4 @@
 // utils/baseSchema.js
-const mongoose = require("mongoose");
-
 /**
  * Base schema options applied to every model.
  * Centralises timestamps and toJSON transform so

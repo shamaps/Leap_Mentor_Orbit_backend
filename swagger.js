@@ -133,10 +133,11 @@ function main() {
     (sum, methods) => sum + Object.keys(methods).length,
     0
   );
-
-  console.log(`✅ swagger-output.json written (${pathCount} paths, ${operationCount} operations)`);
+  // eslint-disable-next-line no-console -- swagger doc generation runs at startup, outside app logger context
+  console.log(`swagger-output.json written (${pathCount} paths, ${operationCount} operations)`);
 
   if (operationCount === 0) {
+    // eslint-disable-next-line no-console -- swagger doc generation runs at startup, outside app logger context
     console.warn(
       "⚠️  No operations found. Check that routes/*.routes.js files contain " +
       "/** @openapi ... */ JSDoc comment blocks above each route."

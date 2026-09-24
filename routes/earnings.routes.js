@@ -1,7 +1,8 @@
 // backend/routes/earnings.routes.js
 const express = require("express");
-const router = express.Router();
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const router = express.Router(); 
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { earningsController } = require("../config/container");
 const {
   getEarningsSummary, getEarningsChart, getPayoutHistory, withdrawEarnings,
@@ -54,7 +55,7 @@ const {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/", authenticate, requireRole("mentor"), getEarningsSummary);
+router.get("/", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS), getEarningsSummary);
 
 /**
  * @openapi
@@ -91,7 +92,7 @@ router.get("/", authenticate, requireRole("mentor"), getEarningsSummary);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/chart", authenticate, requireRole("mentor"), getEarningsChart);
+router.get("/chart", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS), getEarningsChart);
 
 /**
  * @openapi
@@ -135,7 +136,7 @@ router.get("/chart", authenticate, requireRole("mentor"), getEarningsChart);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/payouts", authenticate, requireRole("mentor"), getPayoutHistory);
+router.get("/payouts", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS), getPayoutHistory);
 
 /**
  * @openapi
@@ -172,6 +173,6 @@ router.get("/payouts", authenticate, requireRole("mentor"), getPayoutHistory);
  *             schema:
  *               $ref: '#/components/schemas/UnprocessableResponse'
  */
-router.post("/withdraw", authenticate, requireRole("mentor"), withdrawEarnings);
+router.post("/withdraw", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS), withdrawEarnings);
 
 module.exports = router;

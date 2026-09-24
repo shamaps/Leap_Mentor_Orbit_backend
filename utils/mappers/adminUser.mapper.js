@@ -10,5 +10,4 @@ const toAdminDTO = (doc) => ({
     commissionRate: doc.commissionRate,
     walletBalance: doc.walletBalance,
 });
-// Stripped: password (already handled by toJSON), __v
 module.exports = { toAdminDTO };

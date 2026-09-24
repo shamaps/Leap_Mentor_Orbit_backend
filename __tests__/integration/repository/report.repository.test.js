@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+
 const dbHandler = require("../../utils/db");
 const repo = require("../../../repositories/report.repository");
 const { makeUser, makeConnectRequest, makeSelectedSlot } = require("../../fixtures/createTestData");

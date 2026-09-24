@@ -1,6 +1,5 @@
 // services/availability.service.js
 const { generateSlotsFromSpecificDates } = require("../utils/generateSlots");
-const { PLATFORM_TIMEZONE } = require("../config/constants");
 const { toAvailabilityDTO, toPublicAvailabilityDTO, toAvailableSlotsDTO } = require("../utils/mappers/availability.mapper");
 const AppError = require("../utils/appError");
 
@@ -38,7 +37,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core logging infrastructure.
  * @returns {Object} Configured object map containing operational service methodologies.
  */
-const createAvailabilityService = (availabilityRepository, { logger }) => {
+const createAvailabilityService = (availabilityRepository, { _logger }) => {
 
   /**
    * Retrieves the current requestor's specialized availability dashboard metadata payload mapping.

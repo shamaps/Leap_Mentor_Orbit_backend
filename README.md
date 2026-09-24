@@ -239,7 +239,7 @@ CLOUDINARY_API_SECRET=your_api_secret      # required
 
 # Redis
 REDIS_HOST=127.0.0.1     # optional, default 127.0.0.1
-REDIS_PORT=6379          # optional, default 6379
+REDIS_PORT=6379 env         # optional, default 6379
 REDIS_PASSWORD=          # optional
 REDIS_TLS=false          # optional
 REDIS_URL=               # optional — overrides host/port/password if set

@@ -23,7 +23,12 @@ const profileSchema = Joi.object({
     currentRole: Joi.string().trim().max(100).allow("").optional(),
     industry: Joi.string().trim().max(100).allow("").optional(),
     company: Joi.string().trim().max(100).allow("").optional(),
-    bio: Joi.string().trim().max(1000).allow("").optional(),
+    bio: Joi.string().trim().max(1000).custom((value, helpers) => {
+        if (value !== "" && value.length < 10) {
+            return helpers.error("string.min");
+        }
+        return value;
+    }).messages({ "string.min": "Bio must be at least 10 characters" }).allow("").optional(),
     yearsOfExperience: Joi.number().min(0).max(60).optional(),
     hourlyRate: Joi.number().min(0).optional(),
     skills: Joi.array().items(Joi.string()).optional(),

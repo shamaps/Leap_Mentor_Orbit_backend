@@ -7,7 +7,6 @@ const mockService = {
     getMyRequests: jest.fn().mockResolvedValue([]),
 };
 
-const mockReferService = { getSimilarMentors: jest.fn().mockResolvedValue([]) };
 
 const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 const createConnectRequestController = require("../../../controllers/connectRequest.controller");
@@ -24,6 +23,7 @@ jest.mock("../../../middleware/authenticate", () => ({
         next();
     }),
     requireRole: jest.fn(() => (req, res, next) => next()),
+    requirePermission: () => (req, res, next) => next(),
 }));
 
 const connectRequestRoutes = require("../../../routes/connectRequest.routes");

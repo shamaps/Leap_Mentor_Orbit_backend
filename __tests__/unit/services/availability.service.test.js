@@ -15,7 +15,6 @@ jest.mock("../../../utils/mappers/availability.mapper", () => ({
 
 const createAvailabilityService = require("../../../services/availability.service");
 const { generateSlotsFromSpecificDates } = require("../../../utils/generateSlots");
-const { toAvailabilityDTO, toPublicAvailabilityDTO, toAvailableSlotsDTO } = require("../../../utils/mappers/availability.mapper");
 const AppError = require("../../../utils/appError");
 
 describe("Availability Service Layer (100% Branch and Condition Sweep)", () => {

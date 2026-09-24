@@ -1,6 +1,6 @@
 // backend/app.js
 // Pure Express app — no DB connection, no server start, no cron jobs
-// This is what Jest imports for testing
+
 require("dotenv").config();
 
 const express = require("express");
@@ -34,7 +34,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "baggage", "sentry-trace", "Accept-Version"],
+  allowedHeaders: ["Content-Type", "Authorization", "baggage", "sentry-trace", "Accept-Version" ,"Accept","X-Request-Id","X-Client-Name",  "X-Client-Version","X-Trace-Id",],
 }));
 
 // Sentry request tagging
@@ -169,11 +169,9 @@ app.use((req, res) => {
    4-param signature is REQUIRED by Express to treat this as error middleware
    Catches: next(err) calls, CORS errors, middleware throws
 =========================== */
-const AppError = require("./utils/appError");
 const { handleError } = require("./utils/appError");
 
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   // Sentry already captured it above — just respond
   logger.error("[global] Unhandled error", {
     method: req.method,

@@ -41,16 +41,18 @@ const createGoalService = (goalRepo, { logger }) => {
      * @param {string} event - Inter-process notification communication literal key label.
      * @param {Object} data - Context parameter tracking structural state payload envelopes.
      */
-    const emitToRoom = (connectRequestId, event, data) => {
+    const emitToRoom = (connectRequestId, event, data, excludeSocketId) => {
         try {
             if (socketHandler.io) {
-                socketHandler.io.to(connectRequestId.toString()).emit(event, data);
+                const target = excludeSocketId
+                    ? socketHandler.io.to(connectRequestId.toString()).except(excludeSocketId)
+                    : socketHandler.io.to(connectRequestId.toString());
+                target.emit(event, data);
             }
         } catch (err) {
             logger.warn("Socket emit failed", { error: err.message });
         }
     };
-
     /**
      * Verifies if performing credentials exist inside verified participant lists.
      * * @private
@@ -304,7 +306,7 @@ const createGoalService = (goalRepo, { logger }) => {
 
         await milestone.save();
 
-        emitToRoom(milestone.connectRequest, "milestone_updated", { milestone });
+        emitToRoom(milestone.connectRequest, "milestone_updated", { milestone }, body.socketId);
 
         return { milestone: toMilestoneDTO(milestone) };
     };

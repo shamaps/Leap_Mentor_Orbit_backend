@@ -1,5 +1,4 @@
 // services/privateNote.service.js
-const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 const { validateSessionAccess } = require("../utils/sessionAccess");
 const AppError = require("../utils/appError");
 
@@ -25,7 +24,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Telemetry monitoring diagnostics tools.
  * @returns {Object} Operational service interface exposing private notebook methods.
  */
-const createPrivateNoteService = (privateNoteRepo, { logger }) => {
+const createPrivateNoteService = (privateNoteRepo, { _logger }) => {
 
     // POST /api/private-notes
     /**

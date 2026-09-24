@@ -3,8 +3,7 @@
  * Secures 100% statement, line, branch, and condition passing coverage.
  */
 
-// 變數名稱必須使用 mock 前綴開頭，才能在 jest.mock 中被合法存取
-let mockSocketConfig = {
+const mockSocketConfig = {
     shouldThrow: false,
     emitToUser: jest.fn()
 };
@@ -45,7 +44,7 @@ jest.mock("../../../services/sessionHelpers", () => ({
 }));
 
 const createSlotMutationService = require("../../../services/slotMutation.service");
-const { sendSlotCancelledEmail, sendSlotRescheduledEmail, sendAdditionalSlotEmail } = require("../../../utils/emails");
+const {  sendAdditionalSlotEmail } = require("../../../utils/emails");
 const { generateSlotsFromSpecificDates } = require("../../../utils/generateSlots");
 const refundSlot = require("../../../utils/refundSlot");
 const helpers = require("../../../services/sessionHelpers");

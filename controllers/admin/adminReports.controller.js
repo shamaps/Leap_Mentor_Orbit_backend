@@ -1,5 +1,5 @@
 // backend/controllers/admin/adminReports.controller.js
-const { ok, fail, noContent, unprocessable } = require("../../utils/response");
+const { ok, noContent, unprocessable } = require("../../utils/response");
 const { handleError } = require("../../utils/appError");
 
 /**

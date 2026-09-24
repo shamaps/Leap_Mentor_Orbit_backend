@@ -23,7 +23,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
  * @returns {Object} Configured object map exposing profile handling methodologies.
  */
-const createMenteeProfileService = (menteeProfileRepo, { logger }) => {
+const createMenteeProfileService = (menteeProfileRepo, { _logger }) => {
     /**
      * POST /api/mentee-profile
      * Validates and provisions a brand-new internal mentee profile document with fallbacks.

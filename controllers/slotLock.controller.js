@@ -16,7 +16,7 @@ const { ok } = require("../utils/response");
  * @param {{ logger: Object }} dependencies - Metric tracking and application logging telemetry tool.
  * @returns {Object} Grouped controller routes callback actions container mapping blueprint.
  */
-const createSlotLockController = (slotLockService, { logger }) => {
+const createSlotLockController = (slotLockService, { _logger }) => {
   // POST /api/slot-locks/lock
 
   /**

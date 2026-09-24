@@ -8,8 +8,8 @@ const {
 } = availabilityController;
 const validate = require("../middleware/validate");
 const { saveAvailabilitySchema } = require("../validators/availability.validator");
-const { authenticate, requireRole } = require("../middleware/authenticate");
-
+const { authenticate,requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 /**
  * @openapi
  * /availability/me:
@@ -39,8 +39,8 @@ const { authenticate, requireRole } = require("../middleware/authenticate");
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-// ✅ Mentor's own availability (mentor only)
-router.get("/me", authenticate, requireRole("mentor"), getMyAvailability);
+// Mentor's own availability (mentor only)
+router.get("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_OWN_SLOTS), getMyAvailability);
 
 /**
  * @openapi
@@ -120,7 +120,7 @@ router.get("/me", authenticate, requireRole("mentor"), getMyAvailability);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/", authenticate, requireRole("mentor"), validate(saveAvailabilitySchema), createAvailability);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_OWN_SLOTS), validate(saveAvailabilitySchema), createAvailability);
 
 /**
  * @openapi
@@ -176,7 +176,7 @@ router.post("/", authenticate, requireRole("mentor"), validate(saveAvailabilityS
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/me", authenticate, requireRole("mentor"), validate(saveAvailabilitySchema), updateAvailability);
+router.patch("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_OWN_SLOTS), validate(saveAvailabilitySchema), updateAvailability);
 
 /**
  * @openapi
@@ -207,7 +207,7 @@ router.patch("/me", authenticate, requireRole("mentor"), validate(saveAvailabili
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/me", authenticate, requireRole("mentor"), deleteAvailability);
+router.delete("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_OWN_SLOTS), deleteAvailability);
 
 /**
  * @openapi
@@ -244,8 +244,8 @@ router.delete("/me", authenticate, requireRole("mentor"), deleteAvailability);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-// ✅ Mentee views a mentor's available slots for booking
-router.get("/:mentorId/slots", authenticate, requireRole("mentee"), getAvailableSlots);
+// Mentee views a mentor's available slots for booking
+router.get("/:mentorId/slots", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), getAvailableSlots);
 
 /**
  * @openapi
@@ -274,7 +274,7 @@ router.get("/:mentorId/slots", authenticate, requireRole("mentee"), getAvailable
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-// ✅ Public — no auth needed
+// Public — no auth needed
 router.get("/:mentorId", getMentorAvailability);
 
 module.exports = router;

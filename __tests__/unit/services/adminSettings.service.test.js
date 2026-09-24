@@ -20,7 +20,6 @@ jest.mock("../../../utils/cache", () => ({
 
 const createAdminSettingsService = require("../../../services/adminSettings.service");
 const cache = require("../../../utils/cache");
-const crypto = require("node:crypto");
 const AppError = require("../../../utils/appError");
 
 describe("Admin Settings Service Layer (100% Branch Coverage Blueprint)", () => {

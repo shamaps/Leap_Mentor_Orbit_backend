@@ -1,7 +1,8 @@
 // routes/session.routes.js
 const express = require("express");
 const router = express.Router();
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { sessionController } = require("../config/container");
 const {
   getSlots, setMeetingLink, markSlotComplete, addSlot,
@@ -44,7 +45,7 @@ const { addSlotSchema, meetingLinkSchema, slotStatusSchema } = require("../valid
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId/slots", authenticate, requireRole("mentor", "mentee"), getSlots);
+router.get("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getSlots);
 
 /**
  * @openapi
@@ -81,7 +82,7 @@ router.get("/:connectRequestId/slots", authenticate, requireRole("mentor", "ment
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId/mentor-availability", authenticate, requireRole("mentor", "mentee"), getMentorAvailability);
+router.get("/:connectRequestId/mentor-availability", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getMentorAvailability);
 
 /**
  * @openapi
@@ -140,7 +141,7 @@ router.get("/:connectRequestId/mentor-availability", authenticate, requireRole("
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, requireRole("mentor", "mentee"), validate(meetingLinkSchema), setMeetingLink);
+router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(meetingLinkSchema), setMeetingLink);
 
 /**
  * @openapi
@@ -205,7 +206,7 @@ router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, r
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/:connectRequestId/slots", authenticate, requireRole("mentor", "mentee"), validate(addSlotSchema), addSlot);
+router.post("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(addSlotSchema), addSlot);
 
 // BEFORE (three separate verb-action routes):
 // router.patch("/:connectRequestId/slots/:slotIndex/mark-complete", ...)
@@ -292,7 +293,7 @@ router.post("/:connectRequestId/slots", authenticate, requireRole("mentor", "men
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // AFTER (one noun-based route, action driven by body):
-router.patch("/:connectRequestId/slots/:slotIndex/status", authenticate, requireRole("mentor", "mentee"), validate(slotStatusSchema), (req, res, next) => {
+router.patch("/:connectRequestId/slots/:slotIndex/status", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(slotStatusSchema), (req, res, next) => {
   const action = req.body.action;
   if (action === "complete") return markSlotComplete(req, res, next);
   if (action === "cancel") return cancelSlot(req, res, next);

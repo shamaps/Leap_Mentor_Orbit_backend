@@ -6,6 +6,7 @@ const {
 const { signCloudinaryUrl } = require("../utils/cloudinarySign");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 const { reportScreenshotId } = require("../utils/cloudinaryPublicId");
+const { VALID_REPORT_STATUSES } = require("../config/constants");
 
 /**
  * @typedef {Object} ReportRepository
@@ -197,7 +198,7 @@ const createReportService = (repo, { logger }) => {
      * @returns {Promise<{ status: number, body: { success: boolean, report: Object }|{ message: string } }>} Modification execution outcome summaries.
      */
     const updateReportStatus = async ({ reportId, status, adminNote, userId }) => {
-        if (!VALID_STATUSES.has(status)) {
+        if (!VALID_REPORT_STATUSES.includes(status)) {
             return { status: 400, body: { message: "Invalid status value" } };
         }
 

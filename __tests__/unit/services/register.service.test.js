@@ -22,7 +22,7 @@ jest.mock("../../../utils/mappers/user.mapper", () => ({
 
 const createRegisterService = require("../../../services/register.service");
 const bcrypt = require("bcryptjs");
-const { issueTokens, validateRoles } = require("../../../utils/auth.utils");
+const {  validateRoles } = require("../../../utils/auth.utils");
 const { provisionWallet } = require("../../../utils/wallet");
 const AppError = require("../../../utils/appError");
 

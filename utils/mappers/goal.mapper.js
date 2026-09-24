@@ -4,7 +4,9 @@ const toGoalDTO = (doc) => ({
     _id: doc._id,
     title: doc.title,
     description: doc.description,
-    status: doc.status,
+    status: doc.status, 
+    startDate: doc.startDate,
+    endDate: doc.endDate,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
 });

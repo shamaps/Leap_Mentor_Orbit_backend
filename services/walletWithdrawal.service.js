@@ -9,7 +9,7 @@ const { toWithdrawalDTO } = require("../utils/mappers/wallet.mapper");
  * @param {Object} configOptions.logger - App system logger implementation context instance.
  * @returns {Object} Encapsulated service object containing core wallet withdrawal operations.
  */
-const createWalletWithdrawalService = (earningsRepo, { logger }) => {
+const createWalletWithdrawalService = (earningsRepo) => {
     /**
      * Withdraws the mentor's full available wallet balance.
      * * @param {string|import('mongoose').Types.ObjectId} mentorId - Unique ID of the mentor requestor.

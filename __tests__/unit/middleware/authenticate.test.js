@@ -20,7 +20,6 @@ jest.mock("../../../config/env", () => ({
 
 const jwt = require("jsonwebtoken");
 const User = require("../../../models/User");
-const Sentry = require("@sentry/node");
 const logger = require("../../../utils/logger");
 const { authenticate, requireRole } = require("../../../middleware/authenticate");
 

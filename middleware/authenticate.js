@@ -5,6 +5,7 @@ const Sentry = require("@sentry/node");
 const logger = require("../utils/logger");
 const { maskEmail } = require("../utils/mask");
 const config = require("../config/env");
+const { hasPermission } = require("../config/permissions");
 const authenticate = async (req, res, next) => {
   try {
     const token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
@@ -40,7 +41,7 @@ const authenticate = async (req, res, next) => {
     logger.info("Authenticated request", {
       userId: user._id.toString(),
       role: user.role,
-      email: maskEmail(user.email), 
+      email: maskEmail(user.email),
       route: req.path,
       method: req.method,
     });
@@ -64,6 +65,7 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+
 const requireRole = (...roles) => {
   return (req, res, next) => {
     const userRoles = req.user?.roles || [];
@@ -83,4 +85,24 @@ const requireRole = (...roles) => {
   };
 };
 
-module.exports = { authenticate, requireRole };
+
+const requirePermission = (...permissions) => {
+  return (req, res, next) => {
+    const userRoles = req.user?.roles || [];
+    const granted = permissions.some((permission) => hasPermission(userRoles, permission));
+    if (!granted) {
+      logger.warn("Insufficient permission access attempt", {
+        userId: req.user?._id?.toString(),
+        email: maskEmail(req.user?.email || ""),
+        userRoles,
+        requiredPermissions: permissions,
+        route: req.path,
+        method: req.method,
+      });
+      return res.status(403).json({ message: "Access denied: insufficient permission" });
+    }
+    next();
+  };
+};
+
+module.exports = { authenticate, requireRole, requirePermission };

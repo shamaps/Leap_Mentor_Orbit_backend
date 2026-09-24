@@ -27,7 +27,7 @@ const AppError = require("../utils/appError");
  * @param {{ logger: Logger }} dependencies - Application core telemetry tracing tools.
  * @returns {Object} Configured service interface containing user onboarding methods.
  */
-const createRegisterService = (registerRepo, { logger }) => {
+const createRegisterService = (registerRepo, { _logger }) => {
 
     /**
      * Syntactically evaluates inbound fields to ensure explicit criteria limits are fulfilled.

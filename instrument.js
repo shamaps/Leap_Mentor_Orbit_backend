@@ -14,12 +14,12 @@ Sentry.init({
         enableLogs: true,
     },
     beforeSend(event) {
-        // ✅ Scrub request body using your sanitize utility
+        // Scrub request body using your sanitize utility
         if (event.request?.data) {
             event.request.data = sanitize(event.request.data);
         }
 
-        // ✅ Scrub user fields on the event itself
+        // Scrub user fields on the event itself
         if (event.user?.email) {
             const { maskEmail } = require("./utils/mask");
             event.user.email = maskEmail(event.user.email);
@@ -29,7 +29,7 @@ Sentry.init({
     },
 
     beforeSendTransaction(event) {
-        // ✅ Scrub user email from traces too
+        // Scrub user email from traces too
         if (event.user?.email) {
             const { maskEmail } = require("./utils/mask");
             event.user.email = maskEmail(event.user.email);

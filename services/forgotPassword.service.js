@@ -1,5 +1,4 @@
 // services/forgotPassword.service.js
-const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const transporter = require("../utils/mailer");
 const AppError = require("../utils/appError");
@@ -36,7 +35,7 @@ const config = require("../config/env");
  * @param {{ logger: Logger }} dependencies - Application telemetry and analytics logging wrapper.
  * @returns {Object} Grouped business validation methodologies map configuration.
  */
-const createForgotPasswordService = (repo, { logger }) => {
+const createForgotPasswordService = (repo, { _logger }) => {
 
     /**
      * Standardizes dynamic text inputs removing variant discrepancies.

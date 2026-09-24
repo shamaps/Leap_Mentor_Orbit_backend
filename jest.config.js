@@ -5,7 +5,7 @@ module.exports = {
     verbose: true,
     forceExit: true,
     clearMocks: true,
-    bail: 1,
+    // bail: 5,
     testTimeout: 10000,
     coverageDirectory: "coverage",
     coverageReporters: ["lcov", "text", "clover"],

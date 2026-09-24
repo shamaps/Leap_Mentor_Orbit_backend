@@ -26,7 +26,7 @@ const clampDimension = (value) =>
  * * @param {{ logger: Logger }} dependencies - Application core tracing infrastructure.
  * @returns {Object} Configured service interface container for asset mutations.
  */
-const createImageService = ({ logger }) => {
+const createImageService = ({ _logger }) => {
 
     /**
      * Builds a resized Cloudinary profile-image URL for a given user.

@@ -1,6 +1,4 @@
 // utils/baseProfileSchema.js
-const mongoose = require("mongoose");
-
 // ── Shared URL validator 
 const URL_REGEX = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/;
 const urlValidator = {

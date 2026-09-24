@@ -1,7 +1,8 @@
 const transporter = require("../mailer");
-const { wrapEmail, buildHeader, FOOTER,BRAND_GRADIENT, LOGO_URL, buildSlotRows, formatTime, formatDate } = require("../emailHelpers");
+const { wrapEmail, buildHeader, FOOTER, BRAND_GRADIENT, formatTime, formatDate, buildParticipantBlock } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
 const config = require("../../config/env");
+const logger = require("../logger.js");
 // Email 5: Both mentor and mentee notified when a slot is cancelled
 
 const sendSlotCancelledEmail = async ({

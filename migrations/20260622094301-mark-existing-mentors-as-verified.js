@@ -6,7 +6,8 @@ module.exports = {
       { verificationStatus: { $exists: false } },
       { $set: { verificationStatus: "unverified" } }
     );
-    console.log("✅ Backfilled verificationStatus on existing mentor profiles");
+    // eslint-disable-next-line no-console -- migration script runs outside the app's logger context
+    console.log("Backfilled verificationStatus on existing mentor profiles");
   },
 
   async down(db) {

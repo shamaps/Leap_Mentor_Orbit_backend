@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const dbHandler = require("../../utils/db");
 const repo = require("../../../repositories/availability.repository");
 const { makeConnectRequest, makeSelectedSlot } = require("../../fixtures/createTestData");
-const Availability = require("../../../models/Availability"); // Replaces hand-rolled mini schemas
 
 beforeAll(async () => await dbHandler.connect());
 afterEach(async () => await dbHandler.clear());

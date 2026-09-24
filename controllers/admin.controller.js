@@ -2,7 +2,7 @@
  * @fileoverview Admin controller handling incoming HTTP requests and responses.
  */
 
-const AppError = require("../utils/appError");
+
 const { handleError } = require("../utils/appError");
 
 const { ok, fail, noContent } = require("../utils/response");

@@ -1,7 +1,8 @@
 const transporter = require("../mailer");
-const { wrapEmail, buildHeader, FOOTER, LOGO_URL, formatTime, formatDate } = require("../emailHelpers");
+const { wrapEmail, buildHeader, FOOTER, BRAND_GRADIENT } = require("../emailHelpers");
 const { escapeHtml } = require("../escapeHtml");
 const config = require("../../config/env");
+const logger = require("../logger");
 // Email 4: User notified when admin resolves their support ticket
 
 const sendSupportResolvedEmail = async ({ toEmail, subject }) => {
@@ -120,6 +121,7 @@ const sendReportSubmittedEmail = async ({ reporterName, reporterEmail, complaint
 
 const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintType, status, adminNote, reporterRole }) => {
   const dashboardLink = `${config.appBaseUrl}/dashboard/${reporterRole === "mentor" ? "mentor" : "mentee"}`;
+  const safeReporterName = escapeHtml(reporterName);
   const safeAdminNote = escapeHtml(adminNote);
     const isResolved = status === "resolved";
 
@@ -144,7 +146,7 @@ const sendReportResolvedEmail = async ({ reporterName, reporterEmail, complaintT
     ${buildHeader(
         headerGradient,
         `Report ${statusLabel}`,
-        `An update on your report has been made by our team`
+        `Hi ${safeReporterName}, here's an update on your report`
     )}
 
     <div class="email-body" style="padding:24px 32px;">

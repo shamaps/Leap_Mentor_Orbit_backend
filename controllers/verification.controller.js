@@ -16,7 +16,7 @@ const { ok, fail } = require("../utils/response");
  * @param {{ logger: Object }} dependencies - Metric tracking and application performance logging analytics capture tool.
  * @returns {Object} Grouped controller routes callback actions container mapping blueprint.
  */
-const createVerificationController = (verificationService, { logger }) => {
+const createVerificationController = (verificationService, { _logger }) => {
 
   /**
    * Express Route Handler reading email attributes from body elements to trigger outbound verification cycles.

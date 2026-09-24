@@ -31,7 +31,7 @@ const { toMessageListDTO, toUnreadCountDTO } = require("../utils/mappers/message
  * @param {{ logger: Logger }} dependencies - Application performance metric capture monitoring tool.
  * @returns {Object} Configured object map exposing conversation reporting methods.
  */
-const createMessageService = (messageRepo, { logger }) => {
+const createMessageService = (messageRepo, { _logger }) => {
 
     /**
      * Resolves messaging history blocks under either a traditional offset pattern or dynamic cursor infinite scrolls.

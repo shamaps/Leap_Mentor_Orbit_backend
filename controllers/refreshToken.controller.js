@@ -1,7 +1,7 @@
 // controllers/refreshToken.controller.js
-const { ok, fail } = require("../utils/response");
+const { ok } = require("../utils/response");
 const { handleError } = require("../utils/appError");
-const AppError = require("../utils/appError");
+
 
 /**
  * @typedef {Object} RefreshTokenService
@@ -47,6 +47,7 @@ const createRefreshTokenController = (refreshTokenService, { logger }) => {
             const raw = req.cookies?.refreshToken;
             const data = await refreshTokenService.logout(raw);
             res.clearCookie("refreshToken", { path: "/" });
+            res.clearCookie("accessToken", { path: "/" }); 
             logger.info("logout completed successfully");
             return ok(res, data);
         } catch (err) {

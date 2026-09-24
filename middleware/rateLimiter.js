@@ -10,7 +10,7 @@ const config = require("../config/env");
 //   REDIS_HOST=127.0.0.1
 //   REDIS_PORT=6379
 //   REDIS_PASSWORD=yourpassword   (optional)
-//   REDIS_TLS=false               (set true on Railway/Render)
+
 // ─────────────────────────────────────────────────────────────
 const redisClient = new Redis({
     host: config.redisHost,

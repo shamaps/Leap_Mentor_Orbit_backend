@@ -8,7 +8,6 @@ jest.mock("../../../utils/mappers/feedback.mapper", () => ({
 }));
 
 const createFeedbackService = require("../../../services/feedback.service");
-const { toFeedbackDTO } = require("../../../utils/mappers/feedback.mapper");
 const AppError = require("../../../utils/appError");
 
 describe("Feedback Service Layer (100% Total Condition Matrix Blueprint)", () => {

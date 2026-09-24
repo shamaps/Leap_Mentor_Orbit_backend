@@ -1,7 +1,8 @@
 // backend/routes/upload.routes.js
 const express = require("express");
 const router = express.Router();
-const { authenticate, requireRole } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
 const { upload, uploadImage } = require("../middleware/upload.middleware");
 const { uploadController } = require("../config/container");
 const {
@@ -110,7 +111,7 @@ router.post(
 router.post(
   "/verification-documents",
   authenticate,
-  requireRole("mentor"),
+  requirePermission(PERMISSIONS.UPLOAD_VERIFICATION_DOCS),
   upload.fields([
     { name: "resume", maxCount: 1 },
     { name: "workExperienceDocs", maxCount: 3 },

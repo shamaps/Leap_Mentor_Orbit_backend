@@ -20,7 +20,6 @@ jest.mock("../../../utils/cloudinaryPublicId", () => ({
 const createUploadService = require("../../../services/upload.service");
 const { sendDocumentsSubmittedEmail } = require("../../../utils/emails");
 const { uploadToCloudinary } = require("../../../utils/cloudinaryUpload");
-const AppError = require("../../../utils/appError");
 
 describe("Upload Asset Service Layer (100% Promise.allSettled & Error Sweep Blueprint)", () => {
     let mockRepo, mockLogger, service, mockUser, imageFile;

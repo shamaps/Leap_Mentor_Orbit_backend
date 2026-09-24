@@ -27,7 +27,7 @@ const { toLeapRequestDTO, toLeapRequestListDTO } = require("../utils/mappers/lea
  *   rejectRequest:   Function,
  * }}
  */
-const createLeapRequestService = (leapRequestRepo, { logger }) => {
+const createLeapRequestService = (leapRequestRepo, { _logger }) => {
 
     /**
      * Returns the mentee's latest pending Leap Points request.

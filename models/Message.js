@@ -27,10 +27,10 @@ const messageSchema = new mongoose.Schema(
   BASE_SCHEMA_OPTIONS
 );
 
-// ✅ Compound index for fast paginated queries per session
+// Compound index for fast paginated queries per session
 messageSchema.index({ connectRequest: 1, createdAt: -1 });
 
-// ✅ Index for unread count queries
+// Index for unread count queries
 messageSchema.index({ connectRequest: 1, sender: 1, readAt: 1 });
 
 module.exports = mongoose.model("Message", messageSchema);

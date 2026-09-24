@@ -35,7 +35,7 @@ const handleError = (res, err, context = "unknown") => {
     logger.warn(`[${context}] rejected`, { reason: err.message, status: err.status, ...err.meta });
     const body = { success: false, message: err.message, ...err.meta };
     if (err.status === 422) body.code = "UNPROCESSABLE";
-    return res.status(err.status).json(body);  // ← add return
+    return res.status(err.status).json(body);  
   }
 
   logger.error(`[${context}] unexpected error`, { error: err.message, stack: err.stack });

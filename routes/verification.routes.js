@@ -5,7 +5,7 @@ const {
 } = require("../config/container");
 const validate = require("../middleware/validate");
 const { verifyOtpSchema } = require("../validators/auth.validator");
-const { sendVerification, resendVerification, verifyOtp, verifyLink } = verificationController;
+const { sendVerification, resendVerification, verifyLink } = verificationController;
 const { otpLimiter, resendLimiter } = require("../middleware/rateLimiter");
 /**
  * @openapi

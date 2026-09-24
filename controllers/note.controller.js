@@ -1,5 +1,4 @@
 // controllers/note.controller.js
-const AppError = require("../utils/appError");
 const { handleError } = require("../utils/appError");
 const { ok, created, fail, noContent } = require("../utils/response");
 

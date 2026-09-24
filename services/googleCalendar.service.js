@@ -5,6 +5,7 @@ const { withTimeout } = require("../utils/withTimeout");
 const { withRetry } = require("../utils/withRetry");
 const { getTraceId } = require("../utils/requestContext");
 const config = require("../config/env");
+const AppError = require("../utils/appError");
 
 /**
  * @typedef {Object} GoogleCalendarRepository
