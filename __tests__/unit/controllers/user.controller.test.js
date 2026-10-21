@@ -1,5 +1,6 @@
 const createUserController = require("../../../controllers/user.controller");
 const { ok } = require("../../../utils/response");
+const { toUserDTO } = require("../../../utils/mappers/user.mapper");
 
 jest.mock("../../../utils/response", () => ({
     ok: jest.fn((res, data) => res.status(200).json({ success: true, data })),
@@ -24,6 +25,6 @@ describe("User Controller (Unit)", () => {
         controller.getMe(req, res);
 
         expect(mockLogger.info).toHaveBeenCalledWith("getMe completed successfully");
-        expect(ok).toHaveBeenCalledWith(res, req.user);
+        expect(ok).toHaveBeenCalledWith(res, toUserDTO(req.user));
     });
 });
