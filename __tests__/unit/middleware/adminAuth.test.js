@@ -8,6 +8,7 @@ jest.mock("../../../models/AdminUser");
 jest.mock("../../../utils/logger", () => ({
     info: jest.fn(),
     error: jest.fn(),
+    warn: jest.fn(),
 }));
 jest.mock("../../../config/env", () => ({
     jwtSecret: "super_secret_admin_key_2026",
@@ -16,7 +17,7 @@ jest.mock("../../../config/env", () => ({
 const jwt = require("jsonwebtoken");
 const AdminUser = require("../../../models/AdminUser");
 const logger = require("../../../utils/logger");
-const { adminAuthenticate } = require("../../../middleware/adminAuth");
+const { adminAuthenticate, requireSuperAdmin } = require("../../../middleware/adminAuth");
 
 describe("Admin Auth Middleware (100% Full Branch & Condition Blueprint)", () => {
     let req, res, next;
@@ -92,6 +93,27 @@ describe("Admin Auth Middleware (100% Full Branch & Condition Blueprint)", () =>
         expect(req.admin).toEqual(mockAdmin);
         expect(logger.info).toHaveBeenCalledWith("Admin authenticated", { adminId: "admin_999", email: "root@admin.com" });
         expect(next).toHaveBeenCalled();
+    });
+
+    it("should allow a super admin through the action guard", () => {
+        req.admin = { _id: "admin_root", isSuperAdmin: true };
+        requireSuperAdmin(req, res, next);
+        expect(next).toHaveBeenCalled();
+        expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it("should reject a normal admin from a super-admin-only action", () => {
+        req.admin = { _id: "admin_standard", isSuperAdmin: false };
+        requireSuperAdmin(req, res, next);
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith({ message: "Access denied: super admin only" });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it("should reject when admin authentication did not attach an admin", () => {
+        requireSuperAdmin(req, res, next);
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(next).not.toHaveBeenCalled();
     });
 
     it("should log errors and return a 401 response if token parsing exceptions are encountered", async () => {

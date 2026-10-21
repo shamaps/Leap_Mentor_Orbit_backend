@@ -26,6 +26,7 @@ describe("Refresh Token Service (100% Comprehensive Coverage)", () => {
             findByHash: jest.fn(),
             deleteById: jest.fn(),
             deleteByHash: jest.fn(),
+            deleteAllByUserId: jest.fn(),
             create: jest.fn(),
         };
         mockLogger = { info: jest.fn(), error: jest.fn() };
@@ -59,6 +60,32 @@ describe("Refresh Token Service (100% Comprehensive Coverage)", () => {
 
             await expect(service.refresh("expired_token_plaintext", mockRes))
                 .rejects.toMatchObject({ status: 401, message: "Refresh token expired or invalid" });
+            expect(mockRepo.deleteById).toHaveBeenCalledWith("t_expired");
+        });
+
+        it("should revoke a token when its populated user is soft-deleted", async () => {
+            mockRepo.findByHash.mockResolvedValue({
+                _id: "t_blocked",
+                expiresAt: new Date(Date.now() + 60000),
+                user: { _id: "u_blocked", isDeleted: true },
+            });
+
+            await expect(service.refresh("blocked_token", mockRes))
+                .rejects.toMatchObject({ status: 401, message: "User account is unavailable" });
+            expect(mockRepo.deleteById).toHaveBeenCalledWith("t_blocked");
+            expect(mockRepo.create).not.toHaveBeenCalled();
+        });
+
+        it("should reject and revoke a token whose user no longer populates", async () => {
+            mockRepo.findByHash.mockResolvedValue({
+                _id: "t_orphaned",
+                expiresAt: new Date(Date.now() + 60000),
+                user: null,
+            });
+
+            await expect(service.refresh("orphaned_token", mockRes))
+                .rejects.toMatchObject({ status: 401, message: "User account is unavailable" });
+            expect(mockRepo.deleteById).toHaveBeenCalledWith("t_orphaned");
         });
 
         it("should successfully rotate tokens, drop the old hash document record, and commit a fresh pair", async () => {

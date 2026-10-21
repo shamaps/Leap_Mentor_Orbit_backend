@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const validate = require("../middleware/validate");
 const { adminLoginSchema, getUsersQuerySchema } = require("../validators/admin.validator");
-const { adminAuthenticate } = require("../middleware/adminAuth");
+const { adminAuthenticate, requireSuperAdmin } = require("../middleware/adminAuth");
 const { adminController, leapRequestController } = require("../config/container");
 
 const {
@@ -266,7 +266,7 @@ router.get("/users/:userId", adminAuthenticate, getUserDetail);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/users/:userId", adminAuthenticate, deleteUser);
+router.delete("/users/:userId", adminAuthenticate, requireSuperAdmin, deleteUser);
 
 /**
  * @openapi

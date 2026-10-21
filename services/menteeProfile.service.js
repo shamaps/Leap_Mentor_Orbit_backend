@@ -1,5 +1,6 @@
 // services/menteeProfile.service.js
-const { toMenteeProfileDTO } = require("../utils/mappers/menteeProfile.mapper");
+const { toMenteeProfileDTO, toMenteeProfileSummary } = require("../utils/mappers/menteeProfile.mapper");
+const { idToString } = require("../utils/idToString");
 const AppError = require("../utils/appError");
 
 /**
@@ -135,14 +136,20 @@ const createMenteeProfileService = (menteeProfileRepo, { _logger }) => {
      * @throws {AppError} 404 - If database query resolves completely empty attributes.
      * @returns {Promise<Object>} Mapped public-facing DTO blueprint layout parameters.
      */
-    const getPublicProfile = async (userId) => {
+    const getPublicProfile = async (userId, requester) => {
         const profile = await menteeProfileRepo.findPublicProfileByUser(userId);
 
         if (!profile) {
             throw new AppError(404, "Mentee profile not found");
         }
 
-        return toMenteeProfileDTO(profile);
+        const isOwner = idToString(requester?._id) === idToString(userId);
+        const isRelatedMentor = requester?.roles?.includes("mentor") &&
+            await menteeProfileRepo.hasMentorRelationship(requester._id, userId);
+
+        return isOwner || isRelatedMentor
+            ? toMenteeProfileDTO(profile)
+            : toMenteeProfileSummary(profile);
     };
 
     return { createProfile, getMyProfile, updateProfile, getPublicProfile };

@@ -10,6 +10,8 @@ const validate = require("../middleware/validate");
 const { profileSchema } = require("../validators/menteeProfile.validator");
 const router = express.Router();
 
+// Mentee profile reads require login; published mentor profiles are exposed from mentorProfile.routes.js.
+
 /**
  * @openapi
  * /mentee-profile:
@@ -193,7 +195,9 @@ router.patch("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTEE_PR
  *   get:
  *     tags: [MenteeProfile]
  *     summary: Get a mentee's public profile
- *     description: No authentication required.
+ *     description: Authentication required. Profile owners and related mentors receive the full profile; other users receive a summary.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - name: id
  *         in: path
@@ -214,6 +218,6 @@ router.patch("/me", authenticate, requirePermission(PERMISSIONS.MANAGE_MENTEE_PR
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:id", getPublicProfile);
+router.get("/:id", authenticate, getPublicProfile);
 
 module.exports = router;

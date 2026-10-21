@@ -1,5 +1,6 @@
 // controllers/user.controller.js
 const { ok } = require("../utils/response");
+const { toUserDTO } = require("../utils/mappers/user.mapper");
 
 /**
  * @typedef {Object} Logger
@@ -22,7 +23,7 @@ const createUserController = ({ logger }) => {
      */
     const getMe = (req, res) => {
         logger.info("getMe completed successfully");
-        return ok(res, req.user);
+        return ok(res, toUserDTO(req.user));
     };
 
     return { getMe };

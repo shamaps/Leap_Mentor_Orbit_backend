@@ -90,7 +90,7 @@ const { PERMISSIONS } = require("../config/permissions");
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Mentee routes
-router.post("/", authenticate, validate(sendConnectRequestSchema), sendConnectRequest);
+router.post("/", authenticate, requirePermission(PERMISSIONS.SEND_CONNECT_REQUEST), validate(sendConnectRequestSchema), sendConnectRequest);
 
 /**
  * @openapi
@@ -114,7 +114,7 @@ router.post("/", authenticate, validate(sendConnectRequestSchema), sendConnectRe
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/my-requests", authenticate, getMyRequests);
+router.get("/my-requests", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), getMyRequests);
 
 /**
  * @openapi
@@ -151,7 +151,7 @@ router.get("/my-requests", authenticate, getMyRequests);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:id", authenticate, cancelRequest);
+router.delete("/:id", authenticate, requirePermission(PERMISSIONS.CANCEL_CONNECT_REQUEST), cancelRequest);
 
 /**
  * @openapi
@@ -176,7 +176,7 @@ router.delete("/:id", authenticate, cancelRequest);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Mentor routes
-router.get("/incoming", authenticate, getIncomingRequests);
+router.get("/incoming", authenticate, requirePermission(PERMISSIONS.VIEW_INCOMING_REQUESTS), getIncomingRequests);
 
 /**
  * @openapi
@@ -281,7 +281,7 @@ router.patch("/:id/refer", authenticate, requirePermission(PERMISSIONS.MANAGE_ME
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:id/detail", authenticate, getConnectDetail);
+router.get("/:id/detail", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getConnectDetail);
 
 /**
  * @openapi
@@ -305,7 +305,7 @@ router.get("/:id/detail", authenticate, getConnectDetail);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/ongoing", authenticate, getOngoingConnects);
+router.get("/ongoing", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getOngoingConnects);
 
 /**
  * @openapi
@@ -371,5 +371,5 @@ router.get("/ongoing", authenticate, getOngoingConnects);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Generic /:id LAST
-router.patch("/:id", authenticate, validate(respondSchema), respondToRequest);
+router.patch("/:id", authenticate, requirePermission(PERMISSIONS.RESPOND_CONNECT_REQUEST), validate(respondSchema), respondToRequest);
 module.exports = router;

@@ -1,7 +1,9 @@
 // backend/routes/message.routes.js
 const express = require("express");
 const router = express.Router();
-const { authenticate } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession } = require("../middleware/noteAccess");
 const { messageController } = require("../config/container");
 const { getMessages, getUnreadCount } = messageController;
 
@@ -52,7 +54,7 @@ const { getMessages, getUnreadCount } = messageController;
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET /api/messages/:connectRequestId         — paginated history
-router.get("/:connectRequestId", authenticate, getMessages);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, getMessages);
 
 /**
  * @openapi
@@ -92,6 +94,6 @@ router.get("/:connectRequestId", authenticate, getMessages);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET /api/messages/:connectRequestId/unread  — unread count
-router.get("/:connectRequestId/unread", authenticate, getUnreadCount);
+router.get("/:connectRequestId/unread", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, getUnreadCount);
 
 module.exports = router;

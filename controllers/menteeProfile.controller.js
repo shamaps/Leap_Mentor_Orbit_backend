@@ -76,7 +76,7 @@ const createMenteeProfileController = (menteeProfileService, { logger }) => {
    */
   const getPublicProfile = async (req, res) => {
     try {
-      const data = await menteeProfileService.getPublicProfile(req.params.id);
+      const data = await menteeProfileService.getPublicProfile(req.params.id, req.user);
       logger.info("getPublicProfile completed successfully");
       return ok(res, data);
     } catch (err) { return handleError(res, err, "menteeProfile.getPublicProfile"); }

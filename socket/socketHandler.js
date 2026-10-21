@@ -1,6 +1,7 @@
 // backend/socket/socketHandler.js
 const Message = require("../models/Message");
 const ConnectRequest = require("../models/ConnectRequest");
+const { idToString } = require("../utils/idToString");
 const { logger } = require("@sentry/node");
 
 // IN-MEMORY ENGINE STATE TRACKING
@@ -34,9 +35,9 @@ const validateRoomAccess = async (connectRequestId, userId) => {
   if (!request) return false;
   if (request.status !== "ongoing") return false; // Lock access if the connection is terminated
 
-  const mentorId = request.mentor.toString();
-  const menteeId = request.mentee.toString();
-  const uid = userId.toString();
+  const mentorId = idToString(request.mentor);
+  const menteeId = idToString(request.mentee);
+  const uid = idToString(userId);
 
   // Access passes only if the active user is the assigned mentor or mentee
   return uid === mentorId || uid === menteeId;
@@ -55,9 +56,9 @@ const getOtherUserId = async (connectRequestId, userId) => {
   if (!request) return null;
 
   // Evaluates placement: if current user is the mentor, return mentee, and vice versa
-  return request.mentor.toString() === userId.toString()
-    ? request.mentee.toString()
-    : request.mentor.toString();
+  return idToString(request.mentor) === idToString(userId)
+    ? idToString(request.mentee)
+    : idToString(request.mentor);
 };
 
 /**
@@ -69,7 +70,7 @@ const getOtherUserId = async (connectRequestId, userId) => {
  * @returns {boolean} True if successfully routed to at least one socket, false if user is offline.
  */
 const emitToUser = (io, userId, event, data) => {
-  const socketIds = userSockets.get(userId.toString()); // Extract the user's connection Set
+  const socketIds = userSockets.get(idToString(userId)); // Extract the user's connection Set
   if (socketIds?.size) {
     // Distribute the event to every active tab/window instance the user currently has open
     socketIds.forEach((socketId) => io.to(socketId).emit(event, data));
@@ -103,7 +104,7 @@ const socketHandler = (io) => {
   // Listens for a new device connection establishing a secure handshake
   io.on("connection", (socket) => {
     // Extract the primary user identifier from the authenticated middleware passport profile
-    const userId = socket.user._id.toString();
+    const userId = idToString(socket.user._id);
     logger.info("Socket connected", { email: socket.user.email, socketId: socket.id });
 
     // Multi-device registration: Add this socket instance identifier to the user state collection

@@ -11,10 +11,11 @@ const dbHandler = require("../../utils/db"); // Verified directory path referenc
 const adminRepo = require("../../../repositories/admin.repository");
 const createAdminService = require("../../../services/admin.service");
 const createAdminController = require("../../../controllers/admin.controller");
+const refreshTokenRepo = require("../../../repositories/refreshToken.repository");
 
 const mockLogger = { info: jest.fn(), error: jest.fn(), debug: jest.fn(), warn: jest.fn() };
 
-const mockRealAdminService = createAdminService(adminRepo, { logger: mockLogger });
+const mockRealAdminService = createAdminService(adminRepo, { logger: mockLogger, refreshTokenRepo });
 const mockRealAdminController = createAdminController(mockRealAdminService, { logger: mockLogger });
 
 const mockStubLeapRequestController = {
@@ -33,10 +34,11 @@ jest.mock("../../../config/container", () => ({
 // ─── 3. MOCK MIDDLEWARES TO LET TRAFFIC PASS UNHINDERED ─────────────────────
 jest.mock("../../../middleware/adminAuth", () => ({
     adminAuthenticate: jest.fn((req, res, next) => {
-        req.admin = { _id: new (require("mongoose").Types.ObjectId)() };
+        req.admin = { _id: new (require("mongoose").Types.ObjectId)(), isSuperAdmin: true };
         res.req = { admin: { role: "admin" } };
         next();
     }),
+    requireSuperAdmin: jest.fn((req, res, next) => next()),
 }));
 
 jest.mock("../../../middleware/rateLimiter", () => ({

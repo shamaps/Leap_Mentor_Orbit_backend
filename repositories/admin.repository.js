@@ -12,6 +12,7 @@ const { withTransaction } = require("../utils/withTransaction");
 const { escapeRegex } = require("../utils/escapeRegex");
 const { findUsersByName } = require("./userSearch.repository");
 const logger = require("../utils/logger");
+const { idToString } = require("../utils/idToString");
 
 // AUTH
 
@@ -79,7 +80,7 @@ const aggregateMentorIndustries = () =>
  */
 const findUserIdsByName = async (term) => {
     const users = await findUsersByName(term, { includeDeleted: true });
-    return users.map((u) => u._id.toString());
+    return users.map((u) => idToString(u._id));
 };
 
 /**
@@ -173,7 +174,7 @@ const countCompletedSessions = (userId) =>
  * @returns {Promise<void>}
  */
 const hardDeleteUser = async (userId) => {
-    logger.debug("hardDeleteUser called", { userId: userId?.toString() });
+    logger.debug("hardDeleteUser called", { userId: idToString(userId) });
     const results = await Promise.allSettled([
         User.findByIdAndDelete(userId),
         MentorProfile.findOneAndDelete({ user: userId }),
@@ -183,10 +184,10 @@ const hardDeleteUser = async (userId) => {
     const failures = results.filter(r => r.status === "rejected");
     if (failures.length) {
         failures.forEach(f =>
-            logger.error("hardDeleteUser partial failure", { error: f.reason?.message, userId: userId?.toString() })
+            logger.error("hardDeleteUser partial failure", { error: f.reason?.message, userId: idToString(userId) })
         );
     }
-    logger.debug("hardDeleteUser complete", { userId: userId?.toString(), failures: failures.length });
+    logger.debug("hardDeleteUser complete", { userId: idToString(userId), failures: failures.length });
 };
 
 /**
@@ -292,8 +293,8 @@ const findUserIdsBySearchTerm = async (term) => {
             .lean(),
     ]);
     const ids = new Map();
-    nameMatches.forEach((u) => ids.set(u._id.toString(), u._id));
-    emailMatchUsers.forEach((u) => ids.set(u._id.toString(), u._id));
+    nameMatches.forEach((u) => ids.set(idToString(u._id), u._id));
+    emailMatchUsers.forEach((u) => ids.set(idToString(u._id), u._id));
     return [...ids.values()];
 };
 

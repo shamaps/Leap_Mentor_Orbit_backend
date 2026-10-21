@@ -1,6 +1,8 @@
 // routes/auth.routes.js
 const express = require("express");
 const router = express.Router();
+
+// Intentionally public: login, registration, OAuth/SSO, OTP, password recovery, refresh, and logout endpoints.
 const validate = require("../middleware/validate");
 const {
     registerSchema,

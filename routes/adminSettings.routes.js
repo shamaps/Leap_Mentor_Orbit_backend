@@ -5,7 +5,7 @@ const validate = require("../middleware/validate");
 const { changePasswordSchema, addAdminSchema, updateCommissionSchema } = require("../validators/adminSettings.validator");
 
 // Use adminAuthenticate — NOT authenticate + requireRole
-const { adminAuthenticate } = require("../middleware/adminAuth");
+const { adminAuthenticate, requireSuperAdmin } = require("../middleware/adminAuth");
 
 const { adminSettingsController } = require("../config/container");
 const {
@@ -136,7 +136,7 @@ router.patch("/change-password", validate(changePasswordSchema), changePassword)
  *             schema:
  *               $ref: '#/components/schemas/ConflictResponse'
  */
-router.post("/admins", validate(addAdminSchema), addAdmin);
+router.post("/admins", requireSuperAdmin, validate(addAdminSchema), addAdmin);
 /**
  * @openapi
  * /admin/settings/commission:
@@ -205,7 +205,7 @@ router.post("/admins", validate(addAdminSchema), addAdmin);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/commission", validate(updateCommissionSchema), updateCommission);
+router.patch("/commission", requireSuperAdmin, validate(updateCommissionSchema), updateCommission);
 router.get("/commission", getCommission);
 
 module.exports = router;

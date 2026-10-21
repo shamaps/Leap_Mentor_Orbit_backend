@@ -19,7 +19,13 @@ jest.mock("../../../middleware/authenticate", () => ({
         req.user = { _id: "sandbox_author_actor_id" };
         next();
     }),
+    requirePermission: () => (req, res, next) => next(),
 }));
+
+jest.mock("../../../middleware/noteAccess", () => {
+    const pass = (req, res, next) => next();
+    return { validateSessionMembership: pass, allowAcceptedSession: pass, resolveSessionFromResource: pass };
+});
 
 describe("Private Note Routing Channels (Integration)", () => {
     let app;

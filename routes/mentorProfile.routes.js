@@ -17,6 +17,8 @@ const { profileSchema } = require("../validators/mentorProfile.validator");
 
 const router = express.Router();
 
+// Intentionally public: GET /:id exposes published mentor profile data; write and self-service routes require authentication.
+
 /**
  * @openapi
  * /mentor-profile:

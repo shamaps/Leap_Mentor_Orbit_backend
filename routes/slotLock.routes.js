@@ -202,6 +202,6 @@ router.delete("/locks", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Get active locks for a mentor (used internally by mentor's availability view)
-router.get("/:mentorId", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getActiveLocks);
+router.get("/:mentorId", authenticate, requirePermission(PERMISSIONS.BOOK_SESSION), getActiveLocks);
 
 module.exports = router;

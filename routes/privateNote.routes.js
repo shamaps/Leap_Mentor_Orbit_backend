@@ -3,7 +3,9 @@ const express = require("express");
 const router = express.Router();
 const validate = require("../middleware/validate");
 const { createNoteSchema, updateNoteSchema } = require("../validators/privateNote.validator");
-const { authenticate } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession } = require("../middleware/noteAccess");
 const { privateNoteController } = require("../config/container");
 const {
     createNote, getNotes, updateNote, deleteNote,
@@ -65,7 +67,7 @@ const {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // POST   /api/private-notes                    — create a note
-router.patch("/:id", authenticate, validate(updateNoteSchema), updateNote);
+router.patch("/:id", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(updateNoteSchema), updateNote);
 
 /**
  * @openapi
@@ -96,7 +98,7 @@ router.patch("/:id", authenticate, validate(updateNoteSchema), updateNote);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET    /api/private-notes/:connectRequestId  — get all notes for session
-router.get("/:connectRequestId", authenticate, getNotes);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, getNotes);
 
 /**
  * @openapi
@@ -145,7 +147,7 @@ router.get("/:connectRequestId", authenticate, getNotes);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // PATCH  /api/private-notes/:id               — update a note
-router.post("/", authenticate, validate(createNoteSchema), createNote);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, validate(createNoteSchema), createNote);
 
 /**
  * @openapi
@@ -182,6 +184,6 @@ router.post("/", authenticate, validate(createNoteSchema), createNote);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // DELETE /api/private-notes/:id               — delete a note
-router.delete("/:id", authenticate, deleteNote);
+router.delete("/:id", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), deleteNote);
 
 module.exports = router;

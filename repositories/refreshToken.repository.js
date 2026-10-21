@@ -66,6 +66,15 @@ const deleteByHash = async (tokenHash) => {
  * @throws {Error} Relays operational storage write errors.
  * @returns {Promise<Object>} Freshly written Mongoose database record model instance.
  */
+const deleteAllByUserId = async (userId) => {
+    try {
+        return await RefreshToken.deleteMany({ user: userId });
+    } catch (err) {
+        logger.error("DB error in deleteAllByUserId (refreshToken)", { error: err.message });
+        throw err;
+    }
+};
+
 const create = async ({ userId, tokenHash, expiresAt }) => {
     try {
         return await RefreshToken.create({ user: userId, tokenHash, expiresAt });
@@ -75,4 +84,4 @@ const create = async ({ userId, tokenHash, expiresAt }) => {
     }
 };
 
-module.exports = { findByHash, deleteById, deleteByHash, create };
+module.exports = { findByHash, deleteById, deleteByHash, deleteAllByUserId, create };

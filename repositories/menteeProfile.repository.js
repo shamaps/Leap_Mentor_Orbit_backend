@@ -1,5 +1,6 @@
 // repositories/menteeProfile.repository.js
 const MenteeProfile = require("../models/MenteeProfile");
+const ConnectRequest = require("../models/ConnectRequest");
 
 /**
  * Queries database engine layers to find an unpopulated raw profile row matching a user index.
@@ -54,10 +55,18 @@ const findPublicProfileByUser = (userId) =>
         "name email"
     );
 
+const hasMentorRelationship = (mentorId, menteeId) =>
+    ConnectRequest.exists({
+        mentor: mentorId,
+        mentee: menteeId,
+        status: { $in: ["accepted", "ongoing", "completed"] },
+    });
+
 module.exports = {
     findProfileByUser,
     findProfileByUserPopulated,
     createProfile,
     updateProfileByUser,
     findPublicProfileByUser,
+    hasMentorRelationship,
 };

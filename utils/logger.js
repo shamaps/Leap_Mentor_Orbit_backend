@@ -9,6 +9,17 @@ const { sanitize } = require("./sanitize");
 const { getTraceId } = require("./requestContext");
 const isProd = process.env.NODE_ENV === "production";
 
+const formatLogValue = (value) => {
+    if (typeof value === "string") return value;
+    if (value === undefined) return "undefined";
+    if (value === null) return "null";
+    try {
+        return JSON.stringify(value) ?? "";
+    } catch {
+        return "[unserializable]";
+    }
+};
+
 const logtail = process.env.LOGTAIL_TOKEN
     ? new Logtail(process.env.LOGTAIL_TOKEN)
     : null;
@@ -22,7 +33,7 @@ const logTransports = [
                 format.timestamp({ format: "HH:mm:ss" }),
                 format.printf(({ level, message, timestamp, ...meta }) => {
                     const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-                    return `${timestamp} [${level}] ${message}${metaStr}`;
+                    return `${formatLogValue(timestamp)} [${level}] ${formatLogValue(message)}${metaStr}`;
                 })
             ),
     }),

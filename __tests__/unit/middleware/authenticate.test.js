@@ -21,7 +21,7 @@ jest.mock("../../../config/env", () => ({
 const jwt = require("jsonwebtoken");
 const User = require("../../../models/User");
 const logger = require("../../../utils/logger");
-const { authenticate, requireRole } = require("../../../middleware/authenticate");
+const { authenticate } = require("../../../middleware/authenticate");
 
 describe("Authentication Middleware Matrix Suite", () => {
     let req, res, next;
@@ -46,7 +46,7 @@ describe("Authentication Middleware Matrix Suite", () => {
             // CONDITION COVERAGE GAPS FILLED: req.cookies.accessToken evaluates to truthy
             jwt.verify.mockReturnValue({ id: "u_01" });
             User.findById.mockReturnValue({
-                select: jest.fn().mockResolvedValue({ _id: "u_01", email: "a@test.com", role: "mentor" }),
+                select: jest.fn().mockResolvedValue({ _id: "u_01", email: "a@test.com", roles: ["mentor"] }),
             });
 
             await authenticate(req, res, next);
@@ -60,7 +60,7 @@ describe("Authentication Middleware Matrix Suite", () => {
             req.cookies = null;
             jwt.verify.mockReturnValue({ id: "u_02" });
             User.findById.mockReturnValue({
-                select: jest.fn().mockResolvedValue({ _id: "u_02", email: "b@test.com", role: "mentee" }),
+                select: jest.fn().mockResolvedValue({ _id: "u_02", email: "b@test.com", roles: ["mentee"] }),
             });
 
             await authenticate(req, res, next);
@@ -92,6 +92,32 @@ describe("Authentication Middleware Matrix Suite", () => {
             expect(res.json).toHaveBeenCalledWith({ message: "User not found" });
         });
 
+        it("should reject a soft-deleted user and report the schema role as roles[0]", async () => {
+            jwt.verify.mockReturnValue({ id: "u_blocked" });
+            User.findById.mockReturnValue({
+                select: jest.fn().mockResolvedValue({ _id: "u_blocked", email: "blocked@test.com", roles: ["mentor"], isDeleted: true }),
+            });
+
+            await authenticate(req, res, next);
+
+            expect(res.status).toHaveBeenCalledWith(401);
+            expect(res.json).toHaveBeenCalledWith({ message: "User account is unavailable" });
+            expect(next).not.toHaveBeenCalled();
+        });
+
+        it("should log Sentry identity using the first role in the roles array", async () => {
+            const Sentry = require("@sentry/node");
+            jwt.verify.mockReturnValue({ id: "u_role" });
+            User.findById.mockReturnValue({
+                select: jest.fn().mockResolvedValue({ _id: "u_role", email: "mentor@test.com", roles: ["mentor"] }),
+            });
+
+            await authenticate(req, res, next);
+
+            expect(Sentry.setUser).toHaveBeenCalledWith(expect.objectContaining({ role: "mentor" }));
+            expect(logger.info).toHaveBeenCalledWith("Authenticated request", expect.objectContaining({ role: "mentor" }));
+        });
+
         it("should log unique TokenExpiredError warning profiles and return 401 values cleanly", async () => {
             // CONDITION COVERAGE GAPS FILLED: err.name === "TokenExpiredError" evaluates to true
             const expiredError = new Error("The payload string token lifecycle signature has lapsed");
@@ -118,36 +144,5 @@ describe("Authentication Middleware Matrix Suite", () => {
         });
     });
 
-    describe("requireRole constraint block actions", () => {
-        it("should grant access if the user document includes at least one specified role", () => {
-            req.user = { _id: "u_01", roles: ["admin", "moderator"] };
-            const roleMiddleware = requireRole("admin", "superadmin");
 
-            roleMiddleware(req, res, next);
-
-            expect(next).toHaveBeenCalled();
-            expect(res.status).not.toHaveBeenCalled();
-        });
-
-        it("should reject requests with a 403 status code if role intersections are entirely absent", () => {
-            // CONDITION COVERAGE GAPS FILLED: user roles map empty or mismatched, user email provided
-            req.user = { _id: "u_01", email: "mismatch@test.com", roles: ["mentee"] };
-            const roleMiddleware = requireRole("admin");
-
-            roleMiddleware(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(403);
-            expect(res.json).toHaveBeenCalledWith({ message: "Access denied: insufficient role" });
-        });
-
-        it("should evaluate roles array properly even if req.user context lacks a roles parameter entirely", () => {
-            // CONDITION COVERAGE GAPS FILLED: req.user.roles is undefined, req.user.email falls back to empty string
-            req.user = { _id: "u_01", email: undefined };
-            const roleMiddleware = requireRole("mentor");
-
-            roleMiddleware(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(403);
-        });
-    });
 });

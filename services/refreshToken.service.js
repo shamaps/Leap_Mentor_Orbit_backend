@@ -50,7 +50,17 @@ const createRefreshTokenService = (repo, { _logger }) => {
         const hashed = crypto.createHash("sha256").update(rawCookieToken).digest("hex");
         const stored = await repo.findByHash(hashed);
 
-        if (!stored || stored.expiresAt < new Date()) {
+        if (!stored) {
+            throw new AppError(401, "Refresh token expired or invalid");
+        }
+
+        if (!stored.user || stored.user.isDeleted) {
+            await repo.deleteById(stored._id);
+            throw new AppError(401, "User account is unavailable");
+        }
+
+        if (stored.expiresAt < new Date()) {
+            await repo.deleteById(stored._id);
             throw new AppError(401, "Refresh token expired or invalid");
         }
 
