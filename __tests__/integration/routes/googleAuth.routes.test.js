@@ -1,6 +1,5 @@
 const request = require("supertest");
 const express = require("express");
-const dbHandler = require("../../utils/db");
 
 const mockGetAuthUrlMiddleware = jest.fn((req, res) => res.status(200).json({ success: true, data: { url: "https://google.com" } }));
 
@@ -27,7 +26,6 @@ describe("Google Calendar Routing Channels (Integration)", () => {
     let app;
 
     beforeAll(async () => {
-        await dbHandler.connect();
         app = express();
         app.use(express.json());
 
@@ -35,13 +33,8 @@ describe("Google Calendar Routing Channels (Integration)", () => {
         app.use("/google-calendar", googleCalendarRoutes);
     });
 
-    afterEach(async () => {
-        await dbHandler.clear();
+    afterEach(() => {
         jest.clearAllMocks();
-    });
-
-    afterAll(async () => {
-        await dbHandler.close();
     });
 
     it("GET /google-calendar/auth-url should parse credentials contexts and route requests safely", async () => {

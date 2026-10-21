@@ -114,7 +114,7 @@ describe("Mentee Profile Controller (100% Comprehensive Coverage Blueprint)", ()
 
             await controller.getPublicProfile(req, res);
 
-            expect(mockService.getPublicProfile).toHaveBeenCalledWith("mentee_public_001");
+            expect(mockService.getPublicProfile).toHaveBeenCalledWith("mentee_public_001", req.user);
             expect(ok).toHaveBeenCalledWith(res, mockPublicData);
         });
 

@@ -1,6 +1,5 @@
 const request = require("supertest");
 const express = require("express");
-const dbHandler = require("../../utils/db");
 
 const mockGetNotesMiddleware = jest.fn((req, res) => res.status(200).json({ success: true, notes: [] }));
 const mockUploadNoteMiddleware = jest.fn((req, res) => res.status(201).json({ success: true, message: "Uploaded" }));
@@ -19,6 +18,12 @@ jest.mock("../../../middleware/authenticate", () => ({
         req.user = { _id: "sandbox_actor_user" };
         next();
     }),
+    requirePermission: jest.fn(() => (req, res, next) => next()),
+}));
+
+jest.mock("../../../middleware/noteAccess", () => ({
+    allowAcceptedSession: jest.fn((req, res, next) => next()),
+    validateSessionMembership: jest.fn((req, res, next) => next()),
 }));
 
 // Mock standard storage middleware behavior
@@ -35,8 +40,7 @@ jest.mock("../../../middleware/upload.middleware", () => ({
 describe("Note Routing Pipeline (Integration)", () => {
     let app;
 
-    beforeAll(async () => {
-        await dbHandler.connect();
+    beforeAll(() => {
         app =  express();
         app.use(express.json());
 
@@ -44,13 +48,8 @@ describe("Note Routing Pipeline (Integration)", () => {
         app.use("/notes", noteRoutes);
     });
 
-    afterEach(async () => {
-        await dbHandler.clear();
+    afterEach(() => {
         jest.clearAllMocks();
-    });
-
-    afterAll(async () => {
-        await dbHandler.close();
     });
 
     it("POST /notes/upload should correctly parse token segments and pass operations downstream", async () => {
