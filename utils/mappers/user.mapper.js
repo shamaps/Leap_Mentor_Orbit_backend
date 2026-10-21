@@ -1,3 +1,5 @@
+const { getPermissionsForRoles } = require("../../config/permissions");
+
 // What frontend reads: name, email, roles, isEmailVerified, _id
 // What must be stripped: password, passwordChangedAt, __v, isDeleted, deletedAt
 const toUserDTO = (doc) => ({
@@ -6,6 +8,7 @@ const toUserDTO = (doc) => ({
     name: doc.name,
     email: doc.email,
     roles: doc.roles,
+    permissions: getPermissionsForRoles(doc.roles),
     isEmailVerified: doc.isEmailVerified,
     termsAccepted: doc.termsAccepted,
     createdAt: doc.createdAt?.toISOString?.() ?? doc.createdAt,

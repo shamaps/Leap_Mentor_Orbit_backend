@@ -47,6 +47,16 @@ describe("Session Helpers (100% Comprehensive Coverage Blueprint)", () => {
             expect(helpers.isParticipant(mockRequest, "mentee_789")).toBe(true);
         });
 
+        it("should recognize populated participant documents by their IDs", () => {
+            const populatedRequest = {
+                ...mockRequest,
+                mentor: { _id: "mentor_123", name: "Mentor" },
+                mentee: { _id: "mentee_789", name: "Mentee" },
+            };
+            expect(helpers.isParticipant(populatedRequest, "mentor_123")).toBe(true);
+            expect(helpers.isParticipant(populatedRequest, { _id: "mentee_789" })).toBe(true);
+        });
+
         it("should throw a 404 AppError if the connect request is missing or null", () => {
             expect(() => helpers.assertSessionAccess(null, "mentor_123", "cr_1"))
                 .toThrow(new AppError(404, "Session not found"));

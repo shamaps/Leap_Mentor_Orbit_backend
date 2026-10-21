@@ -173,6 +173,6 @@ router.get("/payouts", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS
  *             schema:
  *               $ref: '#/components/schemas/UnprocessableResponse'
  */
-router.post("/withdraw", authenticate, requirePermission(PERMISSIONS.VIEW_EARNINGS), withdrawEarnings);
+router.post("/withdraw", authenticate, requirePermission(PERMISSIONS.WITHDRAW_EARNINGS), withdrawEarnings);
 
 module.exports = router;

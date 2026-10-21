@@ -7,6 +7,7 @@
  */
 
 const AppError = require("../utils/appError");
+const { idToString } = require("../utils/idToString");
 
 // ── Meeting link validation ───────────────────────────────────────────────────
 
@@ -52,10 +53,10 @@ const isValidMeetingLink = (rawUrl) => {
  * @returns {boolean} True if the user is a valid party to the request.
  */
 const isParticipant = (connectRequest, userId) => {
-    const uid = userId.toString();
+    const uid = idToString(userId);
     return (
-        connectRequest.mentor.toString() === uid ||
-        connectRequest.mentee.toString() === uid
+        idToString(connectRequest.mentor) === uid ||
+        idToString(connectRequest.mentee) === uid
     );
 };
 

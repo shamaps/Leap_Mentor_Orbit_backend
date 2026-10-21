@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { authenticate, requirePermission } = require("../middleware/authenticate");
 const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession } = require("../middleware/noteAccess");
 const { sessionController } = require("../config/container");
 const {
   getSlots, setMeetingLink, markSlotComplete, addSlot,
@@ -45,7 +46,7 @@ const { addSlotSchema, meetingLinkSchema, slotStatusSchema } = require("../valid
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getSlots);
+router.get("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, getSlots);
 
 /**
  * @openapi
@@ -82,7 +83,7 @@ router.get("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIO
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId/mentor-availability", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), getMentorAvailability);
+router.get("/:connectRequestId/mentor-availability", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, getMentorAvailability);
 
 /**
  * @openapi
@@ -141,7 +142,7 @@ router.get("/:connectRequestId/mentor-availability", authenticate, requirePermis
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(meetingLinkSchema), setMeetingLink);
+router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, validate(meetingLinkSchema), setMeetingLink);
 
 /**
  * @openapi
@@ -206,7 +207,7 @@ router.patch("/:connectRequestId/slots/:slotIndex/meeting-link", authenticate, r
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(addSlotSchema), addSlot);
+router.post("/:connectRequestId/slots", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, validate(addSlotSchema), addSlot);
 
 // BEFORE (three separate verb-action routes):
 // router.patch("/:connectRequestId/slots/:slotIndex/mark-complete", ...)
@@ -293,7 +294,7 @@ router.post("/:connectRequestId/slots", authenticate, requirePermission(PERMISSI
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // AFTER (one noun-based route, action driven by body):
-router.patch("/:connectRequestId/slots/:slotIndex/status", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), validate(slotStatusSchema), (req, res, next) => {
+router.patch("/:connectRequestId/slots/:slotIndex/status", authenticate, requirePermission(PERMISSIONS.MANAGE_SESSION), allowAcceptedSession, validateSessionMembership, validate(slotStatusSchema), (req, res, next) => {
   const action = req.body.action;
   if (action === "complete") return markSlotComplete(req, res, next);
   if (action === "cancel") return cancelSlot(req, res, next);

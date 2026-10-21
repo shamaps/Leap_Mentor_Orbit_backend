@@ -35,7 +35,7 @@ const config = require("../../../config/env");
 const AppError = require("../../../utils/appError");
 
 describe("Admin Service Layer (100% Condition Matrix Blueprint)", () => {
-    let mockRepo, mockLogger, mockResponse, service;
+    let mockRepo, mockLogger, mockRefreshTokenRepo, mockResponse, service;
 
     beforeEach(() => {
         mockRepo = {
@@ -65,8 +65,9 @@ describe("Admin Service Layer (100% Condition Matrix Blueprint)", () => {
         };
 
         mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+        mockRefreshTokenRepo = { deleteAllByUserId: jest.fn().mockResolvedValue({ deletedCount: 1 }) };
         mockResponse = { cookie: jest.fn() };
-        service = createAdminService(mockRepo, { logger: mockLogger });
+        service = createAdminService(mockRepo, { logger: mockLogger, refreshTokenRepo: mockRefreshTokenRepo });
 
         jest.clearAllMocks();
     });
@@ -185,6 +186,7 @@ describe("Admin Service Layer (100% Condition Matrix Blueprint)", () => {
             mockRepo.blockUserById.mockResolvedValue({ name: "BlockedUser", email: "b@test.com" });
             const resBlock = await service.blockUser("u1");
             expect(resBlock.message).toContain("blocked");
+            expect(mockRefreshTokenRepo.deleteAllByUserId).toHaveBeenCalledWith("u1");
 
             mockRepo.unblockUserById.mockResolvedValue({ name: "RestoredUser", email: "r@test.com" });
             const resUnblock = await service.unblockUser("u1");
@@ -204,6 +206,7 @@ describe("Admin Service Layer (100% Condition Matrix Blueprint)", () => {
             const res = await service.deleteUser("u1");
             expect(res.message).toContain("deleted");
             expect(mockRepo.cascadeDeleteUser).toHaveBeenCalledWith("u1");
+            expect(mockRefreshTokenRepo.deleteAllByUserId).toHaveBeenCalledWith("u1");
         });
 
         it("should throw a 404 error if cascade deletions targets resolve null", async () => {

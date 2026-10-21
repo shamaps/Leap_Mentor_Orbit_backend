@@ -117,7 +117,7 @@ const createImageController = require("../controllers/image.controller");
 
 const createNotification = makeCreateNotification(notificationRepo);
 // ── Wire services
-const adminService = createAdminService(adminRepo, { logger });
+const adminService = createAdminService(adminRepo, { logger, refreshTokenRepo });
 const adminPaymentsService = createAdminPaymentsService(adminPaymentsRepo, { logger });
 const adminReportsService = createAdminReportsService(adminReportsRepo, { logger, createNotification });
 const adminSettingsService = createAdminSettingsService(adminSettingsRepo, { logger });

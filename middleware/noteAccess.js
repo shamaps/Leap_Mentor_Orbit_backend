@@ -1,8 +1,11 @@
 // backend/middleware/noteAccess.js
 const ConnectRequest = require("../models/ConnectRequest");
 const Note           = require("../models/Note");
+const Goal           = require("../models/Goal");
+const Milestone      = require("../models/Milestone");
 const logger = require("../utils/logger");
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
+const { idToString } = require("../utils/idToString");
 /**
  * MIDDLEWARE 1 — validateSessionMembership
  * Confirms the requesting user is a participant of the session.
@@ -11,8 +14,7 @@ const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
 const validateSessionMembership = async (req, res, next) => {
   try {
     const connectRequestId =
-      req.params.connectRequestId || req.body.connectRequestId;
-
+      req.params.connectRequestId || req.body?.connectRequestId || req.resolvedConnectRequestId;
     if (!connectRequestId) {
       return res.status(400).json({
         message: "connectRequestId is required",
@@ -31,16 +33,17 @@ const validateSessionMembership = async (req, res, next) => {
       });
     }
 
-    if (!ACTIVE_SESSION_STATUSES.includes(session.status)) {
+    const allowedStatuses = req.sessionAllowedStatuses || ACTIVE_SESSION_STATUSES;
+    if (!allowedStatuses.includes(session.status)) {
       return res.status(403).json({
         message: "Session is not active",
         code: "SESSION_INACTIVE",
       });
     }
 
-    const uid      = req.user._id.toString();
-    const isMentor = session.mentor.toString() === uid;
-    const isMentee = session.mentee.toString() === uid;
+    const uid      = idToString(req.user._id);
+    const isMentor = idToString(session.mentor) === uid;
+    const isMentee = idToString(session.mentee) === uid;
 
     if (!isMentor && !isMentee) {
       return res.status(403).json({
@@ -58,7 +61,45 @@ const validateSessionMembership = async (req, res, next) => {
     logger.error("noteAccess.validateSessionMembership failed", {
       error: err.message,
       stack: err.stack,
-      connectRequestId: req.params.connectRequestId || req.body.connectRequestId,
+      connectRequestId: req.params.connectRequestId || req.body?.connectRequestId || req.resolvedConnectRequestId,
+      userId: req.user?._id,
+    });
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+
+/** Allows routes that operate on an accepted request to reuse the participant check. */
+const allowAcceptedSession = (req, res, next) => {
+  req.sessionAllowedStatuses = [...new Set(["accepted", ...ACTIVE_SESSION_STATUSES])];
+  next();
+};
+
+/** Resolves goal and milestone paths to their owning connect request before membership validation. */
+const resolveSessionFromResource = async (req, res, next) => {
+  try {
+    if (req.params.connectRequestId || req.body?.connectRequestId) return next();
+
+    let resource = null;
+    let resourceName = "Session resource";
+    if (req.params.goalId) {
+      resource = await Goal.findById(req.params.goalId).select("connectRequest").lean();
+      resourceName = "Goal";
+    } else if (req.params.milestoneId) {
+      resource = await Milestone.findById(req.params.milestoneId).select("connectRequest").lean();
+      resourceName = "Milestone";
+    }
+
+    if (!resource) {
+      return res.status(404).json({ message: `${resourceName} not found` });
+    }
+
+    req.resolvedConnectRequestId = resource.connectRequest;
+    return next();
+  } catch (err) {
+    logger.error("noteAccess.resolveSessionFromResource failed", {
+      error: err.message,
+      resourceId: req.params.goalId || req.params.milestoneId,
       userId: req.user?._id,
     });
     return res.status(500).json({ message: err.message });
@@ -81,7 +122,7 @@ const validateNoteOwnership = async (req, res, next) => {
         code: "NOTE_NOT_FOUND",
       });
     }
-    if (note.uploadedBy.toString() !== req.user._id.toString()) {
+    if (idToString(note.uploadedBy) !== idToString(req.user._id)) {
       // Return 404 instead of 403 to conceal note existence from non-authors
       return res.status(404).json({
         message: "Note not found",
@@ -114,7 +155,7 @@ const requirePrivateOwnership = (req, res, next) => {
   // Use req.connectRequest._id from previous middleware — always available
   const connectRequestId =
     req.params.connectRequestId ||
-    req.body.connectRequestId ||
+    req.body?.connectRequestId ||
     req.connectRequest?._id;
 
   req.privateFilter = {
@@ -126,6 +167,8 @@ const requirePrivateOwnership = (req, res, next) => {
 
 module.exports = {
   validateSessionMembership,
+  allowAcceptedSession,
+  resolveSessionFromResource,
   validateNoteOwnership,
   requirePrivateOwnership,
 };

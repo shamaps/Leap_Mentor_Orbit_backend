@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { authenticate, requirePermission } = require("../middleware/authenticate");
 const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession, resolveSessionFromResource } = require("../middleware/noteAccess");
 const validate = require("../middleware/validate");
 const { createGoalSchema, updateGoalSchema, milestoneSchema, updateMilestoneSchema } = require("../validators/goal.validator");
 const { goalController } = require("../config/container");
@@ -63,7 +64,7 @@ const {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Goal routes — goals belong to a connect request, both parties manage them
-router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(createGoalSchema), createGoal);
+router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(createGoalSchema), allowAcceptedSession, validateSessionMembership, createGoal);
 
 /**
  * @openapi
@@ -99,7 +100,7 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), vali
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), getGoal);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), allowAcceptedSession, validateSessionMembership, getGoal);
 
 /**
  * @openapi
@@ -151,7 +152,7 @@ router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.MAN
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:goalId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateGoalSchema), updateGoal);
+router.patch("/:goalId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateGoalSchema), allowAcceptedSession, resolveSessionFromResource, validateSessionMembership, updateGoal);
 
 /**
  * @openapi
@@ -210,7 +211,7 @@ router.patch("/:goalId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOAL
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // Milestone routes
-router.post("/:goalId/milestones", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(milestoneSchema), addMilestone);
+router.post("/:goalId/milestones", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(milestoneSchema), allowAcceptedSession, resolveSessionFromResource, validateSessionMembership, addMilestone);
 
 /**
  * @openapi
@@ -265,7 +266,7 @@ router.post("/:goalId/milestones", authenticate, requirePermission(PERMISSIONS.M
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateMilestoneSchema), updateMilestone);
+router.patch("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), validate(updateMilestoneSchema), allowAcceptedSession, resolveSessionFromResource, validateSessionMembership, updateMilestone);
 
 /**
  * @openapi
@@ -301,6 +302,6 @@ router.patch("/milestones/:milestoneId", authenticate, requirePermission(PERMISS
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), deleteMilestone);
+router.delete("/milestones/:milestoneId", authenticate, requirePermission(PERMISSIONS.MANAGE_GOALS), allowAcceptedSession, resolveSessionFromResource, validateSessionMembership, deleteMilestone);
 
 module.exports = router;

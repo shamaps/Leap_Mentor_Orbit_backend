@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { validateSessionMembership } = require("../middleware/noteAccess");
 const { PERMISSIONS } = require("../config/permissions");
 const { feedbackController } = require("../config/container");
 const { submitFeedback, getFeedback } = feedbackController;
@@ -65,7 +66,7 @@ const { submitFeedbackSchema } = require("../validators/feedback.validator");
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // POST /api/feedback                        — only mentees submit feedback on their mentor
-router.post("/", authenticate, requirePermission(PERMISSIONS.SUBMIT_FEEDBACK), validate(submitFeedbackSchema), submitFeedback);
+router.post("/", authenticate, requirePermission(PERMISSIONS.SUBMIT_FEEDBACK), validate(submitFeedbackSchema), validateSessionMembership, submitFeedback);
 /**
  * @openapi
  * /feedback/{connectRequestId}:
@@ -102,6 +103,6 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.SUBMIT_FEEDBACK), v
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET  /api/feedback/:connectRequestId      — both parties can read session feedback
-router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.SUBMIT_FEEDBACK), getFeedback);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.SUBMIT_FEEDBACK), validateSessionMembership, getFeedback);
 
 module.exports = router;

@@ -10,10 +10,14 @@ jest.mock("../../../config/constants", () => ({
 
 jest.mock("../../../models/ConnectRequest");
 jest.mock("../../../models/Note");
+jest.mock("../../../models/Goal");
+jest.mock("../../../models/Milestone");
 
 const ConnectRequest = require("../../../models/ConnectRequest");
 const Note = require("../../../models/Note");
-const { validateSessionMembership, validateNoteOwnership, requirePrivateOwnership } = require("../../../middleware/noteAccess");
+const Goal = require("../../../models/Goal");
+const Milestone = require("../../../models/Milestone");
+const { validateSessionMembership, allowAcceptedSession, resolveSessionFromResource, validateNoteOwnership, requirePrivateOwnership } = require("../../../middleware/noteAccess");
 
 describe("Note Access Middleware (100% Condition & Branch Blueprint)", () => {
     let req, res, next;
@@ -51,6 +55,57 @@ describe("Note Access Middleware (100% Condition & Branch Blueprint)", () => {
 
             await validateSessionMembership(req, res, next);
             expect(ConnectRequest.findById).toHaveBeenCalledWith("session_from_body");
+        });
+
+        it("should accept route-provided allowed statuses without changing the shared defaults", async () => {
+            req.params.connectRequestId = "session_accepted";
+            req.sessionAllowedStatuses = ["accepted", "active_status_123"];
+            ConnectRequest.findById.mockReturnValue({
+                select: jest.fn().mockReturnThis(),
+                lean: jest.fn().mockResolvedValue({ status: "accepted", mentor: "user_123", mentee: "mentee_456" }),
+            });
+            await validateSessionMembership(req, res, next);
+            expect(next).toHaveBeenCalled();
+            expect(req.sessionRole).toBe("mentor");
+        });
+
+        it("allows accepted sessions through the shared route policy middleware", () => {
+            allowAcceptedSession(req, res, next);
+            expect(req.sessionAllowedStatuses).toEqual(["accepted", "active_status_123"]);
+            expect(next).toHaveBeenCalled();
+        });
+
+        it("resolves a goal path to its owning connect request", async () => {
+            req.params.goalId = "goal-1";
+            Goal.findById.mockReturnValue({
+                select: jest.fn().mockReturnThis(),
+                lean: jest.fn().mockResolvedValue({ connectRequest: "session-1" }),
+            });
+            await resolveSessionFromResource(req, res, next);
+            expect(req.resolvedConnectRequestId).toBe("session-1");
+            expect(next).toHaveBeenCalled();
+        });
+
+        it("resolves a milestone path to its owning connect request", async () => {
+            req.params.milestoneId = "milestone-1";
+            Milestone.findById.mockReturnValue({
+                select: jest.fn().mockReturnThis(),
+                lean: jest.fn().mockResolvedValue({ connectRequest: "session-2" }),
+            });
+            await resolveSessionFromResource(req, res, next);
+            expect(req.resolvedConnectRequestId).toBe("session-2");
+            expect(next).toHaveBeenCalled();
+        });
+
+        it("returns 404 when the goal or milestone cannot be resolved", async () => {
+            req.params.goalId = "missing-goal";
+            Goal.findById.mockReturnValue({
+                select: jest.fn().mockReturnThis(),
+                lean: jest.fn().mockResolvedValue(null),
+            });
+            await resolveSessionFromResource(req, res, next);
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(next).not.toHaveBeenCalled();
         });
 
         it("should return 404 if the session does not exist in the database", async () => {
@@ -104,6 +159,24 @@ describe("Note Access Middleware (100% Condition & Branch Blueprint)", () => {
                 message: "You are not a participant of this session",
                 code: "NOT_A_PARTICIPANT",
             });
+        });
+
+        it("should accept populated participant documents when checking membership", async () => {
+            req.params.connectRequestId = "session_populated";
+            const mockSession = {
+                status: "active_status_123",
+                mentor: { _id: "user_123", name: "Mentor" },
+                mentee: { _id: "mentee_456", name: "Mentee" },
+            };
+            ConnectRequest.findById.mockReturnValue({
+                select: jest.fn().mockReturnThis(),
+                lean: jest.fn().mockResolvedValue(mockSession),
+            });
+
+            await validateSessionMembership(req, res, next);
+
+            expect(next).toHaveBeenCalled();
+            expect(req.sessionRole).toBe("mentor");
         });
 
         it("should allow access and attach mentor role if the user is the mentor", async () => {

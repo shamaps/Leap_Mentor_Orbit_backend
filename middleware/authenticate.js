@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Sentry = require("@sentry/node");
 const logger = require("../utils/logger");
+const { idToString } = require("../utils/idToString");
 const { maskEmail } = require("../utils/mask");
 const config = require("../config/env");
 const { hasPermission } = require("../config/permissions");
@@ -29,18 +30,27 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
+    if (user.isDeleted) {
+      logger.warn("Blocked or deleted user attempted to authenticate", {
+        userId: idToString(user._id),
+        route: req.path,
+        method: req.method,
+      });
+      return res.status(401).json({ message: "User account is unavailable" });
+    }
+
     req.user = user;
 
     //  Masked email — ne***@yopmail.com instead of full email
     Sentry.setUser({
-      id: user._id.toString(),
+      id: idToString(user._id),
       email: maskEmail(user.email),
-      role: user.role,
+      role: user.roles?.[0],
     });
 
     logger.info("Authenticated request", {
-      userId: user._id.toString(),
-      role: user.role,
+      userId: idToString(user._id),
+      role: user.roles?.[0],
       email: maskEmail(user.email),
       route: req.path,
       method: req.method,
@@ -66,33 +76,13 @@ const authenticate = async (req, res, next) => {
 };
 
 
-const requireRole = (...roles) => {
-  return (req, res, next) => {
-    const userRoles = req.user?.roles || [];
-    const hasRole = roles.some((role) => userRoles.includes(role));
-    if (!hasRole) {
-      logger.warn("Insufficient role access attempt", {
-        userId: req.user?._id?.toString(),
-        email: maskEmail(req.user?.email || ""),
-        userRoles,
-        requiredRoles: roles,
-        route: req.path,
-        method: req.method,
-      });
-      return res.status(403).json({ message: "Access denied: insufficient role" });
-    }
-    next();
-  };
-};
-
-
 const requirePermission = (...permissions) => {
   return (req, res, next) => {
     const userRoles = req.user?.roles || [];
     const granted = permissions.some((permission) => hasPermission(userRoles, permission));
     if (!granted) {
       logger.warn("Insufficient permission access attempt", {
-        userId: req.user?._id?.toString(),
+        userId: idToString(req.user?._id),
         email: maskEmail(req.user?.email || ""),
         userRoles,
         requiredPermissions: permissions,
@@ -105,4 +95,4 @@ const requirePermission = (...permissions) => {
   };
 };
 
-module.exports = { authenticate, requireRole, requirePermission };
+module.exports = { authenticate, requirePermission };

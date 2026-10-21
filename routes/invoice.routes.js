@@ -2,7 +2,9 @@
 const express = require("express");
 const { invoiceController } = require("../config/container");
 const { downloadInvoice } = invoiceController;
-const { authenticate } = require("../middleware/authenticate"); // adjust path if different
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession } = require("../middleware/noteAccess");
 
 const router = express.Router();
 
@@ -49,6 +51,6 @@ const router = express.Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 // GET /api/invoices/:connectRequestId  — download invoice PDF
-router.get("/:connectRequestId", authenticate, downloadInvoice);
+router.get("/:connectRequestId", authenticate, requirePermission(PERMISSIONS.VIEW_INVOICE), allowAcceptedSession, validateSessionMembership, downloadInvoice);
 
 module.exports = router;

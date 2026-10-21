@@ -7,6 +7,7 @@
 jest.mock("../../../models/RefreshToken", () => ({
     findOne: jest.fn(),
     deleteOne: jest.fn(),
+    deleteMany: jest.fn(),
     create: jest.fn(),
 }));
 
@@ -65,6 +66,21 @@ describe("RefreshToken Repository (100% Coverage Suite)", () => {
 
             await expect(repository.deleteById("id_123")).rejects.toThrow("Write Lock Timeout");
             expect(logger.error).toHaveBeenCalledWith("DB error in deleteById", { error: "Write Lock Timeout" });
+        });
+    });
+
+    describe("deleteAllByUserId", () => {
+        it("revokes every refresh token owned by a user", async () => {
+            RefreshToken.deleteMany.mockResolvedValue({ deletedCount: 3 });
+            await expect(repository.deleteAllByUserId("user-1")).resolves.toEqual({ deletedCount: 3 });
+            expect(RefreshToken.deleteMany).toHaveBeenCalledWith({ user: "user-1" });
+        });
+
+        it("logs and rethrows a bulk revocation failure", async () => {
+            const dbError = new Error("Bulk delete failed");
+            RefreshToken.deleteMany.mockRejectedValue(dbError);
+            await expect(repository.deleteAllByUserId("user-1")).rejects.toThrow("Bulk delete failed");
+            expect(logger.error).toHaveBeenCalledWith("DB error in deleteAllByUserId (refreshToken)", { error: "Bulk delete failed" });
         });
     });
 

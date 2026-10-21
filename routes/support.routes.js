@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+
+// Intentionally public: POST /messages is the support form. Admin reads and updates require adminAuthenticate.
 const { supportController } = require("../config/container");
 const { createMessage, getMessages, resolveMessage } = supportController;
 const { adminAuthenticate } = require("../middleware/adminAuth");

@@ -5,6 +5,7 @@
 
 jest.mock("../../../utils/mappers/menteeProfile.mapper", () => ({
     toMenteeProfileDTO: jest.fn((data) => ({ activeProfile: true, ...data })),
+    toMenteeProfileSummary: jest.fn((data) => ({ summaryProfile: true, currentRole: data.currentRole })),
 }));
 
 const createMenteeProfileService = require("../../../services/menteeProfile.service");
@@ -20,6 +21,7 @@ describe("Mentee Profile Service Layer (100% Condition Branch Coverage)", () => 
             createProfile: jest.fn(),
             updateProfileByUser: jest.fn(),
             findPublicProfileByUser: jest.fn(),
+            hasMentorRelationship: jest.fn(),
         };
 
         mockLogger = { info: jest.fn(), error: jest.fn() };
@@ -89,8 +91,24 @@ describe("Mentee Profile Service Layer (100% Condition Branch Coverage)", () => 
 
         it("should output sanitized public DTO blueprinted layouts on success", async () => {
             mockRepo.findPublicProfileByUser.mockResolvedValue(baseProfile);
-            const res = await service.getPublicProfile("u1");
-            expect(res.industry).toBe("Fintech");
+            const res = await service.getPublicProfile("u1", { _id: "u1", roles: ["mentee"] });
+            expect(res.activeProfile).toBe(true);
+        });
+
+        it("should return the full profile to a mentor with an accepted or active relationship", async () => {
+            mockRepo.findPublicProfileByUser.mockResolvedValue(baseProfile);
+            mockRepo.hasMentorRelationship.mockResolvedValue(true);
+            const res = await service.getPublicProfile("u1", { _id: "mentor1", roles: ["mentor"] });
+            expect(res.activeProfile).toBe(true);
+            expect(mockRepo.hasMentorRelationship).toHaveBeenCalledWith("mentor1", "u1");
+        });
+
+        it("should return only a summary to an unrelated authenticated user", async () => {
+            mockRepo.findPublicProfileByUser.mockResolvedValue(baseProfile);
+            mockRepo.hasMentorRelationship.mockResolvedValue(false);
+            const res = await service.getPublicProfile("u1", { _id: "mentee2", roles: ["mentee"] });
+            expect(res).toEqual({ summaryProfile: true, currentRole: "Product Associate" });
+            expect(mockRepo.hasMentorRelationship).not.toHaveBeenCalled();
         });
     });
 });

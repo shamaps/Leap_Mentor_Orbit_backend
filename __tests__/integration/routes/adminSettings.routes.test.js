@@ -24,9 +24,10 @@ jest.mock("../../../config/container", () => ({
 
 jest.mock("../../../middleware/adminAuth", () => ({
     adminAuthenticate: jest.fn((req, res, next) => {
-        req.admin = { _id: "admin_route_sandbox_user" };
+        req.admin = { _id: "admin_route_sandbox_user", isSuperAdmin: true };
         next();
     }),
+    requireSuperAdmin: jest.fn((req, res, next) => next()),
 }));
 
 const adminSettingsRoutes = require("../../../routes/adminSettings.routes");

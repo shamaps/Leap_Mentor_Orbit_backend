@@ -17,7 +17,7 @@ const { toMentorProfileDTO } = require("../utils/mappers/mentorProfile.mapper");
  * @param {Object} options.logger - Logger instance.
  * @returns {Object} Admin service methods.
  */
-const createAdminService = (repo, { logger }) => {
+const createAdminService = (repo, { logger, refreshTokenRepo }) => {
     /**
      * Generates a JWT for the admin.
      * @param {string} id - The admin user ID.
@@ -240,6 +240,7 @@ const createAdminService = (repo, { logger }) => {
         const user = await repo.blockUserById(userId);
         if (!user) throw new AppError(404, "User not found.");
 
+        await refreshTokenRepo.deleteAllByUserId(userId);
         logger.info("Admin blocked user", { email: user.email, userId });
         return { message: `User ${user.name} has been blocked.` };
     };
@@ -268,6 +269,7 @@ const createAdminService = (repo, { logger }) => {
         const user = await repo.findUserByIdRaw(userId);
         if (!user) throw new AppError(404, "User not found");
         await repo.cascadeDeleteUser(userId);
+        await refreshTokenRepo.deleteAllByUserId(userId);
         logger.info("User soft-deleted with cascade", { userId, email: user.email });
         return { message: `User ${user.name} has been deleted.` };
     };

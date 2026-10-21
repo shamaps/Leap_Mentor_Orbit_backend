@@ -27,6 +27,11 @@ jest.mock("../../../middleware/authenticate", () => ({
     requirePermission: () => (req, res, next) => next(),
 }));
 
+jest.mock("../../../middleware/noteAccess", () => {
+    const pass = (req, res, next) => next();
+    return { validateSessionMembership: pass, allowAcceptedSession: pass, resolveSessionFromResource: pass };
+});
+
 describe("Feedback Routing Pipelines (Integration)", () => {
     let app;
 

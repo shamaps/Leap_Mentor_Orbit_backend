@@ -18,7 +18,13 @@ jest.mock("../../../middleware/authenticate", () => ({
         req.user = { _id: "mock_mentee_actor_user_id" };
         next();
     }),
+    requirePermission: () => (req, res, next) => next(),
 }));
+
+jest.mock("../../../middleware/noteAccess", () => {
+    const pass = (req, res, next) => next();
+    return { validateSessionMembership: pass, allowAcceptedSession: pass, resolveSessionFromResource: pass };
+});
 
 describe("Invoice Routing Interfaces (Integration)", () => {
     let app;

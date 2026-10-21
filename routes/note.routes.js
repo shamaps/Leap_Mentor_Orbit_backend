@@ -2,7 +2,9 @@
 const express = require("express");
 const router = express.Router();
 
-const { authenticate } = require("../middleware/authenticate");
+const { authenticate, requirePermission } = require("../middleware/authenticate");
+const { PERMISSIONS } = require("../config/permissions");
+const { validateSessionMembership, allowAcceptedSession } = require("../middleware/noteAccess");
 const { upload } = require("../middleware/upload.middleware");
 const { noteController } = require("../config/container");
 const {
@@ -59,6 +61,9 @@ router.post(
   "/upload",
   authenticate,
   upload.single("file"),
+  requirePermission(PERMISSIONS.MANAGE_SESSION),
+  allowAcceptedSession,
+  validateSessionMembership,
   uploadNote
 );
 
@@ -96,6 +101,9 @@ router.post(
 router.get(
   "/:connectRequestId/private",
   authenticate,
+  requirePermission(PERMISSIONS.MANAGE_SESSION),
+  allowAcceptedSession,
+  validateSessionMembership,
   getPrivateNotes
 );
 
@@ -131,6 +139,9 @@ router.get(
 router.get(
   "/:connectRequestId",
   authenticate,
+  requirePermission(PERMISSIONS.MANAGE_SESSION),
+  allowAcceptedSession,
+  validateSessionMembership,
   getNotes
 );
 
@@ -172,6 +183,7 @@ router.get(
 router.delete(
   "/:id",
   authenticate,
+  requirePermission(PERMISSIONS.MANAGE_SESSION),
   deleteNote
 );
 

@@ -33,5 +33,19 @@ const adminAuthenticate = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+// Must run after adminAuthenticate (needs req.admin).
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.admin?.isSuperAdmin) {
+    logger.warn("Super-admin only action attempted", {
+      adminId: req.admin?._id,
+      route: req.path,
+      method: req.method,
+    });
+    return res.status(403).json({
+      message: "Access denied: super admin only"
+    });
+  }
+  next();
+};
 
-module.exports = { adminAuthenticate };
+module.exports = { adminAuthenticate, requireSuperAdmin };

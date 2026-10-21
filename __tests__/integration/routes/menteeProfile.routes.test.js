@@ -4,19 +4,21 @@ const dbHandler = require("../../utils/db");
 
 const mockCreateProfileMiddleware = jest.fn((req, res) => res.status(201).json({ success: true, data: {} }));
 const mockGetMyProfileMiddleware = jest.fn((req, res) => res.status(200).json({ success: true, data: {} }));
+const mockGetPublicProfileMiddleware = jest.fn((req, res) => res.status(200).json({ success: true, data: { id: req.params.id } }));
 
 jest.mock("../../../config/container", () => ({
     menteeProfileController: {
         createProfile: (req, res, next) => mockCreateProfileMiddleware(req, res, next),
         getMyProfile: (req, res, next) => mockGetMyProfileMiddleware(req, res, next),
         updateProfile: jest.fn(),
-        getPublicProfile: jest.fn(),
+        getPublicProfile: (req, res, next) => mockGetPublicProfileMiddleware(req, res, next),
     },
 }));
 
 jest.mock("../../../middleware/authenticate", () => ({
     authenticate: jest.fn((req, res, next) => {
-        req.user = { _id: "user_mentee_sandbox_ctx" };
+        if (req.headers["x-anonymous"] === "true") return res.status(401).json({ message: "No token" });
+        req.user = { _id: "user_mentee_sandbox_ctx", roles: ["mentee"] };
         next();
     }),
     requireRole: jest.fn(() => (req, res, next) => next()),
@@ -55,6 +57,12 @@ describe("Mentee Profile Routing Pipelines (Integration)", () => {
             .expect(201);
 
         expect(mockCreateProfileMiddleware).toHaveBeenCalled();
+    });
+
+    it("GET /mentee-profile/:id requires authentication", async () => {
+        await request(app).get("/mentee-profile/mentee-1").set("x-anonymous", "true").expect(401);
+        await request(app).get("/mentee-profile/mentee-1").expect(200);
+        expect(mockGetPublicProfileMiddleware).toHaveBeenCalled();
     });
 
     it("POST /mentee-profile should reject invalid enum parameter options during schema parsing evaluation pass", async () => {

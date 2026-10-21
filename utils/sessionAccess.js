@@ -1,12 +1,13 @@
 // utils/sessionAccess.js
 const { ACTIVE_SESSION_STATUSES } = require("../config/constants");
+const { idToString } = require("./idToString");
 
 /**
  * Validates that userId is a participant in an active session.
  * @param {Function} findSessionParticipants - repo fn that returns { mentor, mentee, status }
  * @param {string} connectRequestId
  * @param {string} userId
- * @returns {{ valid: boolean, reason?: string, status?: number, uploaderRole?: string, sessionStatus?: string }}
+ * @returns {Promise<{ valid: boolean, reason?: string, status?: number, uploaderRole?: string, sessionStatus?: string }>}
  */
 const validateSessionAccess = async (findSessionParticipants, connectRequestId, userId) => {
     const request = await findSessionParticipants(connectRequestId);
@@ -14,9 +15,9 @@ const validateSessionAccess = async (findSessionParticipants, connectRequestId, 
     if (!ACTIVE_SESSION_STATUSES.includes(request.status))
         return { valid: false, reason: "Session is not active", status: 400 };
 
-    const uid = userId.toString();
-    const isMentor = request.mentor.toString() === uid;
-    const isMentee = request.mentee.toString() === uid;
+    const uid = idToString(userId);
+    const isMentor = idToString(request.mentor) === uid;
+    const isMentee = idToString(request.mentee) === uid;
     if (!isMentor && !isMentee)
         return { valid: false, reason: "Not authorized", status: 403 };
 

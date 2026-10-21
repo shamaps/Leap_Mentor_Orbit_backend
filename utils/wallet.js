@@ -3,6 +3,7 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const { WELCOME_BONUS_LP } = require("../config/constants");
 const logger = require("../utils/logger");
+const { idToString } = require("./idToString");
 
 /**
  * Creates a wallet and, for mentees, a welcome-bonus transaction.
@@ -19,7 +20,7 @@ const provisionWallet = async (userId, roles) => {
     const startingBalance = isMentee ? WELCOME_BONUS_LP : 0;
 
     const wallet = await Wallet.create({ user: userId, balance: startingBalance, escrow: 0 });
-    logger.info("Wallet provisioned", { userId: userId.toString(), isMentee, balance: startingBalance });
+    logger.info("Wallet provisioned", { userId: idToString(userId), isMentee, balance: startingBalance });
 
     if (isMentee) {
         await Transaction.create({
