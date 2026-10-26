@@ -1,0 +1,30 @@
+{
+  "name": "@leapmentor/catalog-service",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@googleapis/calendar": "^20.1.0",
+    "@leapmentor/shared": "*",
+    "@sentry/node": "^10.53.1",
+    "cloudinary": "^2.11.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "helmet": "^8.2.0",
+    "joi": "^18.2.3",
+    "mongoose": "^9.2.1",
+    "multer": "^2.5.0",
+    "node-cron": "^4.2.1",
+    "streamifier": "^0.1.1"
+  }
+}
