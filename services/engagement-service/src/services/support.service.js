@@ -1,5 +1,5 @@
 // services/support.service.js
-const { sendSupportResolvedEmail } = require("@leapmentor/shared/utils/emails");
+const { sendSupportResolvedEmail } = require("@leapmentor/shared/utils/emailQueue");
 const { toSupportMessageDTO, toSupportListDTO } = require("@leapmentor/shared/utils/mappers/support.mapper");
 
 /**
@@ -24,7 +24,7 @@ const { toSupportMessageDTO, toSupportListDTO } = require("@leapmentor/shared/ut
  * @param {{ logger: Logger }} dependencies - Application core telemetry tracing tools.
  * @returns {Object} Configured service interface container exposing ticket handling methodologies.
  */
-const createSupportService = (repo, { logger }) => {
+const createSupportService = (repo, { logger, createNotification }) => {
 
     /**
      * Syntactically evaluates inbound fields and logs a new support ticket message.
@@ -94,13 +94,13 @@ const createSupportService = (repo, { logger }) => {
         const user = await repo.findUserByEmail(msg.email);
 
         if (user) {
-            await repo.createNotification({
+            await createNotification({
                 recipient: user._id,
                 type: "support_resolved",
                 title: "Support ticket resolved ✅",
                 message: `Your support request "${msg.subject}" has been resolved by our team.`,
-                read: false,
                 metadata: {},
+                dedupeKey: String(msg._id),
             });
         }
 

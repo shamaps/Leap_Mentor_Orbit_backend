@@ -6,4 +6,5 @@ module.exports = {
     ...require("./paymentEmails"),
     ...require("./sessionEmails"),
     ...require("./adminEmails"),
+    ...require("./authEmails"),
 };

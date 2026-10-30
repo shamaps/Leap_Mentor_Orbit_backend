@@ -69,7 +69,7 @@ v1.use("/reports", require("./routes/report.routes"));
 v1.use("/support", require("./routes/support.routes"));
 v1.use("/admin", require("./routes/admin"));
 app.use("/api/v1", v1);
-
+app.use("/internal/users", require("./routes/internalUsers.routes"));
 Sentry.setupExpressErrorHandler(app);
 
 app.use((req, res) => {

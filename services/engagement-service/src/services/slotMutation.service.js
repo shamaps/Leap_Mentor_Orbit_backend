@@ -15,11 +15,7 @@
 const AppError = require("@leapmentor/shared/utils/appError");
 const { toSlotDTO, toAvailabilityDTO } = require("@leapmentor/shared/utils/mappers/session.mapper");
 const { generateSlotsFromSpecificDates } = require("@leapmentor/shared/utils/generateSlots");
-const {
-    sendSlotCancelledEmail,
-    sendSlotRescheduledEmail,
-    sendAdditionalSlotEmail,
-} = require("@leapmentor/shared/utils/emails");
+const { sendSlotCancelledEmail, sendSlotRescheduledEmail, sendAdditionalSlotEmail, } = require("@leapmentor/shared/utils/emailQueue");
 const { PLATFORM_TIMEZONE } = require("@leapmentor/shared/config/constants");
 const {
     assertSessionAccess,
@@ -381,7 +377,9 @@ const createSlotMutationService = (sessionRepo, compensationService, { logger })
      * @returns {Promise<Object>} Mutated model data results combined with transaction refund validation details.
      */
     const cancelSlot = async ({ connectRequestId, slotIndex, userId, reason = "" }) => {
-        const { connectRequest, idx } = await loadAndValidateSlot({ connectRequestId, slotIndex, userId });
+        const loaded = await loadAndValidateSlot({ connectRequestId, slotIndex, userId });
+        const { idx } = loaded;
+        let { connectRequest } = loaded;
         const slot = connectRequest.selectedSlots[idx];
 
         const alreadyCancelled = slot.status === "cancelled";
@@ -463,7 +461,9 @@ const createSlotMutationService = (sessionRepo, compensationService, { logger })
             throw new AppError(400, "date, startTime, and endTime are required for the new slot");
         }
 
-        const { connectRequest, idx } = await loadAndValidateSlot({ connectRequestId, slotIndex, userId });
+        const loaded = await loadAndValidateSlot({ connectRequestId, slotIndex, userId });
+        const { idx } = loaded;
+        let { connectRequest } = loaded;
         const oldSlot = connectRequest.selectedSlots[idx];
 
         const alreadyRescheduled = oldSlot.status === "cancelled" && oldSlot.isRescheduled;

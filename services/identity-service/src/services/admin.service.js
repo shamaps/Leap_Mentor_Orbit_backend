@@ -17,7 +17,7 @@ const { toMentorProfileDTO } = require("@leapmentor/shared/utils/mappers/mentorP
  * @param {Object} options.logger - Logger instance.
  * @returns {Object} Admin service methods.
  */
-const createAdminService = (repo, { logger, refreshTokenRepo }) => {
+const createAdminService = (repo, { logger, refreshTokenRepo, userCascade }) => {
     /**
      * Generates a JWT for the admin.
      * @param {string} id - The admin user ID.
@@ -223,11 +223,15 @@ const createAdminService = (repo, { logger, refreshTokenRepo }) => {
         const user = await repo.findUserByIdRaw(userId);
         if (!user) throw new AppError(404, "User not found.");
 
-        await repo.hardDeleteUser(userId);
+        await repo.deleteUserById(userId);
+        const cascade = await userCascade.hardDelete(userId);
 
-        logger.info("Admin deleted user", { email: user.email, userId });
+        logger.info("Admin deleted user", { email: user.email, userId, pendingCleanup: cascade.pending });
 
-        return { message: `User ${user.name} (${user.email}) has been permanently deleted.` };
+        return {
+            message: `User ${user.name} (${user.email}) has been permanently deleted.`,
+            pendingCleanup: cascade.pending,
+        };
     };
 
     /**
@@ -255,8 +259,9 @@ const createAdminService = (repo, { logger, refreshTokenRepo }) => {
         const user = await repo.unblockUserById(userId);
         if (!user) throw new AppError(404, "User not found.");
 
-        logger.info("Admin unblocked user", { email: user.email, userId });
-        return { message: `User ${user.name} has been restored.` };
+        const cascade = await userCascade.restore(userId);
+        logger.info("Admin unblocked user", { email: user.email, userId, pendingCleanup: cascade.pending });
+        return { message: `User ${user.name} has been restored.`, pendingCleanup: cascade.pending };
     };
 
     /**
@@ -268,10 +273,11 @@ const createAdminService = (repo, { logger, refreshTokenRepo }) => {
     const deleteUser = async (userId) => {
         const user = await repo.findUserByIdRaw(userId);
         if (!user) throw new AppError(404, "User not found");
-        await repo.cascadeDeleteUser(userId);
+        await repo.softDeleteUserById(userId);
         await refreshTokenRepo.deleteAllByUserId(userId);
-        logger.info("User soft-deleted with cascade", { userId, email: user.email });
-        return { message: `User ${user.name} has been deleted.` };
+        const cascade = await userCascade.softDelete(userId);
+        logger.info("User soft-deleted with cascade", { userId, email: user.email, pendingCleanup: cascade.pending });
+        return { message: `User ${user.name} has been deleted.`, pendingCleanup: cascade.pending };
     };
 
    

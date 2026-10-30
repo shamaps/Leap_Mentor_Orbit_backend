@@ -12,6 +12,7 @@ const mentorSearchRepo = require("../repositories/mentorSearch.repository");
 const slotLockRepo = require("../repositories/slotLock.repository");
 const internalOperationsRepo = require("../repositories/internalOperations.repository");
 const uploadRepo = require("../repositories/upload.repository");
+const userLifecycleRepo = require("../repositories/userLifecycle.repository");        
 
 // ── Service factories
 const createAdminVerificationService = require("../services/adminVerification.service");
@@ -24,6 +25,7 @@ const createSlotLockService = require("../services/slotLock.service");
 const createInternalOperationsService = require("../services/internalOperations.service");
 const createUploadService = require("../services/upload.service");
 const createImageService = require("../services/image.service");
+const createUserLifecycleService = require("../services/userLifecycle.service"); 
 
 // ── Controller factories
 const createAdminVerificationController = require("../controllers/adminVerification.controller");
@@ -45,6 +47,7 @@ const mentorProfileService = createMentorProfileService(mentorProfileRepo, { log
 const mentorSearchService = createMentorSearchService(mentorSearchRepo, { logger });
 const slotLockService = createSlotLockService(slotLockRepo, { logger });
 const internalOperationsService = createInternalOperationsService(internalOperationsRepo, slotLockService);
+const userLifecycleService = createUserLifecycleService(userLifecycleRepo, { logger });
 const uploadService = createUploadService(uploadRepo, { logger });
 const imageService = createImageService({ logger });
 
@@ -57,7 +60,7 @@ module.exports = {
     mentorProfileController: createMentorProfileController(mentorProfileService, { logger }),
     mentorSearchController: createMentorSearchController(mentorSearchService, { logger }),
     slotLockController: createSlotLockController(slotLockService, { logger }),
-    internalOperationsService,
+    internalOperationsService, userLifecycleService,
     uploadController: createUploadController(uploadService, { logger }),
     imageController: createImageController(imageService, { logger }),
 };

@@ -1,5 +1,5 @@
 // services/earnings.service.js
-const { buildMonthlyBuckets, buildWeeklyBuckets } = require("@leapmentor/shared/utils/earningsChart");
+const { buildMonthlyBuckets, buildWeeklyBuckets } = require("../utils/earningsChart");
 const { toEarningsSummaryDTO, toEarningsChartDTO, toPayoutHistoryDTO } = require("@leapmentor/shared/utils/mappers/earnings.mapper");
 
 /**

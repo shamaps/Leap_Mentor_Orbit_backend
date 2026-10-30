@@ -13,7 +13,7 @@ const MentorProfile = require("@leapmentor/shared/models/MentorProfile");
  * @returns {import('mongoose').Query} The updated mentor profile database model document record context layout.
  */
 const updateMentorProfileDocuments = (userId, data) =>
-    MentorProfile.findOneAndUpdate({ user: userId }, data, { new: true });
+    MentorProfile.findOneAndUpdate({ user: userId }, data, { returnDocument: "after" });
 
 module.exports = {
     updateMentorProfileDocuments,

@@ -20,10 +20,13 @@ const findNotificationsByUser = (userId) =>
  * @param {string} inputFields.title - Literal summary header label value.
  * @param {string} inputFields.message - Core body notification textual value.
  * @param {Object} [inputFields.metadata={}] - Optional additional contextual data dictionaries.
+ * @param {string} [inputFields.eventId] - Optional idempotency key; a unique index rejects a repeated value.
  * @returns {Promise<Object>} Freshly instantiated written Mongoose document row.
  */
-const createNotification = async ({ recipient, type, title, message, metadata = {} }) => {
-    return await Notification.create({ recipient, type, title, message, metadata });
+const createNotification = async ({ recipient, type, title, message, metadata = {}, eventId }) => {
+    const doc = { recipient, type, title, message, metadata };
+    if (eventId) doc.eventId = eventId;
+    return await Notification.create(doc);
 };
 
 /**

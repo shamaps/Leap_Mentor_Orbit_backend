@@ -1,10 +1,10 @@
 // backend/services/escrow.service.js
 const AppError = require("@leapmentor/shared/utils/appError");
-const sendInvoiceEmail = require("@leapmentor/shared/utils/sendInvoiceEmail");
+const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 const { withTransaction } = require("@leapmentor/shared/utils/withTransaction");
-const { toPayDTO, toReleaseDTO, toRefundDTO, toEscrowStatusDTO, toWalletDTO } = require("@leapmentor/shared/utils/mappers/escrow.mapper");
+const { toPayDTO,toEscrowStatusDTO, toWalletDTO } = require("@leapmentor/shared/utils/mappers/escrow.mapper");
 const { sendCalendarInvite } = require("@leapmentor/shared/utils/sendCalendarInvite");
-const { sendPaymentReceivedEmail } = require("@leapmentor/shared/utils/emails");
+const { sendPaymentReceivedEmail } = require("@leapmentor/shared/utils/emailQueue");
 const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("@leapmentor/shared/config/constants");
 
 /**
@@ -19,7 +19,6 @@ const { DEFAULT_COMMISSION_RATE, PLATFORM_TIMEZONE } = require("@leapmentor/shar
 /**
  * @typedef {Object} EscrowRepository
  * @property {() => Promise<Object|null>} findActiveAdmin - Fetches platform administration tracking configs.
- * @property {(adminId: any, amount: number, session?: any) => Promise<Object|null>} creditAdmin - Routes platform fees.
  * @property {(id: string, session?: any) => Promise<Object|null>} findConnectRequestById - Resolves full populated relationship rows.
  * @property {(id: string) => Promise<Object|null>} findConnectRequestByIdLean - Fast read-only query for snapshot details.
  * @property {(id: string, session?: any) => Promise<Object|null>} findConnectRequestRaw - Resolves unpopulated operational structures.
@@ -191,107 +190,6 @@ const createEscrowService = (repo, { logger, internalEscrowService }) => {
   };
 
   /**
-   * Releases escrowed funds, transferring the mentor's net payout to their wallet balance and the platform cut to the admin account.
-   * * @async
-   * @function release
-   * @param {Object} payload - Interactive criteria parameters block.
-   * @param {string} payload.requestId - Targeted interaction row tracking key string.
-   * @param {any} payload.menteeId - Security verify validation signature tracking ownership.
-   * @throws {AppError} 400 - If interaction statuses are not "ongoing" or no active payment tracking exists.
-   * @throws {AppError} 403 - If user contexts are not identical to record configuration parameters.
-   * @throws {AppError} 404 - If structural data rows or wallet entries yield unresolvable items.
-   * @returns {Promise<Object>} Formatted completion metadata DTO layout results.
-   */
-  const release = async ({ requestId, menteeId }) => {
-    try {
-      return await withTransaction(async (session) => {
-        const connectRequest = await repo.findConnectRequestRaw(requestId, session);
-        if (!connectRequest) throw new AppError(404, "Connect request not found");
-        if (connectRequest.mentee.toString() !== menteeId.toString())
-          throw new AppError(403, "Only the mentee can confirm session completion");
-        if (connectRequest.status !== "ongoing")
-          throw new AppError(400, `Release only allowed on ongoing sessions. Current status: ${connectRequest.status}`);
-        if (connectRequest.paymentStatus !== "paid")
-          throw new AppError(400, "No escrowed payment found for this session");
-
-        const payment = await internalEscrowService.release({ requestId, menteeId }, { session });
-        connectRequest.status = "completed";
-        connectRequest.completedAt = new Date();
-        await repo.saveConnectRequest(connectRequest, session);
-        await repo.incrementMentorSessions(connectRequest.mentor, session);
-        return toReleaseDTO(payment);
-      }, "escrow.release");
-    } catch (err) {
-      if (err.status === 422 && err.message.startsWith("Escrow balance mismatch"))
-        throw new AppError(400, err.message);
-      throw err;
-    }
-  };
-
-  /**
-   * Reverts escrowed assets back to a mentee's active liquid balance following an appointment cancellation.
-   * * @async
-   * @function refund
-   * @param {Object} context - Payload identification container.
-   * @param {string} context.requestId - Targeted unique identity tracking row key.
-   * @param {any} context.userId - Active performing entity token identifier key.
-   * @throws {AppError} 400 - If historical tracking lines reflect finished items or payment status is unpaid.
-   * @throws {AppError} 403 - If caller identities aren't present inside the target model fields.
-   * @throws {AppError} 404 - If connection document items or wallet records fail lookup queries.
-   * @returns {Promise<Object>} Formatted cancelation summary DTO payload.
-   */
-  const refund = async ({ requestId, userId }) => {
-    return await withTransaction(async (session) => {
-      const connectRequest = await repo.findConnectRequestRaw(requestId, session);
-
-      if (!connectRequest) throw new AppError(404, "Connect request not found");
-
-      const isMentee = connectRequest.mentee.toString() === userId.toString();
-      const isMentor = connectRequest.mentor.toString() === userId.toString();
-
-      if (!isMentee && !isMentor) throw new AppError(403, "Not authorized to refund this session");
-      if (connectRequest.paymentStatus !== "paid") throw new AppError(400, "No paid escrow found to refund");
-      if (connectRequest.status === "completed") throw new AppError(400, "Cannot refund a completed session");
-
-      const { totalAmount, mentee: menteeId } = connectRequest;
-      const menteeWallet = await repo.findWalletByUser(menteeId, session);
-
-      if (!menteeWallet) throw new AppError(404, "Mentee wallet not found");
-      if (menteeWallet.escrow < totalAmount) throw new AppError(400, "Escrow balance mismatch. Contact support");
-
-      menteeWallet.escrow -= totalAmount;
-      menteeWallet.balance += totalAmount;
-      await repo.saveWallet(menteeWallet, session);
-
-      connectRequest.paymentStatus = "refunded";
-      connectRequest.status = "rejected";
-      await repo.saveConnectRequest(connectRequest, session);
-
-      const result = toRefundDTO({ totalAmount, balance: menteeWallet.balance, escrow: menteeWallet.escrow, status: "rejected", paymentStatus: "refunded" });
-      const escrowRecord = await repo.findEscrowByRequest(connectRequest._id, session);
-      if (escrowRecord) {
-        escrowRecord.operations ||= [];
-        escrowRecord.status = "refunded";
-        (escrowRecord.slots || []).forEach((slot) => { slot.status = "refunded"; });
-        if (!escrowRecord.operations.some((operation) => operation.key === `${connectRequest._id}:refund`)) {
-          escrowRecord.operations.push({ key: `${connectRequest._id}:refund`, kind: "refund", result, completedAt: new Date() });
-        }
-        await repo.saveEscrow(escrowRecord, session);
-      }
-      await repo.createTransactions([{
-        user: menteeId, type: "escrow_refund", amount: totalAmount,
-        connectRequest: connectRequest._id,
-        description: "Full refund — session cancelled (incl. platform fee)",
-        balanceAfter: menteeWallet.balance,
-        idempotencyKey: `${connectRequest._id}:refund:ledger`,
-        idempotencyKey: `${connectRequest._id}:refund:ledger`,
-      }], session);
-
-      return result;
-    }, "escrow.refund");
-  };
-
-  /**
    * Collects financial performance details and payment tracking properties relative to a specific appointment ID.
    * * @async
    * @function getStatus
@@ -433,7 +331,8 @@ const createEscrowService = (repo, { logger, internalEscrowService }) => {
     }, "escrow.payAdditional");
   };
 
-  return { pay, release, refund, getStatus, getMyWallet, getCommissionRate, payAdditional };
+  return { pay, getStatus, getMyWallet, getCommissionRate, payAdditional };
+
 };
 
 module.exports = createEscrowService;

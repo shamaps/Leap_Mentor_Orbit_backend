@@ -80,7 +80,7 @@ const findReports = (filter, { skip, limit }) =>
  */
 const findReportByIdAndUpdate = (reportId, update) =>
     Report.findByIdAndUpdate(reportId, update, {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
     })
         .populate("reportedBy", "name email")

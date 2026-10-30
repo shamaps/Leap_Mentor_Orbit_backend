@@ -1,5 +1,5 @@
 // backend/services/adminReports.service.js
-const { sendReportResolvedEmail } = require("@leapmentor/shared/utils/emails");
+const { sendReportResolvedEmail } = require("@leapmentor/shared/utils/emailQueue");
 const AppError = require("@leapmentor/shared/utils/appError");
 
 /**

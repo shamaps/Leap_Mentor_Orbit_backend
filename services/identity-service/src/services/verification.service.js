@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
-const transporter = require("@leapmentor/shared/utils/mailer");
-const { makeOtp } = require("@leapmentor/shared/utils/auth.utils");
+const emailQueue = require("@leapmentor/shared/utils/emailQueue");
+const { makeOtp } = require("../utils/auth.utils");
 const config = require("@leapmentor/shared/config/env");
 const AppError = require("@leapmentor/shared/utils/appError");
 const makeLinkToken = () => crypto.randomBytes(32).toString("hex");
@@ -27,37 +27,11 @@ const sendVerificationEmail = async (user, subjectSuffix = "") => {
     if (!base) throw new AppError(500, "APP_BASE_URL is not configured");
     const magicLink = `${base}/verify-email?token=${tokenPlain}&email=${encodeURIComponent(user.email)}`;
 
-    await transporter.sendMail({
-        from: config.fromEmail,
-        to: user.email,
-        subject: `LeapMentor Email Verification${subjectSuffix}`,
-        text: `
-Verify your LeapMentor account
-
-Option 1 – Click the magic link (expires in 10 minutes):
-${magicLink}
-
-Option 2 – Enter this OTP manually (expires in 10 minutes):
-${otpPlain}
-    `.trim(),
-        html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:auto">
-        <h2 style="color:#4F46E5">Verify your LeapMentor account</h2>
-        <p>Use either option — both expire in <strong>10 minutes</strong>.</p>
-
-        <h3>Option 1 — Magic Link</h3>
-        <a href="${magicLink}" style="display:inline-block;padding:12px 24px;background:#4F46E5;color:#fff;border-radius:6px;text-decoration:none;font-weight:bold">
-          Verify my email
-        </a>
-        <p style="font-size:12px;color:#6B7280">Or copy: ${magicLink}</p>
-
-        <hr style="margin:24px 0"/>
-
-        <h3>Option 2 — OTP</h3>
-        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${otpPlain}</p>
-        <p style="font-size:13px;color:#6B7280">Enter this on the verification screen.</p>
-      </div>
-    `,
+    await emailQueue.sendVerificationOtpEmail({
+        toEmail: user.email,
+        otp: otpPlain,
+        magicLink,
+        subjectSuffix,
     });
 };
 

@@ -1,6 +1,6 @@
 // services/register.service.js
 const bcrypt = require("bcryptjs");
-const { issueTokens, validateRoles } = require("@leapmentor/shared/utils/auth.utils");
+const { issueTokens, validateRoles } = require("../utils/auth.utils");
 const { toUserDTO } = require("@leapmentor/shared/utils/mappers/user.mapper");
 const AppError = require("@leapmentor/shared/utils/appError");
 

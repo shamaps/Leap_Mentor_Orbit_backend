@@ -21,6 +21,8 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0, // points held, not yet released to mentor
     },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   BASE_SCHEMA_OPTIONS
 );

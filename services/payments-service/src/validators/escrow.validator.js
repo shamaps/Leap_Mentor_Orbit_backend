@@ -23,18 +23,5 @@ const paySchema = Joi.object({
     }),
 });
 
-/**
- * Joi parser checking literal choices governing settlement releases or cancellation procedures.
- * @type {Joi.ObjectSchema}
- * @property {string} action - Explicit constraint limited strictly to tracking arguments ("release" or "refund").
- * @property {string} [reason] - Optional descriptive summary text capped at 500 characters.
- */
-const escrowActionSchema = Joi.object({
-    action: Joi.string().valid("release", "refund").required().messages({
-        "any.only": "action must be release or refund",
-        "any.required": "action is required",
-    }),
-    reason: Joi.string().max(500).optional(),
-});
 
-module.exports = { paySchema, escrowActionSchema };
+module.exports = { paySchema };

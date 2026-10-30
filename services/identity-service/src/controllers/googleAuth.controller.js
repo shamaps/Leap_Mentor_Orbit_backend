@@ -1,5 +1,5 @@
 // controllers/googleAuth.controller.js
-const { issueTokens } = require("@leapmentor/shared/utils/auth.utils");
+const { issueTokens } = require("../utils/auth.utils");
 const { ok } = require("@leapmentor/shared/utils/response");
 const { handleError } = require("@leapmentor/shared/utils/appError");
 

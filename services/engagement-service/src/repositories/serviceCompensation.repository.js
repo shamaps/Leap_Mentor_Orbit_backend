@@ -3,7 +3,7 @@ const ServiceCompensation = require("../models/ServiceCompensation");
 const enqueue = (key, action, payload) => ServiceCompensation.findOneAndUpdate(
     { key },
     { $setOnInsert: { key, action, payload, status: "pending", nextAttemptAt: new Date() } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
 );
 
 const complete = (id, result) => ServiceCompensation.updateOne(
@@ -25,6 +25,17 @@ const scheduleRetry = (record, error) => {
         } }
     );
 };
+const fail = (record, error) => ServiceCompensation.updateOne(
+    { _id: record._id },
+    {
+        $set: {
+            status: "failed",
+            failedAt: new Date(),
+            leaseUntil: null,
+            lastError: String(error?.message || error).slice(0, 2000),
+        },
+    }
+);
 
 const claimNext = (now = new Date()) => ServiceCompensation.findOneAndUpdate(
     { $or: [
@@ -32,7 +43,7 @@ const claimNext = (now = new Date()) => ServiceCompensation.findOneAndUpdate(
         { status: "processing", leaseUntil: { $lte: now } },
     ] },
     { $set: { status: "processing", leaseUntil: new Date(now.getTime() + 60_000) }, $inc: { attempts: 1 } },
-    { new: true, sort: { createdAt: 1 } }
+    { returnDocument: "after", sort: { createdAt: 1 } }
 );
 
-module.exports = { enqueue, complete, scheduleRetry, claimNext };
+module.exports = { enqueue, complete,fail, scheduleRetry, claimNext };

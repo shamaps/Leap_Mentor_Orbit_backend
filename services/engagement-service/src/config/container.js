@@ -14,8 +14,8 @@ const noteRepo = require("../repositories/note.repository");
 const privateNoteRepo = require("../repositories/privateNote.repository");
 const reportRepo = require("../repositories/report.repository");
 const sessionRepo = require("../repositories/session.repository");
+const internalUsersRepo = require("../repositories/internalUsers.repository");
 const supportRepo = require("../repositories/support.repository");
-// ── Repositories shared with other services (phase 1, see ARCHITECTURE.md 4a)
 const notificationRepo = require("@leapmentor/shared/repositories/notification.repository");
 const adminEngagementsRepo = require("../repositories/adminEngagements.repository");
 const serviceCompensationRepo = require("../repositories/serviceCompensation.repository");
@@ -36,7 +36,8 @@ const createSessionService = require("../services/session.service");
 const createSupportService = require("../services/support.service");
 const createAdminEngagementsService = require("../services/adminEngagements.service");
 const createServiceCompensationService = require("../services/serviceCompensation.service");
-
+const createSessionOperationsService = require("../services/sessionOperations.service");
+const createInternalUsersService = require("../services/internalUsers.service");
 // ── Controller factories
 const createAdminReportsController = require("../controllers/admin/adminReports.controller");
 const createConnectRequestController = require("../controllers/connectRequest.controller");
@@ -53,7 +54,8 @@ const createAdminEngagementsController = require("../controllers/admin/adminEnga
 
 // ── Wire services
 const createNotification = makeCreateNotification(notificationRepo);
-const serviceCompensation = createServiceCompensationService(serviceCompensationRepo, { paymentsClient, catalogClient, sessionRepo, logger });
+const sessionOperations = createSessionOperationsService(sessionRepo);
+const serviceCompensation = createServiceCompensationService(serviceCompensationRepo, { paymentsClient, catalogClient, sessionRepo, sessionOperations, logger });
 
 const adminReportsService = createAdminReportsService(adminReportsRepo, { logger, createNotification, compensationService: serviceCompensation });
 const connectRequestService = createConnectRequestService(connectRequestRepo, { logger, createNotification, catalogClient, serviceCompensation });
@@ -67,7 +69,7 @@ const reportService = createReportService(reportRepo, { logger });
 const sessionService = createSessionService(sessionRepo, serviceCompensation, { logger });
 const supportService = createSupportService(supportRepo, { logger });
 const adminEngagementsService = createAdminEngagementsService(adminEngagementsRepo);
-
+const internalUsersService = createInternalUsersService(internalUsersRepo, { logger });
 // ── Wire controllers
 module.exports = {
     adminReportsController: createAdminReportsController(adminReportsService, { logger }),
@@ -82,5 +84,5 @@ module.exports = {
     sessionController: createSessionController(sessionService, { logger }),
     supportController: createSupportController(supportService, { logger }),
     adminEngagementsController: createAdminEngagementsController(adminEngagementsService, { logger }),
-    serviceCompensation,
+    serviceCompensation, internalUsersService,
 };

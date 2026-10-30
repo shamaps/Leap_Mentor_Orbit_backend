@@ -1,6 +1,6 @@
 // controllers/clerkSSO.controller.js
 const { handleError } = require("@leapmentor/shared/utils/appError");
-const { issueTokens } = require("@leapmentor/shared/utils/auth.utils");
+const { issueTokens } = require("../utils/auth.utils");
 const { ok } = require("@leapmentor/shared/utils/response");
 
 /**

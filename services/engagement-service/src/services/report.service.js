@@ -2,7 +2,7 @@
 const {
     sendReportSubmittedEmail,
     sendReportResolvedEmail,
-} = require("@leapmentor/shared/utils/emails");
+} = require("@leapmentor/shared/utils/emailQueue");
 const { signCloudinaryUrl } = require("@leapmentor/shared/utils/cloudinarySign");
 const { uploadToCloudinary } = require("@leapmentor/shared/utils/cloudinaryUpload");
 const { reportScreenshotId } = require("@leapmentor/shared/utils/cloudinaryPublicId");

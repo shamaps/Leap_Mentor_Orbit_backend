@@ -1,5 +1,5 @@
 // services/adminVerification.service.js
-const { sendMentorVerifiedEmail } = require("@leapmentor/shared/utils/emails");
+const { sendMentorVerifiedEmail } = require("@leapmentor/shared/utils/emailQueue");
 const { toMentorProfileDTO } = require("@leapmentor/shared/utils/mappers/mentorProfile.mapper");
 const { signCloudinaryUrl } = require("@leapmentor/shared/utils/cloudinarySign");
 const AppError = require("@leapmentor/shared/utils/appError");

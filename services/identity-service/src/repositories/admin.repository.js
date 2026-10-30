@@ -7,9 +7,6 @@ const AdminUser = require("@leapmentor/shared/models/AdminUser");
 const MentorProfile = require("@leapmentor/shared/models/MentorProfile");
 const MenteeProfile = require("@leapmentor/shared/models/MenteeProfile");
 const ConnectRequest = require("@leapmentor/shared/models/ConnectRequest");
-const Wallet = require("@leapmentor/shared/models/Wallet");
-const { withTransaction } = require("@leapmentor/shared/utils/withTransaction");
-const { escapeRegex } = require("@leapmentor/shared/utils/escapeRegex");
 const { findUsersByName } = require("./userSearch.repository");
 const logger = require("@leapmentor/shared/utils/logger");
 const { idToString } = require("@leapmentor/shared/utils/idToString");
@@ -167,27 +164,14 @@ const countCompletedSessions = (userId) =>
         $or: [{ mentor: userId }, { mentee: userId }],
         status: "completed",
     });
-
 /**
- * Hard deletes a user and completely removes related data.
- * @param {string} userId - The user ID to delete.
- * @returns {Promise<void>}
+ * Permanently deletes the user's own row. Profiles, requests and wallets belong
+ * to other services and are removed through userCascade.service.
  */
-const hardDeleteUser = async (userId) => {
-    logger.debug("hardDeleteUser called", { userId: idToString(userId) });
-    const results = await Promise.allSettled([
-        User.findByIdAndDelete(userId),
-        MentorProfile.findOneAndDelete({ user: userId }),
-        MenteeProfile.findOneAndDelete({ user: userId }),
-        ConnectRequest.deleteMany({ $or: [{ mentor: userId }, { mentee: userId }] }),
-    ]);
-    const failures = results.filter(r => r.status === "rejected");
-    if (failures.length) {
-        failures.forEach(f =>
-            logger.error("hardDeleteUser partial failure", { error: f.reason?.message, userId: idToString(userId) })
-        );
-    }
-    logger.debug("hardDeleteUser complete", { userId: idToString(userId), failures: failures.length });
+
+const deleteUserById = (userId) => {
+    logger.debug("deleteUserById called", { userId: idToString(userId) });
+    return User.findByIdAndDelete(userId);
 };
 
 /**
@@ -207,7 +191,7 @@ const blockUserById = (userId) =>
     User.findByIdAndUpdate(
         userId,
         { isDeleted: true, deletedAt: new Date() },
-        { new: true },
+        { returnDocument: "after" },
     );
 
 /**
@@ -219,32 +203,16 @@ const unblockUserById = (userId) =>
     User.findOneAndUpdate(
         { _id: userId },
         { isDeleted: false, deletedAt: null },
-        { new: true, ignoreIsDeleted: true },
+        { returnDocument: "after", ignoreIsDeleted: true },
     );
 
 /**
- * Soft-deletes a user, their profiles, wallet, and cancels pending connect requests.
- * Wrapped in a MongoDB transaction.
- * @param {string} userId - The user ID to cascade delete.
- * @returns {Promise<void>}
+ * Soft-deletes the user's own row only. Other services' data is handled
+ * through userCascade.service.
  */
-const cascadeDeleteUser = async (userId) => {
-    await withTransaction(async (session) => {
-        const now = new Date();
-        const patch = { $set: { isDeleted: true, deletedAt: now } };
-        await Promise.all([
-            User.findByIdAndUpdate(userId, patch, { session }),
-            MentorProfile.findOneAndUpdate({ user: userId }, patch, { session }),
-            MenteeProfile.findOneAndUpdate({ user: userId }, patch, { session }),
-            Wallet.findOneAndUpdate({ user: userId }, patch, { session }),
-            ConnectRequest.updateMany(
-                { $or: [{ mentor: userId }, { mentee: userId }], status: "pending" },
-                { $set: { isDeleted: true, deletedAt: now, status: "cancelled" } },
-                { session }
-            ),
-        ]);
-    }, "admin.deleteUser");
-};
+const softDeleteUserById = (userId) =>
+    User.findByIdAndUpdate(userId, { $set: { isDeleted: true, deletedAt: new Date() } });
+
 
 
 
@@ -266,9 +234,9 @@ module.exports = {
     findMentorProfileByUser,
     findMenteeProfileByUser,
     countCompletedSessions,
-    hardDeleteUser,
+    deleteUserById,
     findUserByIdRaw,
     blockUserById,
     unblockUserById,
-    cascadeDeleteUser,
+    softDeleteUserById,
 };

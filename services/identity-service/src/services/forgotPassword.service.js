@@ -1,9 +1,8 @@
 // services/forgotPassword.service.js
 const bcrypt = require("bcryptjs");
-const transporter = require("@leapmentor/shared/utils/mailer");
+const emailQueue = require("@leapmentor/shared/utils/emailQueue");
 const AppError = require("@leapmentor/shared/utils/appError");
-const { makeOtp } = require("@leapmentor/shared/utils/auth.utils");
-const config = require("@leapmentor/shared/config/env");
+const { makeOtp } = require("../utils/auth.utils");
 
 /**
  * @typedef {Object} VerificationTokenDocument
@@ -74,33 +73,6 @@ const createForgotPasswordService = (repo, { _logger }) => {
     };
 
     /**
-     * Assembles literal recovery presentation HTML structures containing authentication tokens.
-     * * @private
-     * @function buildOtpEmailHtml
-     * @param {string} otpPlain - Raw plaintext numeric characters sequence.
-     * @returns {string} Fully prepared inline styles layout markup document.
-     */
-    const buildOtpEmailHtml = (otpPlain) => `
-  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
-    <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 32px;">
-      <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;">Reset Your Password</h1>
-      <p style="color:rgba(255,255,255,0.8);font-size:13px;margin:6px 0 0;">LeapMentor account recovery</p>
-    </div>
-    <div style="padding:28px 32px;">
-      <p style="font-size:14px;color:#475569;margin:0 0 20px;">
-        Use the OTP below to reset your password. It expires in <strong>10 minutes</strong>.
-      </p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;">
-        <p style="font-size:36px;font-weight:800;letter-spacing:10px;color:#1e293b;margin:0;">${otpPlain}</p>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin:0;">
-        If you didn't request this, you can safely ignore this email.
-      </p>
-    </div>
-  </div>
-`;
-
-    /**
      * Step 1 — Initiates recovery workflow by generating a transient verification record and emailing it to the user.
      * Implements security isolation bounds to prevent database enumeration vectors.
      * * @async
@@ -126,11 +98,9 @@ const createForgotPasswordService = (repo, { _logger }) => {
 
         await repo.createToken({ userId: user._id, otpHash, expiresAt });
 
-        await transporter.sendMail({
-            from: config.fromEmail,
-            to: user.email,
-            subject: "LeapMentor — Reset your password",
-            html: buildOtpEmailHtml(otpPlain),
+        await emailQueue.sendPasswordResetOtpEmail({
+            toEmail: user.email,
+            otp: otpPlain,
         });
     };
 

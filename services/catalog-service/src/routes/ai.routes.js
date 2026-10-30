@@ -113,7 +113,7 @@ router.post("/chat", authenticate, aiLimiter, async (req, res) => {
           "X-Trace-Id": getTraceId(),
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
           max_tokens: 1000,
           messages: [
             { role: "system", content: systemPrompt },

@@ -4,6 +4,7 @@ const Wallet = require("@leapmentor/shared/models/Wallet");
 const ConnectRequest = require("@leapmentor/shared/models/ConnectRequest");
 const AdminUser = require("@leapmentor/shared/models/AdminUser");
 const { findUsersByName } = require("@leapmentor/shared/repositories/userSearch.repository");
+const PlatformWallet = require("@leapmentor/shared/models/PlatformWallet");
 
 // STATS
 
@@ -37,6 +38,8 @@ const sumAllWalletEscrows = () =>
         { $group: { _id: null, total: { $sum: "$escrow" } } },
     ]);
 
+const findPlatformBalance = () =>
+    PlatformWallet.findOne({ key: PlatformWallet.PLATFORM_KEY }).select("balance").lean();
 /**
  * Counts the total number of refunded connect requests.
  * @returns {Promise<number>} Count of refunded requests.
@@ -115,6 +118,7 @@ module.exports = {
     findCompletedPaidSessions,
     sumAllWalletEscrows,
     countRefundedRequests,
+    findPlatformBalance,
     // chart
     findCompletedSessionsInRange,
     findCompletedSessionsSince,

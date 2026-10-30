@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY shared ./shared
+COPY tools ./tools
 COPY services/identity-service ./services/identity-service
 
 WORKDIR /app/services/identity-service

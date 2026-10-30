@@ -87,7 +87,7 @@ const createInternalEscrowService = (repo, { transaction = withTransaction, logg
       await repo.saveWallet(wallet, session);
 
       const result = { requestId: String(requestId), totalAmount, commissionRate, commissionAmount, mentorPayout, balance: wallet.balance, escrow: wallet.escrow, paymentStatus: "paid" };
-      const newEscrow = await repo.createEscrow({
+      await repo.createEscrow({
         requestId, mentee: menteeId, mentor: mentorId, sessionRate, sessionCount,
         totalAmount, commissionRate, commissionAmount, mentorPayout,
         status: "held", heldAt: new Date(), operations: [{ key, kind: "hold", fingerprint, result }], refunds: [],
@@ -122,15 +122,13 @@ const createInternalEscrowService = (repo, { transaction = withTransaction, logg
       const mentorPayout = round(amount - commissionAmount);
       const menteeWallet = await repo.findWallet(escrow.mentee, session);
       const mentorWallet = await repo.findWallet(escrow.mentor, session);
-      const admin = await repo.findActiveAdmin(session);
-      if (!admin) throw new AppError(500, "Platform admin not found. Contact support.");
       if (!menteeWallet || !mentorWallet) throw new AppError(404, "Wallet not found");
       if (menteeWallet.escrow < amount - 1) throw new AppError(422, "Escrow balance mismatch. Contact support.");
 
       menteeWallet.escrow = round(menteeWallet.escrow - Math.min(amount, menteeWallet.escrow));
       mentorWallet.balance = round(mentorWallet.balance + mentorPayout);
       await Promise.all([repo.saveWallet(menteeWallet, session), repo.saveWallet(mentorWallet, session)]);
-      await repo.creditAdmin(admin._id, commissionAmount, session);
+     await repo.creditPlatformWallet(commissionAmount, session);
 
       const result = { requestId: String(requestId), totalAmount: amount, commissionRate: escrow.commissionRate, commissionAmount, mentorPayout, menteeEscrow: menteeWallet.escrow, status: "completed" };
       escrow.status = "released";
@@ -145,24 +143,25 @@ const createInternalEscrowService = (repo, { transaction = withTransaction, logg
       ], session);
       return result;
     }, session);
-    if (!session && repo.syncRequestReleased) await transaction((mongoSession) => repo.syncRequestReleased(requestId, mongoSession), "payments.internal.release.mirror");
     return result;
   };
 
-  const refundSlot = async ({ requestId, slotIndex, cancelledBy = "system" }, { session = null } = {}) => {
-    const key = operationKey(requestId, "refund", slotIndex);
-    const fingerprint = JSON.stringify({ slotIndex, cancelledBy });
+  const refundSlot = async ({ requestId, slotIndex, slotId = null, cancelledBy = "system" }, { session = null } = {}) => {
+    const key = operationKey(requestId, "refund", slotId || slotIndex);
+    const fingerprint = JSON.stringify({ slotIndex, slotId, cancelledBy });
     const result = await execute(requestId, key, "payments.internal.refundSlot", fingerprint, async ({ session, escrow }) => {
       if (!escrow) throw new AppError(404, "Escrow not found");
-      if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= escrow.sessionCount)
-        throw new AppError(422, "slotIndex is outside the escrow session range");
-      const priorRefund = escrow.refunds.find((refund) => refund.slotIndex === slotIndex);
+      if (!escrow.slots?.length) escrow.slots = buildSlots(escrow.sessionCount, escrow.totalAmount, escrow.commissionAmount, escrow.mentorPayout);
+      const slot = slotId
+        ? escrow.slots.find((item) => String(item.slotId) === String(slotId))
+        : escrow.slots.find((item) => item.slotIndex === slotIndex);
+      if (!slot) throw new AppError(422, "Slot is not part of this escrow");
+      const idx = slot.slotIndex;
+      const priorRefund = escrow.refunds.find((refund) => refund.slotIndex === idx);
       if (priorRefund) return priorRefund.result;
       if (["released", "refunded"].includes(escrow.status)) throw new AppError(409, "Escrow is already settled");
+      if (slot.status !== "held") throw new AppError(409, "Slot escrow is no longer held");
 
-      if (!escrow.slots?.length) escrow.slots = buildSlots(escrow.sessionCount, escrow.totalAmount, escrow.commissionAmount, escrow.mentorPayout);
-      const slot = escrow.slots.find((item) => item.slotIndex === slotIndex);
-      if (!slot || slot.status !== "held") throw new AppError(409, "Slot escrow is no longer held");
       const heldSlots = escrow.slots.filter((item) => item.status === "held").length;
       const refundedToDate = round(escrow.refunds.reduce((sum, refund) => sum + refund.amount, 0));
       const amount = heldSlots === 1
@@ -176,24 +175,22 @@ const createInternalEscrowService = (repo, { transaction = withTransaction, logg
       wallet.escrow = round(wallet.escrow - amount);
       wallet.balance = round(wallet.balance + amount);
       await repo.saveWallet(wallet, session);
-      const result = { requestId: String(requestId), slotIndex, refundedAmount: amount, balance: wallet.balance, escrow: wallet.escrow };
-      escrow.refunds.push({ slotIndex, amount, key, cancelledBy, result, completedAt: new Date() });
+      const result = { requestId: String(requestId), slotIndex: idx, refundedAmount: amount, balance: wallet.balance, escrow: wallet.escrow };
+      escrow.refunds.push({ slotIndex: idx, amount, key, cancelledBy, result, completedAt: new Date() });
       slot.status = "refunded";
       escrow.status = escrow.refunds.length === escrow.sessionCount ? "refunded" : "partially_refunded";
       saveOperation(escrow, key, "refund", fingerprint, result);
       await repo.saveEscrow(escrow, session);
       await repo.insertTransactions([{
         user: escrow.mentee, type: "escrow_refund", amount, connectRequest: requestId,
-        description: `Slot #${slotIndex + 1} cancelled by ${cancelledBy} — partial refund of ${amount} tokens`,
+        description: `Slot #${idx + 1} cancelled by ${cancelledBy} — partial refund of ${amount} tokens`,
         balanceAfter: wallet.balance, idempotencyKey: `${key}:ledger`,
       }], session);
       return result;
     }, session);
-    if (!session) {
-      const escrow = await repo.findEscrow(requestId);
-      if (escrow?.status === "refunded" && repo.syncRequestRefunded) await repo.syncRequestRefunded(requestId);
-    }
-    return result;
+    if (session) return result;
+    const current = await repo.findEscrow(requestId);
+    return { ...result, escrowStatus: current?.status ?? null };
   };
 
   return { hold, release, refundSlot };

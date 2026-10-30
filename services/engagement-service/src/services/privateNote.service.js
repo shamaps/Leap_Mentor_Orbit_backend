@@ -1,5 +1,5 @@
 // services/privateNote.service.js
-const { validateSessionAccess } = require("@leapmentor/shared/utils/sessionAccess");
+const { validateSessionAccess } = require("../utils/sessionAccess");
 const AppError = require("@leapmentor/shared/utils/appError");
 
 /**

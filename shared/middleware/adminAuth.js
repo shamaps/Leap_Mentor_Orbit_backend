@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken");
 const AdminUser = require("../models/AdminUser");
 const logger = require("../utils/logger");
 const config = require("../config/env");
-const Sentry = require("@sentry/node");
 // ── UPDATED: reads adminAccessToken from httpOnly cookie ──────
 // Previously read from req.headers.authorization (Bearer token)
 // Now reads from req.cookies.adminAccessToken — JS cannot read this

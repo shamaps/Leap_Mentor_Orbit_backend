@@ -1,5 +1,6 @@
 // services/upload.service.js
-const { sendDocumentsSubmittedEmail } = require("@leapmentor/shared/utils/emails");
+
+const { sendDocumentsSubmittedEmail } = require("@leapmentor/shared/utils/emailQueue");
 const { uploadToCloudinary } = require("@leapmentor/shared/utils/cloudinaryUpload");
 const { profilePictureId, resumeId, workExperienceId } = require("@leapmentor/shared/utils/cloudinaryPublicId");
 

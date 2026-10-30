@@ -11,7 +11,8 @@ const app = require("./app");
 const socketAuth = require("./socket/socketAuth");
 const socketHandler = require("./socket/socketHandler");
 const { startSessionReminderCron } = require("./cron/sessionReminders");
-
+const { startEmailWorker } = require("./workers/emailWorker");
+const { startNotificationWorker } = require("./workers/notificationWorker");
 process.on("unhandledRejection", (reason) => {
     Sentry.captureException(reason);
     logger.error("Unhandled Promise Rejection", { reason: reason?.message || reason, stack: reason?.stack });
@@ -25,7 +26,7 @@ process.on("uncaughtException", (err) => {
 (async () => {
     await connectDB();
     startSessionReminderCron(); 
-
+    const emailWorker = startEmailWorker();
     const httpServer = http.createServer(app);
 
     const io = new Server(httpServer, {
@@ -38,9 +39,16 @@ process.on("uncaughtException", (err) => {
     });
     io.use(socketAuth);
     socketHandler(io);
-
+    const notificationWorker = startNotificationWorker(); 
     const PORT = process.env.PORT || 5000;
     httpServer.listen(PORT, () => logger.info(`communication service listening on port ${PORT}`));
 
-    registerGracefulShutdown({ name: "communication", server: httpServer, closeServer: (cb) => io.close(cb) });
+    registerGracefulShutdown({
+        name: "communication",
+        server: httpServer,
+        closeServer: (cb) => {
+            Promise.allSettled([emailWorker, notificationWorker].map(async (worker) => worker.stop()))
+                .finally(() => io.close(cb));
+        },
+    });
 })();

@@ -2,12 +2,12 @@
 const express = require("express");
 const router = express.Router();
 const validate = require("@leapmentor/shared/middleware/validate");
-const { paySchema, escrowActionSchema } = require("../validators/escrow.validator");
+const { paySchema } = require("../validators/escrow.validator");
 const { authenticate, requirePermission } = require("@leapmentor/shared/middleware/authenticate");
 const { PERMISSIONS } = require("@leapmentor/shared/config/permissions");
 const { escrowController } = require("../config/container");
 const {
-    pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate,
+    pay, getStatus, getMyWallet, payAdditional, getCommissionRate,
 } = escrowController;
 // All escrow routes are protected
 router.use(authenticate);
@@ -112,81 +112,6 @@ router.post("/pay", requirePermission(PERMISSIONS.MANAGE_ESCROW), validate(paySc
 // Both roles can read the platform commission rate
 router.get("/commission-rate", getCommissionRate);
 
-/**
- * @openapi
- * /escrow/{requestId}:
- *   patch:
- *     tags: [Escrow]
- *     summary: Release or refund escrowed tokens
- *     description: >
- *       action="release": mentee confirms session complete, tokens released to mentor.
- *       action="refund": either party cancels, tokens returned to mentee.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: requestId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [action]
- *             properties:
- *               action:
- *                 type: string
- *                 enum: [release, refund]
- *               reason:
- *                 type: string
- *                 maxLength: 500
- *     responses:
- *       200:
- *         description: Escrow released or refunded.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessEnvelope'
- *       400:
- *         description: action missing/invalid (must be "release" or "refund"), or Joi validation failed.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: 'Invalid action. Use "release" or "refund".'
- *       401:
- *         description: Missing or invalid access token.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       403:
- *         description: Role not permitted, or not a party to this request.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       422:
- *         description: Escrow already released/refunded.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UnprocessableResponse'
- */
-// PATCH /api/escrow/:requestId
-// Mentee confirms session complete { action: "release" } — tokens released to mentor
-// Either party cancels { action: "refund" } — tokens returned to mentee
-router.patch("/:requestId", requirePermission(PERMISSIONS.MANAGE_ESCROW), validate(escrowActionSchema), (req, res, next) => {
-    const { action } = req.body;
-    if (action === "release") return release(req, res, next);
-    if (action === "refund") return refund(req, res, next);
-    return res.status(400).json({ message: 'Invalid action. Use "release" or "refund".' });
-});
 
 /**
  * @openapi

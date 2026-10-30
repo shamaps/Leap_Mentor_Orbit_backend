@@ -8,6 +8,5 @@ const toAdminDTO = (doc) => ({
     isActive: doc.isActive,
     lastLoginAt: doc.lastLoginAt,
     commissionRate: doc.commissionRate,
-    walletBalance: doc.walletBalance,
 });
 module.exports = { toAdminDTO };

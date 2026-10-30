@@ -12,10 +12,31 @@
         "npm": ">=10.0.0"
     },
     "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
         "dev:identity": "npm run dev -w services/identity-service",
         "dev:catalog": "npm run dev -w services/catalog-service",
         "dev:engagement": "npm run dev -w services/engagement-service",
         "dev:payments": "npm run dev -w services/payments-service",
-        "dev:communication": "npm run dev -w services/communication-service"
+        "dev:communication": "npm run dev -w services/communication-service",
+        "test": "jest --maxWorkers=50%",
+        "test:coverage": "jest --maxWorkers=50% --coverage",
+        "test:catalog": "jest --runInBand services/catalog-service/test",
+        "test:identity": "jest --runInBand services/identity-service/test",
+        "test:engagement": "jest --runInBand services/engagement-service/test",
+        "test:communication": "jest --runInBand services/communication-service/test",
+        "test:payments": "jest --runInBand services/payments-service/test",
+        "test:shared": "jest --runInBand shared/test"
+    },
+    "devDependencies": {
+        "eslint-plugin-n": "^18.5.0",
+        "jest": "^30.4.2",
+        "mongodb-memory-server": "^11.0.1",
+        "supertest": "^7.2.2"
+    },
+    "overrides": {
+        "mongodb": {
+            "gcp-metadata": "^8.1.2"
+        }
     }
 }

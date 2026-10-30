@@ -34,7 +34,7 @@ const slotPayload = Joi.object({
     endTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
 });
 
-const run = (operation) => async (req, res, next) => {
+const run = (operation) => async (req, res) => {
     try {
         const data = await operation(req.internalInput);
         return res.json({ success: true, data });
@@ -45,29 +45,16 @@ const run = (operation) => async (req, res, next) => {
 
 router.post("/slots/lock", validate(slotPayload), run((input) => internalOperationsService.lockSlot(input)));
 router.post("/slots/release", validate(slotPayload), run((input) => internalOperationsService.releaseSlot(input)));
-router.post("/sessions/:requestId/slots/:slotIndex/confirm", validate(Joi.object({
-    requestId: objectId.required(), slotIndex: Joi.number().integer().min(0).required(), userId: objectId.required(),
-})), run((input) => internalOperationsService.confirmSlot(input)));
 router.put("/mentors/:mentorId/rating", validate(Joi.object({
     mentorId: objectId.required(), avgRating: Joi.number().min(0).max(5).required(), ratingCount: Joi.number().integer().min(0).required(),
 })), run((input) => internalOperationsService.updateMentorRating(input)));
+router.post(
+    "/mentors/:mentorId/completed-sessions",
+    validate(Joi.object({
+        mentorId: objectId.required(),
+        requestId: objectId.required(),
+    })),
+    run((input) => internalOperationsService.recordCompletedSession(input))
+);
 router.get("/mentors/:mentorId/availability", validate(Joi.object({ mentorId: objectId.required() })), run((input) => internalOperationsService.getMentorAvailability(input.mentorId)));
-router.post("/sessions/:requestId/slots/:slotIndex/release", validate(Joi.object({
-    requestId: objectId.required(), slotIndex: Joi.number().integer().min(0).required(),
-    cancelledBy: Joi.string().valid("mentor", "mentee").required(), reason: Joi.string().max(500).allow("").default(""),
-})), run((input) => internalOperationsService.releaseSessionSlot(input)));
-router.post("/sessions/:requestId/slots/:slotIndex/reschedule", validate(Joi.object({
-    requestId: objectId.required(), slotIndex: Joi.number().integer().min(0).required(),
-    userId: objectId.required(), date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
-    startTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), endTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-    day: Joi.string().max(9).required(),
-})), run((input) => internalOperationsService.rescheduleSessionSlot(input)));
-router.post("/requests/:requestId/confirm-slot", validate(Joi.object({
-    requestId: objectId.required(), mentorId: objectId.required(),
-    confirmedSlot: Joi.object({
-        day: Joi.string().max(9).required(), date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
-        startTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), endTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-    }).required(),
-})), run((input) => internalOperationsService.confirmBookingSlot(input)));
-
 module.exports = router;

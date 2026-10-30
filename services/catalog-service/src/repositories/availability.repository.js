@@ -44,7 +44,7 @@ const updateAvailability = async (mentorId, updates) => {
   return await Availability.findOneAndUpdate(
     { mentor: mentorId },
     { $set: updates },
-    { new: true, runValidators: true, upsert: true }
+    { returnDocument: "after", runValidators: true, upsert: true }
   );
 };
 

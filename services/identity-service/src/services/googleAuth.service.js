@@ -1,6 +1,6 @@
 // services/googleAuth.service.js
 const jwt = require("jsonwebtoken");
-const { googleClient, validateRoles, mergeRoles } = require("@leapmentor/shared/utils/auth.utils");
+const { googleClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
 const AppError = require("@leapmentor/shared/utils/appError");
 const { withTimeout } = require("@leapmentor/shared/utils/withTimeout");
 const { toUserDTO } = require("@leapmentor/shared/utils/mappers/user.mapper");

@@ -27,7 +27,7 @@ const createAdminPaymentsService = (repo, { _logger }) => {
     /**
      * Fetches aggregate payment statistics for the admin dashboard.
      * @param {string} adminId - The ID of the current admin user.
-     * @returns {Promise<Object>} Statistics including revenue, commission, payouts, and refunds.
+     * @returns {Promise<Object>} Statistics including revenue, commission, payouts, refunds, and platform balance.
      */
     const fetchPaymentStats = async (adminId) => {
         const adminUser = await repo.findAdminCommissionRate(adminId);
@@ -49,6 +49,7 @@ const createAdminPaymentsService = (repo, { _logger }) => {
         const pendingPayouts = escrowResult?.total || 0;
 
         const refundedRequests = await repo.countRefundedRequests();
+        const platformWallet = await repo.findPlatformBalance();
 
         return {
             totalRevenue,
@@ -56,6 +57,7 @@ const createAdminPaymentsService = (repo, { _logger }) => {
             commissionRate,
             pendingPayouts,
             refundedRequests,
+            platformBalance: platformWallet?.balance ?? 0,
         };
     };
 
@@ -153,4 +155,5 @@ const createAdminPaymentsService = (repo, { _logger }) => {
 
     return { fetchPaymentStats, fetchRevenueChart, fetchTransactions };
 };
+
 module.exports = createAdminPaymentsService;

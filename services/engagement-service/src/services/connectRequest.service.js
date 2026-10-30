@@ -13,7 +13,7 @@ const mongoose = require("mongoose");
 const {
   sendConnectRequestEmail,
   sendRequestAcceptedEmail,
-} = require("@leapmentor/shared/utils/emails");
+} = require("@leapmentor/shared/utils/emailQueue");
 const { VALID_RESPOND_STATUSES } = require("@leapmentor/shared/config/constants");
 const AppError = require("@leapmentor/shared/utils/appError");
 const { dayFromDate } = require("./sessionHelpers");

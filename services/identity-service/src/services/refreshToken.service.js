@@ -1,7 +1,7 @@
 // services/refreshToken.service.js
 const crypto = require("node:crypto");
 const AppError = require("@leapmentor/shared/utils/appError");
-const { signToken, setRefreshCookie, getRefreshMs, generateRefreshToken } = require("@leapmentor/shared/utils/auth.utils");
+const { signToken, setRefreshCookie, getRefreshMs, generateRefreshToken } = require("../utils/auth.utils");
 const { toUserDTO } = require("@leapmentor/shared/utils/mappers/user.mapper");
 
 /**

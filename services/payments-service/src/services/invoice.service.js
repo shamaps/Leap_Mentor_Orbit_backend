@@ -1,5 +1,5 @@
 // services/invoice.service.js
-const generateInvoice = require("@leapmentor/shared/utils/generateInvoice");
+const generateInvoice = require("../utils/generateInvoice");
 const AppError = require("@leapmentor/shared/utils/appError");
 
 /**

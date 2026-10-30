@@ -1,7 +1,7 @@
 // repositories/session.repository.js
 const ConnectRequest = require("@leapmentor/shared/models/ConnectRequest");
 const logger = require("@leapmentor/shared/utils/logger");
-
+const mongoose = require("mongoose");
 // ─── ConnectRequest queries ──────────────────────────────────────────
 
 /**
@@ -26,6 +26,17 @@ const findSessionDocument = (connectRequestId) => {
     logger.debug("findSessionDocument called", { connectRequestId: connectRequestId?.toString() });
     return ConnectRequest.findById(connectRequestId);
 };
+const markRequestCompleted = (requestId) =>
+    ConnectRequest.updateOne(
+        { _id: requestId, status: { $ne: "completed" } },
+        { $set: { status: "completed", completedAt: new Date() } }
+    );
+
+const markPaymentRefunded = (requestId) =>
+    ConnectRequest.updateOne(
+        { _id: requestId, paymentStatus: { $ne: "refunded" } },
+        { $set: { paymentStatus: "refunded" } }
+    );
 
 /**
  * Fetch a live Mongoose document inside a MongoDB session (for transactions).
@@ -51,11 +62,107 @@ const findSessionPopulated = (connectRequestId) =>
         .populate("mentor", "name email")
         .populate("mentee", "name email");
 
+// ─── Session mutations (moved from catalog-service) ─────────────────
+// Engagement owns ConnectRequest, so these writes live here.
+
+const findSession = (requestId) =>
+    ConnectRequest.findById(requestId).select("mentor mentee status selectedSlots");
+
+const saveSession = (session) => session.save({ validateBeforeSave: false });
+
+const markParticipantComplete = async ({ requestId, slotIndex, participant }) => {
+    const field = participant === "mentor" ? "mentorMarked" : "menteeMarked";
+    const result = await ConnectRequest.updateOne(
+        { _id: requestId, [`selectedSlots.${slotIndex}.status`]: { $ne: "cancelled" } },
+        { $set: { [`selectedSlots.${slotIndex}.${field}`]: true } }
+    );
+    return result.matchedCount > 0;
+};
+
+const markCompletedAtIfMissing = (requestId, slotIndex, completedAt) =>
+    ConnectRequest.updateOne(
+        {
+            _id: requestId,
+            [`selectedSlots.${slotIndex}.menteeMarked`]: true,
+            [`selectedSlots.${slotIndex}.mentorMarked`]: true,
+            [`selectedSlots.${slotIndex}.completedAt`]: null,
+        },
+        { $set: { [`selectedSlots.${slotIndex}.completedAt`]: completedAt } }
+    );
+
+const confirmBooking = ({ requestId, mentorId, confirmedSlot }) => ConnectRequest.findOneAndUpdate(
+    {
+        _id: requestId,
+        mentor: mentorId,
+        status: "pending",
+        selectedSlots: { $elemMatch: { date: confirmedSlot.date, startTime: confirmedSlot.startTime, endTime: confirmedSlot.endTime } },
+    },
+    { $set: { confirmedSlot } },
+    { returnDocument: "after", runValidators: true }
+);
+
+const applyReschedule = ({ requestId, slotIndex, date, startTime, endTime, newSlot }) => {
+    const prefix = `selectedSlots.${slotIndex}`;
+    const slotWithId = { ...newSlot, _id: new mongoose.Types.ObjectId() };
+
+    return ConnectRequest.findOneAndUpdate(
+        {
+            _id: requestId,
+            status: "ongoing",
+            [`${prefix}.status`]: { $ne: "cancelled" },
+            selectedSlots: { $not: { $elemMatch: { date, startTime, endTime, status: { $ne: "cancelled" } } } },
+        },
+        [
+            {
+                $set: {
+                    selectedSlots: {
+                        $concatArrays: [
+                            {
+                                $map: {
+                                    input: { $range: [0, { $size: "$selectedSlots" }] },
+                                    as: "i",
+                                    in: {
+                                        $cond: [
+                                            { $eq: ["$$i", slotIndex] },
+                                            {
+                                                $mergeObjects: [
+                                                    { $arrayElemAt: ["$selectedSlots", "$$i"] },
+                                                    {
+                                                        status: "cancelled",
+                                                        cancelledBy: "mentee",
+                                                        cancelledAt: "$$NOW",
+                                                        cancellationReason: "rescheduled",
+                                                        isRescheduled: true,
+                                                    },
+                                                ],
+                                            },
+                                            { $arrayElemAt: ["$selectedSlots", "$$i"] },
+                                        ],
+                                    },
+                                },
+                            },
+                            [{ $literal: slotWithId }],
+                        ],
+                    },
+                },
+            },
+        ],
+        { returnDocument: "after", runValidators: false, updatePipeline: true }
+    );
+};
 // Availability is read from Catalog through its authenticated internal API.
-// ─────────────────────────────────────────────────────────────
+
 module.exports = {
+    markRequestCompleted,
+    markPaymentRefunded,
     findSessionForRead,
     findSessionDocument,
     findSessionDocumentWithSession,
     findSessionPopulated,
+    findSession,
+    saveSession,
+    markParticipantComplete,
+    markCompletedAtIfMissing,
+    confirmBooking,
+    applyReschedule,
 };

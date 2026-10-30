@@ -40,7 +40,7 @@ const countMessages = () => SupportMessage.countDocuments();
  * @returns {Promise<Object|null>} Fully mutated document layout returned confirmation model.
  */
 const resolveMessageById = (id) =>
-    SupportMessage.findByIdAndUpdate(id, { status: "resolved" }, { new: true });
+    SupportMessage.findByIdAndUpdate(id, { status: "resolved" }, { returnDocument: "after" });
 
 /**
  * Searches the core User model to locate matching account identifiers relative to contact addresses.

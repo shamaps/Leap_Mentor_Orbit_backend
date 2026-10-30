@@ -5,7 +5,7 @@ const Wallet = require("@leapmentor/shared/models/Wallet");
 const User = require("@leapmentor/shared/models/User");
 const Transaction = require("@leapmentor/shared/models/Transaction");
 const { escapeRegex } = require("@leapmentor/shared/utils/escapeRegex");
-const { getOrCreateWallet } = require("@leapmentor/shared/utils/wallet");
+const { getOrCreateWallet } = require("../utils/wallet");
 
 /**
  * Resolves static baseline evaluation metrics from target mentor profile.

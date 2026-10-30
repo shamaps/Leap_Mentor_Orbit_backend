@@ -39,7 +39,7 @@ const updateProfileByUser = (userId, body) =>
     MentorProfile.findOneAndUpdate(
         { user: userId },
         { $set: body },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
     );
 
 /**

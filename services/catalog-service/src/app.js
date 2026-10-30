@@ -79,6 +79,7 @@ v1.use("/google-calendar", require("./routes/googleCalendar.routes"));
 v1.use("/images", require("./routes/image.routes"));
 v1.use("/admin", require("./routes/admin"));
 app.use("/api/v1", v1);
+app.use("/internal/users", require("./routes/internalUsers.routes"));
 app.use("/internal", require("./routes/internal.routes"));
 
 Sentry.setupExpressErrorHandler(app);

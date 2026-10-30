@@ -6,8 +6,8 @@ const logger = require("@leapmentor/shared/utils/logger");
 const adminPaymentsRepo = require("../repositories/adminPayments.repository");
 const earningsRepo = require("../repositories/earnings.repository");
 const invoiceRepo = require("../repositories/invoice.repository");
-// ── Repository shared with engagement (phase 1, see ARCHITECTURE.md 4a)
-const escrowRepo = require("@leapmentor/shared/repositories/escrow.repository");
+const userLifecycleRepo = require("../repositories/userLifecycle.repository");
+const escrowRepo = require("../repositories/escrow.repository");
 
 // ── Service factories
 const createAdminPaymentsService = require("../services/adminPayments.service");
@@ -18,6 +18,7 @@ const createWalletWithdrawalService = require("../services/walletWithdrawal.serv
 const { createInternalEscrowService } = require("../services/internalEscrow.service");
 const internalEscrowRepo = require("../repositories/internalEscrow.repository");
 const createWalletOperationsService = require("../services/walletOperations.service");
+const createUserLifecycleService = require("../services/userLifecycle.service");
 
 // ── Controller factories
 const createAdminPaymentsController = require("../controllers/admin/adminPayments.controller");
@@ -33,13 +34,14 @@ const walletOperationsService = createWalletOperationsService(internalEscrowRepo
 const escrowService = createEscrowService(escrowRepo, { logger, internalEscrowService });
 const invoiceService = createInvoiceService(invoiceRepo, { logger });
 const walletWithdrawalService = createWalletWithdrawalService(earningsRepo, { logger });
+const userLifecycleService = createUserLifecycleService(userLifecycleRepo, { logger });
 
 // ── Wire controllers
 module.exports = {
     adminPaymentsController: createAdminPaymentsController(adminPaymentsService, { logger }),
     earningsController: createEarningsController(earningsService, walletWithdrawalService, { logger }),
     escrowController: createEscrowController(escrowService, { logger }),
-    internalEscrowService,
+    internalEscrowService, userLifecycleService,
     walletOperationsService,
     invoiceController: createInvoiceController(invoiceService, { logger }),
 };

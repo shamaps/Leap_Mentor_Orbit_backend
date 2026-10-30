@@ -40,7 +40,7 @@ const updateProfileByUser = (userId, body) =>
     MenteeProfile.findOneAndUpdate(
         { user: userId },
         { $set: body },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
     );
 
 /**

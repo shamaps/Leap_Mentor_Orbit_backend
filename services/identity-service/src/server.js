@@ -7,7 +7,8 @@ const logger = require("@leapmentor/shared/utils/logger");
 const { registerGracefulShutdown } = require("@leapmentor/shared/utils/gracefulShutdown");
 const { connectDB } = require("@leapmentor/shared/config/database");
 const app = require("./app");
-
+const { userCascade } = require("./config/container");
+const { startUserCascadeWorker } = require("./workers/userCascadeWorker");
 process.on("unhandledRejection", (reason) => {
   Sentry.captureException(reason);
   logger.error("Unhandled Promise Rejection", { reason: reason?.message || reason, stack: reason?.stack });
@@ -22,6 +23,12 @@ process.on("uncaughtException", (err) => {
   await connectDB();
   const PORT = process.env.PORT || 5000;
   const server = http.createServer(app).listen(PORT, () => logger.info(`identity service listening on port ${PORT}`));
-
-  registerGracefulShutdown({ name: "identity", server });
+ const cascadeWorker = startUserCascadeWorker({ userCascade });
+  registerGracefulShutdown({
+    name: "identity",
+    server,
+    closeServer: (cb) => {
+      cascadeWorker.stop().catch(() => {}).finally(() => server.close(cb));
+    },
+  });
 })();

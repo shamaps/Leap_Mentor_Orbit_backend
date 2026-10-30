@@ -2,7 +2,7 @@
 const jwt = require("jsonwebtoken");
 const AppError = require("@leapmentor/shared/utils/appError");
 const { withRetry } = require("@leapmentor/shared/utils/withRetry");
-const { clerkClient, validateRoles, mergeRoles } = require("@leapmentor/shared/utils/auth.utils");
+const { clerkClient, validateRoles, mergeRoles } = require("../utils/auth.utils");
 const { toUserDTO } = require("@leapmentor/shared/utils/mappers/user.mapper");
 
 /**

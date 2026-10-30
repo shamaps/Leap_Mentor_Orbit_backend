@@ -23,25 +23,17 @@ module.exports = {
         body: payload,
         idempotencyKey: idempotencyKey || `slot:release:${payload.mentorId}:${payload.date}:${payload.startTime}:${payload.endTime}:${payload.menteeId}`,
     }),
-    confirmSlot: ({ requestId, slotIndex, userId }, idempotencyKey) => client.post(
-        `/internal/sessions/${requestId}/slots/${slotIndex}/confirm`,
-        { body: { userId }, idempotencyKey: idempotencyKey || `slot:confirm:${requestId}:${slotIndex}:${userId}` }
-    ),
+    recordCompletedSession: ({ mentorId, requestId }) =>
+        client.post(
+            `/internal/mentors/${mentorId}/completed-sessions`,
+            {
+                body: { requestId },
+                idempotencyKey: `mentor:completed-session:${requestId}`,
+            }
+        ),
     updateMentorRating: ({ mentorId, avgRating, ratingCount }, idempotencyKey) => client.put(
         `/internal/mentors/${mentorId}/rating`,
         { body: { avgRating, ratingCount }, idempotencyKey: idempotencyKey || `mentor:rating:${mentorId}:${ratingCount}` }
     ),
     getMentorAvailability: (mentorId) => client.get(`/internal/mentors/${mentorId}/availability`),
-    releaseSessionSlot: ({ requestId, slotIndex, cancelledBy, reason }, idempotencyKey) => client.post(
-        `/internal/sessions/${requestId}/slots/${slotIndex}/release`,
-        { body: { cancelledBy, reason }, idempotencyKey: idempotencyKey || `session:release:${requestId}:${slotIndex}` }
-    ),
-    rescheduleSessionSlot: ({ requestId, slotIndex, userId, date, startTime, endTime, day }, idempotencyKey) => client.post(
-        `/internal/sessions/${requestId}/slots/${slotIndex}/reschedule`,
-        { body: { userId, date, startTime, endTime, day }, idempotencyKey: idempotencyKey || `session:reschedule:${requestId}:${slotIndex}` }
-    ),
-    confirmBookingSlot: ({ requestId, mentorId, confirmedSlot }, idempotencyKey) => client.post(
-        `/internal/requests/${requestId}/confirm-slot`,
-        { body: { mentorId, confirmedSlot }, idempotencyKey: idempotencyKey || `request:confirm-slot:${requestId}` }
-    ),
 };

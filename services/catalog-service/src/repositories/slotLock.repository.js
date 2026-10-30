@@ -44,7 +44,7 @@ const refreshOwnLock = ({ mentorId, date, startTime, endTime, menteeId, expiresA
     SlotLock.findOneAndUpdate(
         { mentorId, date, startTime, endTime, lockedBy: menteeId },
         { expiresAt },
-        { new: true }
+        { returnDocument: "after" }
     );
 
 /**

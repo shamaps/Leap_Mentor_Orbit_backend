@@ -45,7 +45,14 @@ const config = {
     redisPassword: optional("REDIS_PASSWORD"),
     redisTls: optional("REDIS_TLS") === "true",
     redisUrl: optional("REDIS_URL"),
-
+    streamsRedisHost: optional("STREAMS_REDIS_HOST", optional("REDIS_HOST", "127.0.0.1")),
+    streamsRedisPort: Number.parseInt(optional("STREAMS_REDIS_PORT", optional("REDIS_PORT", "6379")), 10),
+    streamsRedisPassword: optional("STREAMS_REDIS_PASSWORD", optional("REDIS_PASSWORD")),
+    streamsRedisTls: optional("STREAMS_REDIS_TLS", optional("REDIS_TLS")) === "true",
+    streamsRedisDb: Number.parseInt(optional("STREAMS_REDIS_DB", "0"), 10),
+    emailQueueEnabled: optional("EMAIL_QUEUE_ENABLED", "true") !== "false",
+    emailWorkerEnabled: optional("EMAIL_WORKER_ENABLED", "true") !== "false",
+    
     vapidPublicKey: optional("VAPID_PUBLIC_KEY"),
     vapidPrivateKey: optional("VAPID_PRIVATE_KEY"),
     vapidEmail: optional("VAPID_EMAIL"),

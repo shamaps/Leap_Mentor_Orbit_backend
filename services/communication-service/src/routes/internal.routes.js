@@ -1,7 +1,6 @@
 // services/communication-service/src/routes/internal.routes.js
 // Callers: engagement's src/realtime/socketBridge.js (and any service that needs to push a real-time event).
 const express = require("express");
-const logger = require("@leapmentor/shared/utils/logger");
 const socketHandler = require("../socket/socketHandler");
 const { requireInternalAuth } = require("@leapmentor/shared/middleware/internalAuth");
 

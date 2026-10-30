@@ -1,6 +1,6 @@
 // services/note.service.js
 const { getFileType } = require("@leapmentor/shared/middleware/upload.middleware");
-const { validateSessionAccess } = require("@leapmentor/shared/utils/sessionAccess");
+const { validateSessionAccess } = require("../utils/sessionAccess");
 const { uploadToCloudinary } = require("@leapmentor/shared/utils/cloudinaryUpload");
 const { signCloudinaryUrl } = require("@leapmentor/shared/utils/cloudinarySign");
 const { noteId } = require("@leapmentor/shared/utils/cloudinaryPublicId");

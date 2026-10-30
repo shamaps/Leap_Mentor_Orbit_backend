@@ -32,14 +32,12 @@ const SOFT_DELETE_FIELDS = {
 function applySoftDelete(schema) {
     schema.add(SOFT_DELETE_FIELDS);
 
-    schema.pre(/^find/, function (next) {
-        if (typeof next !== "function") return;
+    schema.pre(/^find/, function () {
         const options = this.getOptions() || {};
         const filter = this.getFilter() || {};
-        if (options.ignoreIsDeleted) return next();
-        if (filter.isDeleted === true) return next();
+        if (options.ignoreIsDeleted) return;
+        if (filter.isDeleted === true) return;
         this.where({ isDeleted: { $ne: true } });
-        next();
     });
 }
 

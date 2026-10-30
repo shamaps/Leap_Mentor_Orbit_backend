@@ -5,8 +5,6 @@ const { ok } = require("@leapmentor/shared/utils/response");
 /**
  * @typedef {Object} EscrowService
  * @property {(params: Object) => Promise<Object>} pay
- * @property {(params: Object) => Promise<Object>} release
- * @property {(params: Object) => Promise<Object>} refund
  * @property {(params: Object) => Promise<Object>} getStatus
  * @property {(userId: any) => Promise<Object>} getMyWallet
  * @property {(params: Object) => Promise<Object>} payAdditional
@@ -47,56 +45,7 @@ const createEscrowController = (escrowService, { logger }) => {
     }
   };
 
-  /**
-   * Express API route handler triggering release allocations toward host providers upon fulfillment confirmation.
-   * * @async
-   * @function release
-   * @param {import('express').Request & { user: { _id: any } }} req - Network parsing frame isolating tracking param pointers.
-   * @param {import('express').Response} res - Standard pipeline return connector socket.
-   */
-  const release = async (req, res) => {
-    try {
-      const result = await escrowService.release({
-        requestId: req.params.requestId,
-        menteeId: req.user._id,
-      });
-      logger.info("Escrow release successful", {
-        menteeId: req.user._id.toString(),
-        requestId: req.params.requestId,
-        totalAmount: result.totalAmount,
-        mentorPayout: result.mentorPayout,
-        commissionAmount: result.commissionAmount,
-      });
-      logger.info("release completed successfully");
-      return ok(res, { message: "Session marked complete. Tokens released to mentor.", ...result });
-    } catch (err) {
-      return handleError(res, err, "Escrow release");
-    }
-  };
-
-  /**
-   * Express API route handler driving reversion procedures returning funds back to target origin accounts.
-   * * @async
-   * @function refund
-   * @param {import('express').Request & { user: { _id: any } }} req - Dynamic framework input request context container.
-   * @param {import('express').Response} res - Operational execution result interface socket pipeline.
-   */
-  const refund = async (req, res) => {
-    try {
-      const result = await escrowService.refund({
-        requestId: req.params.requestId,
-        userId: req.user._id,
-      });
-      logger.info("Escrow refund successful", {
-        userId: req.user._id.toString(),
-        requestId: req.params.requestId,
-        totalAmount: result.totalAmount,
-      });
-      return ok(res, { message: "Escrow refunded successfully. Tokens returned to mentee.", ...result });
-    } catch (err) {
-      return handleError(res, err, "Escrow refund");
-    }
-  };
+  
 
   /**
    * Express API route handler collecting status summaries specific to targeted interactions.
@@ -178,7 +127,8 @@ const createEscrowController = (escrowService, { logger }) => {
     }
   };
 
-  return { pay, release, refund, getStatus, getMyWallet, payAdditional, getCommissionRate };
+  return { pay, getStatus, getMyWallet, payAdditional, getCommissionRate };
+
 };
 
 module.exports = createEscrowController;
